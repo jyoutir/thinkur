@@ -3,10 +3,11 @@ import Cocoa
 import os
 
 @MainActor
-final class PermissionManager: ObservableObject, PermissionChecking {
-    @Published var accessibilityGranted = false
-    @Published var microphoneGranted = false
-    @Published var inputMonitoringGranted = false
+@Observable
+final class PermissionManager: PermissionChecking {
+    var accessibilityGranted = false
+    var microphoneGranted = false
+    var inputMonitoringGranted = false
 
     var allGranted: Bool {
         accessibilityGranted && microphoneGranted && inputMonitoringGranted
@@ -47,7 +48,6 @@ final class PermissionManager: ObservableObject, PermissionChecking {
 
     func requestInputMonitoring() {
         CGRequestListenEventAccess()
-        // This opens System Settings; user must grant manually
         Logger.permissions.info("Requested Input Monitoring access — user must enable in System Settings")
     }
 

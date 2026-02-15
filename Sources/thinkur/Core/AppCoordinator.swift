@@ -2,7 +2,8 @@ import SwiftUI
 import os
 
 @MainActor
-final class AppCoordinator: ObservableObject {
+@Observable
+final class AppCoordinator {
     // Services (private — views never touch these)
     private let permissionManager: PermissionManager
     private let transcriptionEngine: TranscriptionEngine
@@ -13,12 +14,19 @@ final class AppCoordinator: ObservableObject {
     private let frontmostAppDetector: FrontmostAppDetector
     private let amplitudeProvider: AudioAmplitudeProvider
     private let analyticsService: AnalyticsService
+    private let shortcutService: ShortcutService
+    private let stylePreferenceService: StylePreferenceService
 
     // ViewModels (exposed to views)
     let menuBarViewModel: MenuBarViewModel
     let permissionViewModel: PermissionViewModel
     let recordingViewModel: RecordingViewModel
     let transcriptionViewModel: TranscriptionViewModel
+    let homeViewModel: HomeViewModel
+    let shortcutsViewModel: ShortcutsViewModel
+    let styleViewModel: StyleViewModel
+    let insightsViewModel: InsightsViewModel
+    let onboardingViewModel: OnboardingViewModel
 
     private var hasSetup = false
 
@@ -32,6 +40,8 @@ final class AppCoordinator: ObservableObject {
         let frontmost = FrontmostAppDetector()
         let amplitude = AudioAmplitudeProvider()
         let analytics = AnalyticsService()
+        let shortcuts = ShortcutService()
+        let stylePrefs = StylePreferenceService()
 
         let postProcessor = TextPostProcessor(processors: [
             SelfCorrectionProcessor(),
@@ -52,6 +62,8 @@ final class AppCoordinator: ObservableObject {
         self.frontmostAppDetector = frontmost
         self.amplitudeProvider = amplitude
         self.analyticsService = analytics
+        self.shortcutService = shortcuts
+        self.stylePreferenceService = stylePrefs
 
         // 2. Create ViewModels with injected dependencies
         let menuBarVM = MenuBarViewModel(frontmostAppDetector: frontmost)
@@ -72,6 +84,11 @@ final class AppCoordinator: ObservableObject {
         self.permissionViewModel = permissionVM
         self.recordingViewModel = recordingVM
         self.transcriptionViewModel = transcriptionVM
+        self.homeViewModel = HomeViewModel(analyticsService: analytics)
+        self.shortcutsViewModel = ShortcutsViewModel(shortcutService: shortcuts)
+        self.styleViewModel = StyleViewModel(stylePreferenceService: stylePrefs)
+        self.insightsViewModel = InsightsViewModel(analyticsService: analytics)
+        self.onboardingViewModel = OnboardingViewModel(permissionViewModel: permissionVM)
 
         // 3. Wire cross-cutting callbacks
         recordingVM.onStateChanged = { [weak menuBarVM] newState in
@@ -106,9 +123,6 @@ final class AppCoordinator: ObservableObject {
 
         // Start frontmost app detection
         frontmostAppDetector.startObserving()
-
-        // Note: audio engine prepare is deferred to startCapture() to avoid
-        // ObjC exceptions when the audio graph isn't ready yet
 
         // Start hotkey manager
         recordingViewModel.setupHotkey()

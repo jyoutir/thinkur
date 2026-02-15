@@ -3,11 +3,12 @@ import os
 import WhisperKit
 
 @MainActor
-final class TranscriptionEngine: ObservableObject, Transcribing {
-    @Published var isLoaded = false
-    @Published var isLoading = false
-    @Published var loadingMessage = ""
-    @Published var errorMessage: String?
+@Observable
+final class TranscriptionEngine: Transcribing {
+    var isLoaded = false
+    var isLoading = false
+    var loadingMessage = ""
+    var errorMessage: String?
     private(set) var lastWordTimings: [WordTimingInfo] = []
 
     private var whisperKit: WhisperKit?

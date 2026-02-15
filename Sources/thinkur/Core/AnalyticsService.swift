@@ -17,7 +17,6 @@ final class AnalyticsService {
             container = try ModelContainer(for: schema, configurations: [config])
         } catch {
             Logger.analytics.error("Failed to create ModelContainer: \(error)")
-            // Fallback to in-memory store
             do {
                 let schema = Schema([TranscriptionRecord.self, AppUsageRecord.self, DailyAnalytics.self])
                 let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
@@ -32,7 +31,6 @@ final class AnalyticsService {
         let context = container.mainContext
         let wordCount = processedText.split(separator: " ").count
 
-        // Insert transcription record
         let record = TranscriptionRecord(
             rawText: rawText,
             processedText: processedText,
@@ -42,7 +40,6 @@ final class AnalyticsService {
         )
         context.insert(record)
 
-        // Update app usage
         let bundleID = appBundleID
         let predicate = #Predicate<AppUsageRecord> { $0.bundleID == bundleID }
         let descriptor = FetchDescriptor<AppUsageRecord>(predicate: predicate)
@@ -60,7 +57,6 @@ final class AnalyticsService {
             context.insert(usage)
         }
 
-        // Update daily analytics
         let today = DailyAnalytics.todayString()
         let dailyPredicate = #Predicate<DailyAnalytics> { $0.dateString == today }
         let dailyDescriptor = FetchDescriptor<DailyAnalytics>(predicate: dailyPredicate)
@@ -83,5 +79,67 @@ final class AnalyticsService {
         } catch {
             Logger.analytics.error("Failed to save analytics: \(error)")
         }
+    }
+
+    // MARK: - Query Methods
+
+    func fetchTotalTimeSaved() async -> TimeInterval {
+        let context = container.mainContext
+        let descriptor = FetchDescriptor<TranscriptionRecord>()
+        guard let records = try? context.fetch(descriptor) else { return 0 }
+        let totalDuration = records.reduce(0.0) { $0 + $1.duration }
+        return totalDuration * 2.3 // typing multiplier
+    }
+
+    func fetchTotalWords() async -> Int {
+        let context = container.mainContext
+        let descriptor = FetchDescriptor<TranscriptionRecord>()
+        guard let records = try? context.fetch(descriptor) else { return 0 }
+        return records.reduce(0) { $0 + $1.wordCount }
+    }
+
+    func fetchTotalSessions() async -> Int {
+        let context = container.mainContext
+        let descriptor = FetchDescriptor<TranscriptionRecord>()
+        guard let records = try? context.fetch(descriptor) else { return 0 }
+        return records.count
+    }
+
+    func fetchDailyAnalytics(for period: InsightsPeriod) async -> [DailyAnalytics] {
+        let context = container.mainContext
+        let cutoff = Calendar.current.date(byAdding: .day, value: -period.days, to: .now) ?? .now
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let cutoffString = formatter.string(from: cutoff)
+
+        let predicate = #Predicate<DailyAnalytics> { $0.dateString >= cutoffString }
+        var descriptor = FetchDescriptor<DailyAnalytics>(predicate: predicate)
+        descriptor.sortBy = [SortDescriptor(\.dateString)]
+        return (try? context.fetch(descriptor)) ?? []
+    }
+
+    func fetchTopApps(limit: Int = 5) async -> [AppUsageRecord] {
+        let context = container.mainContext
+        var descriptor = FetchDescriptor<AppUsageRecord>()
+        descriptor.sortBy = [SortDescriptor(\.totalWords, order: .reverse)]
+        descriptor.fetchLimit = limit
+        return (try? context.fetch(descriptor)) ?? []
+    }
+
+    func fetchRecentTranscriptions(limit: Int = 10) async -> [TranscriptionRecord] {
+        let context = container.mainContext
+        var descriptor = FetchDescriptor<TranscriptionRecord>()
+        descriptor.sortBy = [SortDescriptor(\.timestamp, order: .reverse)]
+        descriptor.fetchLimit = limit
+        return (try? context.fetch(descriptor)) ?? []
+    }
+
+    func clearAllHistory() async throws {
+        let context = container.mainContext
+        try context.delete(model: TranscriptionRecord.self)
+        try context.delete(model: AppUsageRecord.self)
+        try context.delete(model: DailyAnalytics.self)
+        try context.save()
+        Logger.analytics.info("All analytics history cleared")
     }
 }

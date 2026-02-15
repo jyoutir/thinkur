@@ -34,7 +34,7 @@ final class FloatingIndicatorPanel: NSPanel {
         isMovableByWindowBackground = false
 
         let waveformView = FloatingWaveformView()
-            .environmentObject(amplitudeProvider)
+            .environment(amplitudeProvider)
 
         contentView = NSHostingView(rootView: waveformView)
     }
@@ -49,7 +49,7 @@ final class FloatingIndicatorPanel: NSPanel {
 }
 
 private struct FloatingWaveformView: View {
-    @EnvironmentObject var amplitudeProvider: AudioAmplitudeProvider
+    @Environment(AudioAmplitudeProvider.self) private var amplitudeProvider
 
     var body: some View {
         GeometryReader { geo in

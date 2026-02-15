@@ -2,8 +2,9 @@ import Cocoa
 import os
 
 @MainActor
-final class RecordingViewModel: ObservableObject {
-    @Published var state: AppState = .idle
+@Observable
+final class RecordingViewModel {
+    var state: AppState = .idle
     var isModelReady = false
 
     var onStateChanged: ((AppState) -> Void)?

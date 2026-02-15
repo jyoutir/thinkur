@@ -2,14 +2,14 @@ import Cocoa
 import os
 
 @MainActor
-final class FrontmostAppDetector: ObservableObject {
-    @Published var bundleID: String = ""
-    @Published var appName: String = ""
+@Observable
+final class FrontmostAppDetector {
+    var bundleID: String = ""
+    var appName: String = ""
 
-    private var observer: NSObjectProtocol?
+    private nonisolated(unsafe) var observer: NSObjectProtocol?
 
     init() {
-        // Read initial state
         updateCurrentApp()
     }
 
@@ -21,9 +21,13 @@ final class FrontmostAppDetector: ObservableObject {
         ) { [weak self] notification in
             guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
                     as? NSRunningApplication else { return }
-            self?.bundleID = app.bundleIdentifier ?? ""
-            self?.appName = app.localizedName ?? ""
-            Logger.app.info("Frontmost app: \(self?.appName ?? "") (\(self?.bundleID ?? ""))")
+            let bundleID = app.bundleIdentifier ?? ""
+            let appName = app.localizedName ?? ""
+            Task { @MainActor in
+                self?.bundleID = bundleID
+                self?.appName = appName
+                Logger.app.info("Frontmost app: \(appName) (\(bundleID))")
+            }
         }
         Logger.app.info("Frontmost app detector started")
     }

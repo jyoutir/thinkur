@@ -1,12 +1,12 @@
-import Combine
 import Foundation
 
 /// Rolling amplitude buffer for waveform UI.
 /// Polls audio level at 80ms intervals, applies EMA smoothing,
 /// and maintains a fixed-size ring buffer.
 @MainActor
-final class AudioAmplitudeProvider: ObservableObject {
-    @Published var amplitudes: [Double]
+@Observable
+final class AudioAmplitudeProvider {
+    var amplitudes: [Double]
 
     private let bufferSize: Int
     private let smoothingFactor: Double

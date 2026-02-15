@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct MenuBarView: View {
-    @EnvironmentObject var viewModel: MenuBarViewModel
-    @EnvironmentObject var permissions: PermissionViewModel
-    @EnvironmentObject var transcription: TranscriptionViewModel
-    @EnvironmentObject var coordinator: AppCoordinator
+    @Environment(MenuBarViewModel.self) private var viewModel
+    @Environment(PermissionViewModel.self) private var permissions
+    @Environment(TranscriptionViewModel.self) private var transcription
+    @Environment(AppCoordinator.self) private var coordinator
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -83,7 +83,7 @@ struct MenuBarView: View {
     }
 
     private func openSettings() {
-        openWindow(id: "settings")
+        openWindow(id: "main")
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
 
@@ -91,19 +91,19 @@ struct MenuBarView: View {
     private var permissionWarnings: some View {
         VStack(alignment: .leading, spacing: 4) {
             if !permissions.accessibilityGranted {
-                PermissionRow(
+                MenuBarPermissionRow(
                     label: "Accessibility",
                     action: { permissions.openAccessibilitySettings() }
                 )
             }
             if !permissions.microphoneGranted {
-                PermissionRow(
+                MenuBarPermissionRow(
                     label: "Microphone",
                     action: { Task { await permissions.requestMicrophone() } }
                 )
             }
             if !permissions.inputMonitoringGranted {
-                PermissionRow(
+                MenuBarPermissionRow(
                     label: "Input Monitoring",
                     action: { permissions.openInputMonitoringSettings() }
                 )
@@ -112,7 +112,7 @@ struct MenuBarView: View {
     }
 }
 
-private struct PermissionRow: View {
+private struct MenuBarPermissionRow: View {
     let label: String
     let action: () -> Void
 

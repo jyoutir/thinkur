@@ -1,7 +1,6 @@
 import SwiftUI
 
 /// Horizontal animated waveform driven by amplitude history.
-/// Ported from Flutter LiveAudioWaveform — bars grow/shrink based on audio level.
 struct LiveAudioWaveform: View {
     let amplitudes: [Double]
     var barCount: Int = 30
@@ -27,10 +26,7 @@ struct LiveAudioWaveform: View {
         }
         .padding(.horizontal, Self.horizontalPadding)
         .frame(height: height)
-        .background(
-            Capsule()
-                .fill(.ultraThinMaterial)
-        )
+        .glassEffect(.regular, in: .capsule)
     }
 
     private func sampleAmplitudes(_ buffer: [Double], targetCount: Int) -> [Double] {

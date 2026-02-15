@@ -1,10 +1,11 @@
 import Foundation
 
 @MainActor
-final class PermissionViewModel: ObservableObject {
-    @Published var accessibilityGranted = false
-    @Published var microphoneGranted = false
-    @Published var inputMonitoringGranted = false
+@Observable
+final class PermissionViewModel {
+    var accessibilityGranted = false
+    var microphoneGranted = false
+    var inputMonitoringGranted = false
 
     private let permissionManager: PermissionManager
 

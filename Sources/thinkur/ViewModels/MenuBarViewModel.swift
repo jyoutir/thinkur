@@ -1,9 +1,10 @@
 import SwiftUI
 
 @MainActor
-final class MenuBarViewModel: ObservableObject {
-    @Published var appState: AppState = .loading
-    @Published var lastTranscription: String = ""
+@Observable
+final class MenuBarViewModel {
+    var appState: AppState = .loading
+    var lastTranscription: String = ""
 
     private let frontmostAppDetector: FrontmostAppDetector
 
