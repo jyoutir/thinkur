@@ -9,8 +9,10 @@ final class AppCoordinator: ObservableObject {
     private let audioCaptureManager: AudioCaptureManager
     private let hotkeyManager: HotkeyManager
     private let textInsertionService: TextInsertionService
+    private let textPostProcessor: TextPostProcessor
     private let frontmostAppDetector: FrontmostAppDetector
     private let amplitudeProvider: AudioAmplitudeProvider
+    private let analyticsService: AnalyticsService
 
     // ViewModels (exposed to views)
     let menuBarViewModel: MenuBarViewModel
@@ -29,14 +31,27 @@ final class AppCoordinator: ObservableObject {
         let textInsertion = TextInsertionService()
         let frontmost = FrontmostAppDetector()
         let amplitude = AudioAmplitudeProvider()
+        let analytics = AnalyticsService()
+
+        let postProcessor = TextPostProcessor(processors: [
+            SelfCorrectionProcessor(),
+            FillerRemovalProcessor(),
+            SpokenPunctuationProcessor(),
+            NumberConversionProcessor(),
+            PausePunctuationProcessor(),
+            CapitalizationProcessor(),
+            StyleAdaptationProcessor(),
+        ])
 
         self.permissionManager = permissions
         self.transcriptionEngine = transcription
         self.audioCaptureManager = audio
         self.hotkeyManager = hotkey
         self.textInsertionService = textInsertion
+        self.textPostProcessor = postProcessor
         self.frontmostAppDetector = frontmost
         self.amplitudeProvider = amplitude
+        self.analyticsService = analytics
 
         // 2. Create ViewModels with injected dependencies
         let menuBarVM = MenuBarViewModel(frontmostAppDetector: frontmost)
@@ -45,6 +60,9 @@ final class AppCoordinator: ObservableObject {
             audioCaptureManager: audio,
             transcriptionEngine: transcription,
             textInsertionService: textInsertion,
+            textPostProcessor: postProcessor,
+            frontmostAppDetector: frontmost,
+            analyticsService: analytics,
             amplitudeProvider: amplitude,
             hotkeyManager: hotkey
         )

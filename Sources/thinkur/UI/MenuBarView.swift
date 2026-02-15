@@ -4,6 +4,7 @@ struct MenuBarView: View {
     @EnvironmentObject var viewModel: MenuBarViewModel
     @EnvironmentObject var permissions: PermissionViewModel
     @EnvironmentObject var transcription: TranscriptionViewModel
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -59,6 +60,11 @@ struct MenuBarView: View {
 
             Divider()
 
+            Button("Settings...") {
+                openSettings()
+            }
+            .keyboardShortcut(",")
+
             Button("Quit thinkur") {
                 NSApplication.shared.terminate(nil)
             }
@@ -66,6 +72,11 @@ struct MenuBarView: View {
         }
         .padding(12)
         .frame(width: 280)
+    }
+
+    private func openSettings() {
+        openWindow(id: "settings")
+        NSApplication.shared.activate(ignoringOtherApps: true)
     }
 
     @ViewBuilder

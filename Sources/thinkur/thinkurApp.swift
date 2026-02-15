@@ -14,6 +14,11 @@ struct thinkurApp: App {
                 .environmentObject(coordinator.transcriptionViewModel)
         }
         .menuBarExtraStyle(.window)
+
+        Window("Settings", id: "settings") {
+            SettingsView()
+        }
+        .windowResizability(.contentSize)
     }
 }
 

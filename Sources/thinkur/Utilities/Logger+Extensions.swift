@@ -9,4 +9,6 @@ extension Logger {
     static let textInsertion = Logger(subsystem: subsystem, category: "textInsertion")
     static let permissions = Logger(subsystem: subsystem, category: "permissions")
     static let app = Logger(subsystem: subsystem, category: "app")
+    static let postProcessing = Logger(subsystem: subsystem, category: "postProcessing")
+    static let analytics = Logger(subsystem: subsystem, category: "analytics")
 }

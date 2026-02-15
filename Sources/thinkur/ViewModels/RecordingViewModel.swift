@@ -12,6 +12,9 @@ final class RecordingViewModel: ObservableObject {
     private let audioCaptureManager: AudioCaptureManager
     private let transcriptionEngine: TranscriptionEngine
     private let textInsertionService: TextInsertionService
+    private let textPostProcessor: TextPostProcessor
+    private let frontmostAppDetector: FrontmostAppDetector
+    private let analyticsService: AnalyticsService
     private let amplitudeProvider: AudioAmplitudeProvider
     private let hotkeyManager: HotkeyManager
     private var floatingPanel: FloatingIndicatorPanel?
@@ -20,12 +23,18 @@ final class RecordingViewModel: ObservableObject {
         audioCaptureManager: AudioCaptureManager,
         transcriptionEngine: TranscriptionEngine,
         textInsertionService: TextInsertionService,
+        textPostProcessor: TextPostProcessor,
+        frontmostAppDetector: FrontmostAppDetector,
+        analyticsService: AnalyticsService,
         amplitudeProvider: AudioAmplitudeProvider,
         hotkeyManager: HotkeyManager
     ) {
         self.audioCaptureManager = audioCaptureManager
         self.transcriptionEngine = transcriptionEngine
         self.textInsertionService = textInsertionService
+        self.textPostProcessor = textPostProcessor
+        self.frontmostAppDetector = frontmostAppDetector
+        self.analyticsService = analyticsService
         self.amplitudeProvider = amplitudeProvider
         self.hotkeyManager = hotkeyManager
         self.floatingPanel = FloatingIndicatorPanel(amplitudeProvider: amplitudeProvider)
@@ -109,10 +118,29 @@ final class RecordingViewModel: ObservableObject {
             }
         }
 
-        if let text = await transcriptionEngine.transcribe(audioSamples: samples) {
+        if let rawText = await transcriptionEngine.transcribe(audioSamples: samples) {
+            let context = ProcessingContext(
+                frontmostAppBundleID: frontmostAppDetector.bundleID,
+                frontmostAppName: frontmostAppDetector.appName,
+                wordTimings: transcriptionEngine.lastWordTimings,
+                appStyle: AppStyleMap.style(for: frontmostAppDetector.bundleID)
+            )
+            let text = SettingsManager.shared.postProcessingEnabled
+                ? textPostProcessor.process(rawText, context: context)
+                : rawText
             onTranscription?(text)
             textInsertionService.insertText(text)
             Logger.app.info("Inserted transcription: \"\(text)\"")
+
+            Task {
+                analyticsService.record(
+                    rawText: rawText,
+                    processedText: text,
+                    duration: duration,
+                    appBundleID: frontmostAppDetector.bundleID,
+                    appName: frontmostAppDetector.appName
+                )
+            }
         } else {
             Logger.app.info("No transcription result")
         }

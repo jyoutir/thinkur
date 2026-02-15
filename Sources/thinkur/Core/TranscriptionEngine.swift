@@ -8,6 +8,7 @@ final class TranscriptionEngine: ObservableObject, Transcribing {
     @Published var isLoading = false
     @Published var loadingMessage = ""
     @Published var errorMessage: String?
+    private(set) var lastWordTimings: [WordTimingInfo] = []
 
     private var whisperKit: WhisperKit?
 
@@ -51,13 +52,24 @@ final class TranscriptionEngine: ObservableObject, Transcribing {
         Logger.transcription.info("Transcribing \(sampleCount) samples (\(String(format: "%.1f", duration))s)")
 
         do {
-            let results = try await whisperKit.transcribe(audioArray: audioSamples)
+            let options = DecodingOptions(wordTimestamps: true)
+            let results = try await whisperKit.transcribe(audioArray: audioSamples, decodeOptions: options)
+
+            // Extract word timings
+            lastWordTimings = results.flatMap { result in
+                result.segments.flatMap { segment in
+                    (segment.words ?? []).map { word in
+                        WordTimingInfo(word: word.word, start: Float(word.start), end: Float(word.end))
+                    }
+                }
+            }
+
             let text = results
                 .compactMap { $0.text }
                 .joined(separator: " ")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
 
-            Logger.transcription.info("Transcription result: \"\(text)\"")
+            Logger.transcription.info("Transcription result: \"\(text)\" (\(self.lastWordTimings.count) word timings)")
             return text.isEmpty ? nil : text
         } catch {
             Logger.transcription.error("Transcription failed: \(error)")
