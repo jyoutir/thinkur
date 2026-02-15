@@ -2,13 +2,16 @@ import SwiftUI
 
 @main
 struct thinkurApp: App {
-    @StateObject private var appState = AppStateManager()
+    @StateObject private var coordinator = AppCoordinator()
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("thinkur", systemImage: appState.menuBarIcon) {
+        MenuBarExtra("thinkur", systemImage: coordinator.menuBarViewModel.menuBarIcon) {
             MenuBarView()
-                .environmentObject(appState)
+                .environmentObject(coordinator.menuBarViewModel)
+                .environmentObject(coordinator.permissionViewModel)
+                .environmentObject(coordinator.recordingViewModel)
+                .environmentObject(coordinator.transcriptionViewModel)
         }
         .menuBarExtraStyle(.window)
     }

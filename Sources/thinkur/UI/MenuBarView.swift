@@ -1,16 +1,18 @@
 import SwiftUI
 
 struct MenuBarView: View {
-    @EnvironmentObject var appState: AppStateManager
+    @EnvironmentObject var viewModel: MenuBarViewModel
+    @EnvironmentObject var permissions: PermissionViewModel
+    @EnvironmentObject var transcription: TranscriptionViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Status indicator
             HStack(spacing: 8) {
                 Circle()
-                    .fill(appState.statusColor)
+                    .fill(viewModel.statusColor)
                     .frame(width: 8, height: 8)
-                Text(appState.statusText)
+                Text(viewModel.statusText)
                     .font(.headline)
                 Spacer()
             }
@@ -18,38 +20,38 @@ struct MenuBarView: View {
             Divider()
 
             // Permission warnings
-            if !appState.permissionManager.allGranted {
+            if !permissions.allGranted {
                 permissionWarnings
                 Divider()
             }
 
             // Last transcription or instructions
-            if appState.transcriptionEngine.isLoading {
+            if transcription.isLoading {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
                     Text("Loading model...")
                         .foregroundStyle(.secondary)
                 }
-            } else if !appState.lastTranscription.isEmpty {
-                Text(appState.lastTranscription)
+            } else if !viewModel.lastTranscription.isEmpty {
+                Text(viewModel.lastTranscription)
                     .font(.body)
                     .lineLimit(4)
                     .textSelection(.enabled)
-            } else if appState.state == .idle {
+            } else if viewModel.appState == .idle {
                 Text("Tap Tab to speak")
                     .foregroundStyle(.secondary)
                     .font(.callout)
             }
 
             // Frontmost app info
-            if !appState.frontmostAppDetector.appName.isEmpty {
+            if !viewModel.frontmostAppName.isEmpty {
                 Divider()
                 HStack(spacing: 6) {
                     Image(systemName: "app.fill")
                         .foregroundStyle(.secondary)
                         .font(.caption)
-                    Text(appState.frontmostAppDetector.appName)
+                    Text(viewModel.frontmostAppName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -69,22 +71,22 @@ struct MenuBarView: View {
     @ViewBuilder
     private var permissionWarnings: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if !appState.permissionManager.accessibilityGranted {
+            if !permissions.accessibilityGranted {
                 PermissionRow(
                     label: "Accessibility",
-                    action: { appState.permissionManager.openAccessibilitySettings() }
+                    action: { permissions.openAccessibilitySettings() }
                 )
             }
-            if !appState.permissionManager.microphoneGranted {
+            if !permissions.microphoneGranted {
                 PermissionRow(
                     label: "Microphone",
-                    action: { Task { await appState.permissionManager.requestMicrophone() } }
+                    action: { Task { await permissions.requestMicrophone() } }
                 )
             }
-            if !appState.permissionManager.inputMonitoringGranted {
+            if !permissions.inputMonitoringGranted {
                 PermissionRow(
                     label: "Input Monitoring",
-                    action: { appState.permissionManager.openInputMonitoringSettings() }
+                    action: { permissions.openInputMonitoringSettings() }
                 )
             }
         }

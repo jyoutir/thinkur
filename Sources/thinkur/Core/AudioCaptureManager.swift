@@ -1,7 +1,8 @@
+import Accelerate
 import AVFoundation
 import os
 
-final class AudioCaptureManager {
+final class AudioCaptureManager: AudioCapturing {
     private let audioEngine = AVAudioEngine()
     private var audioBuffer: [Float] = []
     private let bufferQueue = DispatchQueue(label: "com.thinkur.audioBuffer")
@@ -22,6 +23,10 @@ final class AudioCaptureManager {
         )!
     }
 
+    func prepareEngine() {
+        audioEngine.prepare()
+    }
+
     func startCapture() throws {
         guard !isCapturing else { return }
 
@@ -39,7 +44,10 @@ final class AudioCaptureManager {
         }
         converter = conv
 
-        bufferQueue.sync { audioBuffer.removeAll() }
+        bufferQueue.sync {
+            audioBuffer.removeAll(keepingCapacity: true)
+            audioBuffer.reserveCapacity(Int(Constants.sampleRate) * 30)
+        }
 
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
             self?.processInputBuffer(buffer)
@@ -59,8 +67,8 @@ final class AudioCaptureManager {
         isCapturing = false
 
         let samples = bufferQueue.sync {
-            let result = audioBuffer
-            audioBuffer.removeAll()
+            var result: [Float] = []
+            swap(&result, &audioBuffer)
             return result
         }
 
@@ -95,20 +103,19 @@ final class AudioCaptureManager {
         guard status != .error,
               let channelData = convertedBuffer.floatChannelData else { return }
 
-        let samples = Array(UnsafeBufferPointer(
-            start: channelData[0],
-            count: Int(convertedBuffer.frameLength)
-        ))
+        let frameLength = Int(convertedBuffer.frameLength)
 
-        // Compute RMS audio level for waveform display
-        let sumOfSquares = samples.reduce(Float(0)) { $0 + $1 * $1 }
-        let rms = sqrt(sumOfSquares / max(Float(samples.count), 1))
-        // Normalize: typical speech RMS is 0.01–0.15, scale up for display
+        // Vectorized RMS via Accelerate (replaces reduce-based calculation)
+        var rms: Float = 0
+        vDSP_rmsqv(channelData[0], 1, &rms, vDSP_Length(frameLength))
         let normalized = min(rms * 6.0, 1.0)
         currentAudioLevel = normalized
 
         bufferQueue.sync {
-            audioBuffer.append(contentsOf: samples)
+            audioBuffer.append(contentsOf: UnsafeBufferPointer(
+                start: channelData[0],
+                count: frameLength
+            ))
         }
     }
 }

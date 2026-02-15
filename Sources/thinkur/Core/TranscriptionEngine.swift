@@ -3,7 +3,7 @@ import os
 import WhisperKit
 
 @MainActor
-final class TranscriptionEngine: ObservableObject {
+final class TranscriptionEngine: ObservableObject, Transcribing {
     @Published var isLoaded = false
     @Published var isLoading = false
     @Published var loadingMessage = ""

@@ -3,7 +3,7 @@ import Cocoa
 import os
 
 @MainActor
-final class PermissionManager: ObservableObject {
+final class PermissionManager: ObservableObject, PermissionChecking {
     @Published var accessibilityGranted = false
     @Published var microphoneGranted = false
     @Published var inputMonitoringGranted = false

@@ -1,7 +1,7 @@
 import Cocoa
 import os
 
-final class TextInsertionService {
+final class TextInsertionService: TextInserting {
     func insertText(_ text: String) {
         let pasteboard = NSPasteboard.general
 

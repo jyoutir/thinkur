@@ -1,7 +1,7 @@
 import Cocoa
 import os
 
-final class HotkeyManager {
+final class HotkeyManager: HotkeyListening {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var isKeyDown = false
