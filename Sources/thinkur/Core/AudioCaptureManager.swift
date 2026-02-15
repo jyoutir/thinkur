@@ -23,10 +23,6 @@ final class AudioCaptureManager: AudioCapturing {
         )!
     }
 
-    func prepareEngine() {
-        audioEngine.prepare()
-    }
-
     func startCapture() throws {
         guard !isCapturing else { return }
 

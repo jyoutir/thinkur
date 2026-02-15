@@ -5,10 +5,6 @@ import Combine
 final class SettingsManager: ObservableObject {
     static let shared = SettingsManager()
 
-    @Published var whisperModel: String {
-        didSet { UserDefaults.standard.set(whisperModel, forKey: "whisperModel") }
-    }
-
     @Published var hotkeyCode: UInt16 {
         didSet { UserDefaults.standard.set(Int(hotkeyCode), forKey: "hotkeyCode") }
     }
@@ -24,9 +20,6 @@ final class SettingsManager: ObservableObject {
     private init() {
         let defaults = UserDefaults.standard
 
-        if defaults.object(forKey: "whisperModel") == nil {
-            defaults.set(Constants.whisperModel, forKey: "whisperModel")
-        }
         if defaults.object(forKey: "hotkeyCode") == nil {
             defaults.set(Int(Constants.tabKeyCode), forKey: "hotkeyCode")
         }
@@ -37,7 +30,6 @@ final class SettingsManager: ObservableObject {
             defaults.set(true, forKey: "postProcessingEnabled")
         }
 
-        self.whisperModel = defaults.string(forKey: "whisperModel") ?? Constants.whisperModel
         self.hotkeyCode = UInt16(defaults.integer(forKey: "hotkeyCode"))
         self.vadThreshold = defaults.float(forKey: "vadThreshold")
         self.postProcessingEnabled = defaults.bool(forKey: "postProcessingEnabled")

@@ -107,25 +107,32 @@ final class AppCoordinator: ObservableObject {
         // Start frontmost app detection
         frontmostAppDetector.startObserving()
 
-        // Pre-warm audio engine for faster first recording
-        audioCaptureManager.prepareEngine()
+        // Note: audio engine prepare is deferred to startCapture() to avoid
+        // ObjC exceptions when the audio graph isn't ready yet
 
         // Start hotkey manager
         recordingViewModel.setupHotkey()
 
         // Load WhisperKit model
+        await loadModelAndUpdateState()
+    }
+
+    private func loadModelAndUpdateState() async {
         menuBarViewModel.appState = .loading
-        transcriptionViewModel.syncState()
         await transcriptionEngine.loadModel()
-        transcriptionViewModel.syncState()
 
         if transcriptionEngine.isLoaded {
             menuBarViewModel.appState = .idle
             recordingViewModel.isModelReady = true
             Logger.app.info("thinkur ready")
         } else {
-            menuBarViewModel.appState = .error("Model failed to load")
-            Logger.app.error("Failed to load transcription model")
+            let message = transcriptionEngine.errorMessage ?? "Model failed to load"
+            menuBarViewModel.appState = .error(message)
+            Logger.app.error("Failed to load transcription model: \(message)")
         }
+    }
+
+    func retryModelLoad() async {
+        await loadModelAndUpdateState()
     }
 }

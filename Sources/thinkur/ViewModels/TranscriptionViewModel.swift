@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 @MainActor
 final class TranscriptionViewModel: ObservableObject {
@@ -9,10 +10,7 @@ final class TranscriptionViewModel: ObservableObject {
 
     init(transcriptionEngine: TranscriptionEngine) {
         self.transcriptionEngine = transcriptionEngine
-    }
-
-    func syncState() {
-        isLoading = transcriptionEngine.isLoading
-        loadingMessage = transcriptionEngine.loadingMessage
+        transcriptionEngine.$isLoading.assign(to: &$isLoading)
+        transcriptionEngine.$loadingMessage.assign(to: &$loadingMessage)
     }
 }

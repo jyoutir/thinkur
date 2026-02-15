@@ -16,18 +16,20 @@ final class TranscriptionEngine: ObservableObject, Transcribing {
         guard !isLoading, !isLoaded else { return }
 
         isLoading = true
-        loadingMessage = "Downloading model..."
         errorMessage = nil
 
         do {
             let config = WhisperKitConfig(
                 model: Constants.whisperModel,
+                downloadBase: Constants.appSupportDirectory,
                 verbose: false,
                 logLevel: .none
             )
             Logger.transcription.info("Loading WhisperKit model: \(Constants.whisperModel)")
 
+            loadingMessage = "Downloading model..."
             whisperKit = try await WhisperKit(config)
+            loadingMessage = "Loading model..."
 
             isLoaded = true
             loadingMessage = ""

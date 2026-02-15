@@ -5,5 +5,4 @@ protocol AudioCapturing: AnyObject {
     var currentAudioLevel: Float { get }
     func startCapture() throws
     func stopCapture() -> [Float]
-    func prepareEngine()
 }

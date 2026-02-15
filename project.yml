@@ -29,10 +29,30 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: false
         CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: YZ9FFMX8QS
+        CODE_SIGN_IDENTITY: "Apple Development"
         ENABLE_HARDENED_RUNTIME: false
     entitlements:
       path: Sources/thinkur/Resources/thinkur.entitlements
-    postBuildScripts:
+    preBuildScripts:
       - script: |
-          cp -R "${BUILT_PRODUCTS_DIR}/thinkur.app" "/Applications/thinkur.app" 2>/dev/null || true
-        name: "Copy thinkur.app to /Applications"
+          # Prevent Spotlight from indexing the DerivedData build output
+          mkdir -p "${BUILT_PRODUCTS_DIR}"
+          touch "${BUILT_PRODUCTS_DIR}/.metadata_never_index"
+        name: "Prevent Spotlight indexing of DerivedData"
+
+schemes:
+  thinkur:
+    build:
+      targets:
+        thinkur: all
+      postActions:
+        - script: |
+            # Kill running instance so copy doesn't fail on locked binary
+            killall thinkur 2>/dev/null || true
+            # Clean old copy (removes stale files inside .app bundle)
+            rm -rf "/Applications/thinkur.app"
+            # Copy fresh (signed) build
+            cp -R "${BUILT_PRODUCTS_DIR}/thinkur.app" "/Applications/thinkur.app"
+          name: "Copy thinkur.app to /Applications"
+          settingsTarget: thinkur

@@ -4,6 +4,7 @@ struct MenuBarView: View {
     @EnvironmentObject var viewModel: MenuBarViewModel
     @EnvironmentObject var permissions: PermissionViewModel
     @EnvironmentObject var transcription: TranscriptionViewModel
+    @EnvironmentObject var coordinator: AppCoordinator
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -31,8 +32,15 @@ struct MenuBarView: View {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Loading model...")
+                    Text(transcription.loadingMessage.isEmpty ? "Loading..." : transcription.loadingMessage)
                         .foregroundStyle(.secondary)
+                }
+            } else if case .error = viewModel.appState {
+                HStack(spacing: 8) {
+                    Button("Retry") {
+                        Task { await coordinator.retryModelLoad() }
+                    }
+                    .controlSize(.small)
                 }
             } else if !viewModel.lastTranscription.isEmpty {
                 Text(viewModel.lastTranscription)

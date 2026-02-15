@@ -3,19 +3,15 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject private var settings = SettingsManager.shared
 
-    private let availableModels = [
-        "tiny.en", "base.en", "small.en", "medium.en", "large-v3",
-    ]
-
     var body: some View {
         Form {
             Section("Transcription") {
-                Picker("Whisper Model", selection: $settings.whisperModel) {
-                    ForEach(availableModels, id: \.self) { model in
-                        Text(model).tag(model)
-                    }
+                HStack {
+                    Text("Whisper Model")
+                    Spacer()
+                    Text(Constants.whisperModel)
+                        .foregroundStyle(.secondary)
                 }
-                .pickerStyle(.menu)
 
                 VStack(alignment: .leading) {
                     HStack {

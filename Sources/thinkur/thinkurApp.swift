@@ -8,6 +8,7 @@ struct thinkurApp: App {
     var body: some Scene {
         MenuBarExtra("thinkur", systemImage: coordinator.menuBarViewModel.menuBarIcon) {
             MenuBarView()
+                .environmentObject(coordinator)
                 .environmentObject(coordinator.menuBarViewModel)
                 .environmentObject(coordinator.permissionViewModel)
                 .environmentObject(coordinator.recordingViewModel)
