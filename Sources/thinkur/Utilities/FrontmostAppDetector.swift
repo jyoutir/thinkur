@@ -7,7 +7,8 @@ final class FrontmostAppDetector {
     var bundleID: String = ""
     var appName: String = ""
 
-    private nonisolated(unsafe) var observer: NSObjectProtocol?
+    @ObservationIgnored
+    private var observer: NSObjectProtocol?
 
     init() {
         updateCurrentApp()
@@ -43,11 +44,5 @@ final class FrontmostAppDetector {
         guard let app = NSWorkspace.shared.frontmostApplication else { return }
         bundleID = app.bundleIdentifier ?? ""
         appName = app.localizedName ?? ""
-    }
-
-    deinit {
-        if let observer {
-            NSWorkspace.shared.notificationCenter.removeObserver(observer)
-        }
     }
 }

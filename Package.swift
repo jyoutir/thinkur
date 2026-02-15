@@ -1,11 +1,11 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.1
 
 import PackageDescription
 
 let package = Package(
     name: "thinkur",
     platforms: [
-        .macOS(.v14)
+        .macOS("26.0")
     ],
     dependencies: [
         .package(url: "https://github.com/argmaxinc/WhisperKit.git", from: "0.9.0"),
@@ -16,12 +16,10 @@ let package = Package(
             dependencies: [
                 .product(name: "WhisperKit", package: "WhisperKit"),
             ],
-            path: "Sources/thinkur"
-        ),
-        .testTarget(
-            name: "thinkurTests",
-            dependencies: ["thinkur"],
-            path: "Tests/thinkurTests"
+            path: "Sources/thinkur",
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
+            ]
         ),
     ]
 )

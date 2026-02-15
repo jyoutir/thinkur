@@ -12,16 +12,5 @@ struct MainWindowView: View {
         }
         .frame(minWidth: 920, minHeight: 620)
         .preferredColorScheme(settings.themeMode.colorScheme)
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button {
-                    settings.themeMode = settings.themeMode.next
-                } label: {
-                    Image(systemName: settings.themeMode.iconName)
-                        .foregroundStyle(ColorTokens.textSecondary)
-                }
-                .help("Toggle theme: \(settings.themeMode.rawValue)")
-            }
-        }
     }
 }

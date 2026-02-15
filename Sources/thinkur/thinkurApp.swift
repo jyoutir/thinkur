@@ -38,12 +38,20 @@ struct thinkurApp: App {
         }
         .defaultSize(width: 920, height: 620)
         .windowResizability(.contentSize)
-        .windowStyle(.automatic)
+        .defaultLaunchBehavior(.presented)
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // The @State in thinkurApp triggers setup.
+        // Ensure only one instance runs — kill duplicates
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.jyo.thinkur"
+        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+        if runningApps.count > 1 {
+            // Another instance is already running — quit this one
+            NSApplication.shared.terminate(nil)
+            return
+        }
+        NSApplication.shared.activate(ignoringOtherApps: true)
     }
 }

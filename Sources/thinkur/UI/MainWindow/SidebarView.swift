@@ -3,24 +3,46 @@ import SwiftUI
 struct SidebarView: View {
     @Binding var selectedPage: NavigationPage
     @Environment(ShortcutsViewModel.self) private var shortcutsVM
+    @Environment(SettingsManager.self) private var settings
 
     var body: some View {
-        List(selection: $selectedPage) {
-            Section("Main") {
-                ForEach(NavigationPage.mainPages) { page in
-                    sidebarLabel(for: page)
-                        .tag(page)
+        VStack(spacing: 0) {
+            List(selection: $selectedPage) {
+                Section("Main") {
+                    ForEach(NavigationPage.mainPages) { page in
+                        sidebarLabel(for: page)
+                            .tag(page)
+                    }
                 }
-            }
 
-            Section("Settings") {
-                ForEach(NavigationPage.settingsPages) { page in
-                    sidebarLabel(for: page)
-                        .tag(page)
+                Section("Settings") {
+                    ForEach(NavigationPage.settingsPages) { page in
+                        sidebarLabel(for: page)
+                            .tag(page)
+                    }
                 }
             }
+            .listStyle(.sidebar)
+
+            Divider()
+
+            // Theme toggle
+            Button {
+                settings.themeMode = settings.themeMode.next
+            } label: {
+                HStack(spacing: Spacing.xs) {
+                    Image(systemName: settings.themeMode.iconName)
+                        .font(.system(size: 13))
+                    Text(settings.themeMode.rawValue.capitalized)
+                        .font(Typography.caption)
+                }
+                .foregroundStyle(ColorTokens.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Spacing.md)
+                .padding(.vertical, Spacing.sm)
+            }
+            .buttonStyle(.plain)
         }
-        .listStyle(.sidebar)
         .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
     }
 

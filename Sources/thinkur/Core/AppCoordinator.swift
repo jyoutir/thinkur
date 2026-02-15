@@ -149,4 +149,10 @@ final class AppCoordinator {
     func retryModelLoad() async {
         await loadModelAndUpdateState()
     }
+
+    func clearAllHistory() async {
+        try? await analyticsService.clearAllHistory()
+        await homeViewModel.loadData()
+        await insightsViewModel.loadData()
+    }
 }

@@ -91,7 +91,7 @@ struct SystemSettingsView: View {
                     .alert("Clear All History?", isPresented: $showClearConfirmation) {
                         Button("Cancel", role: .cancel) {}
                         Button("Clear", role: .destructive) {
-                            // Clearing would go through analyticsService
+                            Task { await coordinator.clearAllHistory() }
                         }
                     } message: {
                         Text("This will permanently delete all transcription history, analytics data, and usage statistics. This cannot be undone.")
