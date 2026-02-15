@@ -1,0 +1,19 @@
+# Xcode
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+*.xcworkspace/
+
+# SPM
+.build/
+.swiftpm/
+Package.resolved
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# WhisperKit models (large binaries, downloaded at runtime)
+Models/
+docs/

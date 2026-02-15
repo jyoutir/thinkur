@@ -1,0 +1,64 @@
+import SwiftUI
+
+/// Horizontal animated waveform driven by amplitude history.
+/// Ported from Flutter LiveAudioWaveform — bars grow/shrink based on audio level.
+struct LiveAudioWaveform: View {
+    let amplitudes: [Double]
+    var barCount: Int = 30
+    var height: Double = 48
+
+    static let barWidth: CGFloat = 3.0
+    static let barGap: CGFloat = 2.0
+    static let horizontalPadding: CGFloat = 20.0
+
+    static func calculateMaxBars(availableWidth: CGFloat) -> Int {
+        let barsWidth = availableWidth - (horizontalPadding * 2)
+        if barsWidth <= 0 { return 3 }
+        return min(max(Int((barsWidth + barGap) / (barWidth + barGap)), 3), 30)
+    }
+
+    var body: some View {
+        let sampled = sampleAmplitudes(amplitudes, targetCount: barCount)
+
+        HStack(spacing: Self.barGap) {
+            ForEach(Array(sampled.enumerated()), id: \.offset) { _, amplitude in
+                WaveformBar(amplitude: amplitude)
+            }
+        }
+        .padding(.horizontal, Self.horizontalPadding)
+        .frame(height: height)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+        )
+    }
+
+    private func sampleAmplitudes(_ buffer: [Double], targetCount: Int) -> [Double] {
+        if buffer.isEmpty { return Array(repeating: 0.0, count: targetCount) }
+        if buffer.count == targetCount { return buffer }
+        if buffer.count < targetCount {
+            return Array(repeating: 0.0, count: targetCount - buffer.count) + buffer
+        }
+        return (0..<targetCount).map { i in
+            let idx = min(i * buffer.count / targetCount, buffer.count - 1)
+            return buffer[idx]
+        }
+    }
+}
+
+private struct WaveformBar: View {
+    let amplitude: Double
+
+    private static let baseHeight: CGFloat = 6.0
+    private static let maxBoost: CGFloat = 18.0
+
+    var body: some View {
+        let clamped = min(max(amplitude, 0.0), 1.0)
+        let barHeight = Self.baseHeight + clamped * Self.maxBoost
+
+        RoundedRectangle(cornerRadius: 1.5)
+            .fill(.white)
+            .frame(width: LiveAudioWaveform.barWidth, height: barHeight)
+            .animation(.easeOut(duration: 0.1), value: barHeight)
+    }
+}

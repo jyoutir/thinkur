@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:thinkur}",
+            "name": "Debug thinkur",
+            "program": "${workspaceFolder:thinkur}/.build/debug/thinkur",
+            "preLaunchTask": "swift: Build Debug thinkur"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:thinkur}",
+            "name": "Release thinkur",
+            "program": "${workspaceFolder:thinkur}/.build/release/thinkur",
+            "preLaunchTask": "swift: Build Release thinkur"
+        }
+    ]
+}
