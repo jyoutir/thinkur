@@ -91,22 +91,26 @@ private struct FloatingWaveformView: View {
     @Environment(AudioAmplitudeProvider.self) private var amplitudeProvider
 
     var body: some View {
-        GeometryReader { geo in
-            let bars = LiveAudioWaveform.calculateMaxBars(availableWidth: geo.size.width)
-            LiveAudioWaveform(
-                amplitudes: amplitudeProvider.amplitudes,
-                barCount: bars,
-                height: geo.size.height
-            )
+        GlassEffectContainer {
+            GeometryReader { geo in
+                let bars = LiveAudioWaveform.calculateMaxBars(availableWidth: geo.size.width)
+                LiveAudioWaveform(
+                    amplitudes: amplitudeProvider.amplitudes,
+                    barCount: bars,
+                    height: geo.size.height
+                )
+            }
         }
     }
 }
 
-/// Shows thinking dots in the same black capsule style as the waveform.
+/// Shows thinking dots in a glass capsule style matching the waveform.
 private struct FloatingThinkingView: View {
     var body: some View {
-        ThinkingDotsView(dotSize: 8, color: .white, spacing: 6)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(.black, in: .capsule)
+        GlassEffectContainer {
+            ThinkingDotsView(dotSize: 8, color: .primary, spacing: 6)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .glassCapsule()
+        }
     }
 }

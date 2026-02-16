@@ -2,6 +2,7 @@ import SwiftUI
 
 struct StyleView: View {
     @Environment(StyleViewModel.self) private var viewModel
+    @State private var appeared = false
 
     var body: some View {
         ScrollView {
@@ -26,10 +27,14 @@ struct StyleView: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 6)
+            .animation(Animations.glassMaterialize, value: appeared)
         }
         .navigationTitle("Style")
         .task {
             await viewModel.loadData()
+            appeared = true
         }
     }
 }

@@ -32,7 +32,7 @@ struct HomeView: View {
                         .foregroundStyle(ColorTokens.textPrimary)
 
                     if viewModel.recentTranscriptions.isEmpty {
-                        emptyState(
+                        GlassEmptyState(
                             icon: "mic",
                             title: "No transcriptions yet",
                             subtitle: "Press Tab to start dictating"
@@ -49,7 +49,8 @@ struct HomeView: View {
                             .glassCard()
                             .hoverBrightness()
                             .opacity(appeared ? 1 : 0)
-                            .animation(.easeOut(duration: 0.3).delay(Double(index) * 0.05), value: appeared)
+                            .offset(y: appeared ? 0 : 8)
+                            .animation(Animations.glassStagger(index: index), value: appeared)
                         }
                     }
                 }
@@ -57,31 +58,15 @@ struct HomeView: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 6)
+            .animation(Animations.glassMaterialize, value: appeared)
         }
         .navigationTitle("Home")
         .task {
             await viewModel.loadData()
             appeared = true
         }
-    }
-
-    @ViewBuilder
-    private func emptyState(icon: String, title: String, subtitle: String) -> some View {
-        VStack(spacing: Spacing.sm) {
-            Image(systemName: icon)
-                .font(.system(size: 40))
-                .foregroundStyle(ColorTokens.textTertiary.opacity(0.5))
-
-            Text(title)
-                .font(Typography.headline)
-                .foregroundStyle(ColorTokens.textSecondary)
-
-            Text(subtitle)
-                .font(Typography.caption)
-                .foregroundStyle(ColorTokens.textTertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Spacing.xl)
     }
 }
 

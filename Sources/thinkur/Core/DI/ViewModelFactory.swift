@@ -2,7 +2,6 @@ import Foundation
 
 @MainActor
 final class ViewModelFactory {
-    let menuBarViewModel: MenuBarViewModel
     let recordingViewModel: RecordingViewModel
     let homeViewModel: HomeViewModel
     let shortcutsViewModel: ShortcutsViewModel
@@ -11,10 +10,6 @@ final class ViewModelFactory {
     let onboardingViewModel: OnboardingViewModel
 
     init(services: ServiceContainer) {
-        self.menuBarViewModel = MenuBarViewModel(
-            frontmostAppDetector: services.frontmostAppDetector,
-            sharedState: services.sharedState
-        )
         self.recordingViewModel = RecordingViewModel(
             audioCaptureManager: services.audioCaptureManager,
             transcriptionEngine: services.transcriptionEngine,

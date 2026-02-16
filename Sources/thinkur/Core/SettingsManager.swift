@@ -39,13 +39,6 @@ final class SettingsManager {
         didSet { defaults.set(floatingIndicator, forKey: "floatingIndicator") }
     }
 
-    var showInDock: Bool {
-        didSet {
-            defaults.set(showInDock, forKey: "showInDock")
-            NSApplication.shared.setActivationPolicy(showInDock ? .regular : .accessory)
-        }
-    }
-
     var launchAtLogin: Bool {
         didSet {
             defaults.set(launchAtLogin, forKey: "launchAtLogin")
@@ -132,7 +125,6 @@ final class SettingsManager {
         self.soundEffects = defaults.object(forKey: "soundEffects") != nil ? defaults.bool(forKey: "soundEffects") : true
         self.pauseMusicWhileRecording = defaults.bool(forKey: "pauseMusicWhileRecording")
         self.floatingIndicator = defaults.object(forKey: "floatingIndicator") != nil ? defaults.bool(forKey: "floatingIndicator") : true
-        self.showInDock = defaults.bool(forKey: "showInDock")
         self.launchAtLogin = defaults.bool(forKey: "launchAtLogin")
         self.automaticUpdates = defaults.object(forKey: "automaticUpdates") != nil ? defaults.bool(forKey: "automaticUpdates") : true
 

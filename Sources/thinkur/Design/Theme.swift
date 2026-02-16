@@ -12,19 +12,14 @@ enum ColorTokens {
     static let textSecondary = Color(nsColor: .secondaryLabelColor)
     static let textTertiary = Color(nsColor: .tertiaryLabelColor)
 
-    // Accent
-    static let accent = Color.accentColor
-    static let accentBlue = Color.blue
-    static let accentGreen = Color.green
-    static let accentOrange = Color.orange
-    static let accentRed = Color.red
-    static let accentPurple = Color.purple
-    static let accentYellow = Color.yellow
+    // Accent — monochrome only
+    static let accent = Color(nsColor: .labelColor)
+    static let accentSubtle = Color(nsColor: .secondaryLabelColor).opacity(0.15)
 
-    // Semantic
-    static let success = Color.green
-    static let warning = Color.orange
-    static let danger = Color.red
+    // Semantic — monochrome
+    static let success = Color(nsColor: .labelColor)
+    static let warning = Color(nsColor: .labelColor)
+    static let danger = Color(nsColor: .labelColor)
 
     // Borders
     static let separator = Color(nsColor: .separatorColor)

@@ -5,7 +5,7 @@ struct AppUsageRow: View {
     let bundleID: String
     let percentage: Double
     let wordCount: Int
-    var color: Color = ColorTokens.accentBlue
+    var color: Color = .primary
 
     var body: some View {
         HStack(spacing: Spacing.sm) {

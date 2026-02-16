@@ -2,7 +2,7 @@ import SwiftUI
 
 struct MiniChartView: View {
     let values: [Double]
-    var barColor: Color = ColorTokens.accentBlue
+    var barColor: Color = .primary
 
     var body: some View {
         let maxValue = values.max() ?? 1.0

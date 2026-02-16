@@ -9,10 +9,6 @@ struct KeyboardShortcutBadge: View {
             .foregroundStyle(ColorTokens.textPrimary)
             .padding(.horizontal, Spacing.xs)
             .padding(.vertical, Spacing.xxs)
-            .background(ColorTokens.cardBackground, in: RoundedRectangle(cornerRadius: CornerRadius.button))
-            .overlay(
-                RoundedRectangle(cornerRadius: CornerRadius.button)
-                    .stroke(ColorTokens.border, lineWidth: 0.5)
-            )
+            .glassEffect(.clear, in: .capsule)
     }
 }

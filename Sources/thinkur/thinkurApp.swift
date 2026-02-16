@@ -6,20 +6,9 @@ struct thinkurApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("thinkur", systemImage: coordinator.menuBarViewModel.menuBarIcon) {
-            MenuBarView()
-                .environment(coordinator)
-                .environment(coordinator.menuBarViewModel)
-                .environment(coordinator.permissionManager)
-                .environment(coordinator.recordingViewModel)
-                .environment(coordinator.settings)
-        }
-        .menuBarExtraStyle(.window)
-
         Window("thinkur", id: "main") {
             RootView()
                 .environment(coordinator)
-                .environment(coordinator.menuBarViewModel)
                 .environment(coordinator.permissionManager)
                 .environment(coordinator.recordingViewModel)
                 .environment(coordinator.homeViewModel)
@@ -28,6 +17,7 @@ struct thinkurApp: App {
                 .environment(coordinator.insightsViewModel)
                 .environment(coordinator.onboardingViewModel)
                 .environment(coordinator.settings)
+                .tint(.primary)
         }
         .defaultSize(width: 920, height: 620)
         .windowResizability(.contentSize)
@@ -63,9 +53,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        // Apply dock visibility preference
-        let showInDock = SettingsManager.shared.showInDock
-        NSApplication.shared.setActivationPolicy(showInDock ? .regular : .accessory)
+        // Always show in dock (no menu bar extra)
+        NSApplication.shared.setActivationPolicy(.regular)
 
         NSApplication.shared.activate(ignoringOtherApps: true)
     }

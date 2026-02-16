@@ -23,13 +23,7 @@ enum Formatters {
 
 enum AppColorMapper {
     static func color(for appName: String) -> Color {
-        switch appName.lowercased() {
-        case let n where n.contains("slack"): return ColorTokens.accentPurple
-        case let n where n.contains("mail"): return ColorTokens.accentOrange
-        case let n where n.contains("note"): return ColorTokens.accentYellow
-        case let n where n.contains("xcode"): return ColorTokens.accentBlue
-        case let n where n.contains("chrome"): return ColorTokens.accentRed
-        default: return ColorTokens.accentBlue
-        }
+        // Monochrome — all apps use primary color
+        return .primary
     }
 }
