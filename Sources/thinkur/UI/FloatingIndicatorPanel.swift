@@ -52,6 +52,36 @@ final class FloatingIndicatorPanel: NSPanel {
         setFrameOrigin(NSPoint(x: originX, y: originY))
     }
 
+    /// Transition to thinking dots, then fade out after a brief delay.
+    func hideWithThinkingTransition() {
+        guard let hostingView = contentView as? NSHostingView<FloatingWaveformView> else {
+            hide()
+            return
+        }
+
+        let thinkingView = FloatingThinkingView()
+        let thinkingHosting = NSHostingView(rootView: thinkingView)
+        thinkingHosting.frame = hostingView.frame
+        contentView = thinkingHosting
+
+        // Fade out after a short delay to give the thinking dots a moment on screen
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                self?.animator().alphaValue = 0
+            } completionHandler: { [weak self] in
+                self?.orderOut(nil)
+                self?.alphaValue = 1
+                // Restore the waveform view for next show()
+                if let self = self {
+                    let waveformView = FloatingWaveformView()
+                        .environment(self.amplitudeProvider)
+                    self.contentView = NSHostingView(rootView: waveformView)
+                }
+            }
+        }
+    }
+
     func hide() {
         orderOut(nil)
     }
@@ -69,5 +99,14 @@ private struct FloatingWaveformView: View {
                 height: geo.size.height
             )
         }
+    }
+}
+
+/// Shows thinking dots in the same black capsule style as the waveform.
+private struct FloatingThinkingView: View {
+    var body: some View {
+        ThinkingDotsView(dotSize: 8, color: .white, spacing: 6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(.black, in: .capsule)
     }
 }

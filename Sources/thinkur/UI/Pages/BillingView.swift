@@ -3,7 +3,7 @@ import SwiftUI
 struct BillingView: View {
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.lg) {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
                 GroupedSettingsSection(title: "Current Plan") {
                     VStack(spacing: 0) {
                         SettingsRowView(icon: "crown.fill", iconColor: ColorTokens.accentYellow, title: "Plan") {
@@ -37,7 +37,9 @@ struct BillingView: View {
                     .controlSize(.regular)
                     .disabled(true)
             }
-            .padding(Spacing.lg)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.xxl)
+            .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Billing")
     }

@@ -70,7 +70,9 @@ struct DictationSettingsView: View {
                     }
                 }
             }
-            .padding(Spacing.lg)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.xxl)
+            .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Dictation")
     }

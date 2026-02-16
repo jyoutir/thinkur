@@ -11,7 +11,7 @@ struct LanguageSettingsView: View {
         @Bindable var s = settings
 
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.lg) {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
                 GroupedSettingsSection(title: "Language") {
                     VStack(spacing: 0) {
                         SettingsRowView(icon: "globe", iconColor: ColorTokens.accentBlue, title: "Primary Language") {
@@ -48,7 +48,9 @@ struct LanguageSettingsView: View {
                     }
                 }
             }
-            .padding(Spacing.lg)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.xxl)
+            .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Language")
         .onChange(of: settings.modelSize) {

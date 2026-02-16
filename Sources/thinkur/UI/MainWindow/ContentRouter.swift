@@ -31,6 +31,8 @@ struct ContentRouter: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .transition(.opacity)
         .id(page)
+        .animation(.easeInOut(duration: 0.15), value: page)
     }
 }

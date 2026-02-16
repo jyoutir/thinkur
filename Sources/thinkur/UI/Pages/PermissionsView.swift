@@ -5,7 +5,7 @@ struct PermissionsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.lg) {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
                 Text("thinkur needs these permissions to work properly.")
                     .font(Typography.body)
                     .foregroundStyle(ColorTokens.textSecondary)
@@ -52,7 +52,9 @@ struct PermissionsView: View {
                 }
                 .controlSize(.regular)
             }
-            .padding(Spacing.lg)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.xxl)
+            .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Permissions")
         .task {

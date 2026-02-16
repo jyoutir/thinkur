@@ -10,11 +10,9 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 10) {
             // Status indicator
             HStack(spacing: 8) {
-                Circle()
-                    .fill(viewModel.statusColor)
-                    .frame(width: 8, height: 8)
+                statusDot
                 Text(viewModel.statusText)
-                    .font(.headline)
+                    .font(Typography.headline)
                 Spacer()
             }
 
@@ -34,6 +32,14 @@ struct MenuBarView: View {
                     Text(viewModel.modelLoadingMessage.isEmpty ? "Loading..." : viewModel.modelLoadingMessage)
                         .foregroundStyle(.secondary)
                 }
+            } else if viewModel.currentAppState == .processing {
+                HStack(spacing: 8) {
+                    ThinkingDotsView(dotSize: 5, color: .secondary, spacing: 3)
+                    Text("Thinking...")
+                        .font(Typography.body)
+                        .foregroundStyle(.secondary)
+                }
+                .transition(.opacity)
             } else if case .error = viewModel.currentAppState {
                 HStack(spacing: 8) {
                     Button("Retry") {
@@ -43,13 +49,14 @@ struct MenuBarView: View {
                 }
             } else if !viewModel.currentTranscription.isEmpty {
                 Text(viewModel.currentTranscription)
-                    .font(.body)
+                    .font(Typography.body)
                     .lineLimit(4)
                     .textSelection(.enabled)
+                    .transition(.opacity)
             } else if viewModel.currentAppState == .idle {
                 Text("Tap Tab to speak")
                     .foregroundStyle(.secondary)
-                    .font(.callout)
+                    .font(Typography.callout)
             }
 
             // Frontmost app info
@@ -58,9 +65,9 @@ struct MenuBarView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "app.fill")
                         .foregroundStyle(.secondary)
-                        .font(.caption)
+                        .font(Typography.caption)
                     Text(viewModel.frontmostAppName)
-                        .font(.caption)
+                        .font(Typography.caption)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -79,6 +86,21 @@ struct MenuBarView: View {
         }
         .padding(12)
         .frame(width: 280)
+        .animation(Animations.hoverFade, value: viewModel.currentAppState)
+    }
+
+    @ViewBuilder
+    private var statusDot: some View {
+        Circle()
+            .fill(viewModel.statusColor)
+            .frame(width: 8, height: 8)
+            .scaleEffect(viewModel.currentAppState == .listening ? 1.3 : 1.0)
+            .animation(
+                viewModel.currentAppState == .listening
+                    ? .easeInOut(duration: 0.8).repeatForever(autoreverses: true)
+                    : .default,
+                value: viewModel.currentAppState
+            )
     }
 
     private func openSettings() {

@@ -157,7 +157,7 @@ final class RecordingViewModel {
         }
 
         amplitudeProvider.stopPolling()
-        floatingPanel?.hide()
+        floatingPanel?.hideWithThinkingTransition()
 
         let samples = audioCaptureManager.stopCapture()
         updateState(.processing)
