@@ -63,10 +63,8 @@ struct HomeView: View {
             .animation(Animations.glassMaterialize, value: appeared)
         }
         .navigationTitle("Home")
-        .task {
-            await viewModel.loadData()
-            appeared = true
-        }
+        .task { await viewModel.loadData() }
+        .onAppear { appeared = true }
     }
 }
 
