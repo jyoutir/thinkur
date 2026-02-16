@@ -8,11 +8,7 @@ struct StyleAppRow: View {
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
-            AppIconView(
-                letter: String(entry.appName.prefix(1)),
-                color: iconColor(for: entry.iconColor),
-                size: 32
-            )
+            AppIconView(bundleID: entry.id, appName: entry.appName, size: 36)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.appName)
@@ -39,17 +35,5 @@ struct StyleAppRow: View {
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.sm)
-    }
-
-    private func iconColor(for name: String) -> Color {
-        switch name {
-        case "purple": return ColorTokens.accentPurple
-        case "blue": return ColorTokens.accentBlue
-        case "yellow": return ColorTokens.accentYellow
-        case "orange": return ColorTokens.accentOrange
-        case "green": return ColorTokens.accentGreen
-        case "red": return ColorTokens.accentRed
-        default: return ColorTokens.accentBlue
-        }
     }
 }

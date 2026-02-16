@@ -2,13 +2,14 @@ import SwiftUI
 
 struct AppUsageRow: View {
     let appName: String
+    let bundleID: String
     let percentage: Double
     let wordCount: Int
     var color: Color = ColorTokens.accentBlue
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
-            AppIconView(letter: String(appName.prefix(1)), color: color, size: 24)
+            AppIconView(bundleID: bundleID, appName: appName, size: 28)
 
             Text(appName)
                 .font(Typography.body)

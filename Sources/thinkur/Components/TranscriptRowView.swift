@@ -2,13 +2,13 @@ import SwiftUI
 
 struct TranscriptRowView: View {
     let appName: String
+    let appBundleID: String
     let timestamp: Date
     let preview: String
-    let appColor: Color
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
-            AppIconView(letter: String(appName.prefix(1)), color: appColor, size: 28)
+            AppIconView(bundleID: appBundleID, appName: appName, size: 44)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
