@@ -24,7 +24,7 @@ struct SettingsManagerTests {
         #expect(settings.smartFormatting == true)
         #expect(settings.selectedLanguage == "English")
         #expect(settings.modelSize == "small.en")
-        #expect(settings.themeMode == .system)
+        #expect(settings.themeMode == .dark)
         #expect(settings.vadThreshold == 0.3)
     }
 
