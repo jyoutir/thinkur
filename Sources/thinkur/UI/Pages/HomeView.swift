@@ -36,9 +36,9 @@ struct HomeView: View {
                         ForEach(viewModel.recentTranscriptions, id: \.timestamp) { record in
                             TranscriptRowView(
                                 appName: record.appName,
+                                appBundleID: record.appBundleID,
                                 timestamp: record.timestamp,
-                                preview: record.processedText,
-                                appColor: AppColorMapper.color(for: record.appName)
+                                preview: record.processedText
                             )
                             .padding(Spacing.sm)
                             .glassCard()

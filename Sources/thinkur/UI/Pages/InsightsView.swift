@@ -76,6 +76,7 @@ struct InsightsView: View {
                             ForEach(viewModel.topApps, id: \.bundleID) { app in
                                 AppUsageRow(
                                     appName: app.appName,
+                                    bundleID: app.bundleID,
                                     percentage: totalWords > 0 ? Double(app.totalWords) / Double(totalWords) * 100 : 0,
                                     wordCount: app.totalWords
                                 )
