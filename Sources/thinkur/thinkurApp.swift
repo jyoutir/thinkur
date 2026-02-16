@@ -10,35 +10,45 @@ struct thinkurApp: App {
             MenuBarView()
                 .environment(coordinator)
                 .environment(coordinator.menuBarViewModel)
-                .environment(coordinator.permissionViewModel)
+                .environment(coordinator.permissionManager)
                 .environment(coordinator.recordingViewModel)
-                .environment(coordinator.transcriptionViewModel)
+                .environment(coordinator.settings)
         }
         .menuBarExtraStyle(.window)
 
         Window("thinkur", id: "main") {
-            if coordinator.onboardingViewModel.isComplete {
-                MainWindowView()
-                    .environment(coordinator)
-                    .environment(coordinator.menuBarViewModel)
-                    .environment(coordinator.permissionViewModel)
-                    .environment(coordinator.recordingViewModel)
-                    .environment(coordinator.transcriptionViewModel)
-                    .environment(coordinator.homeViewModel)
-                    .environment(coordinator.shortcutsViewModel)
-                    .environment(coordinator.styleViewModel)
-                    .environment(coordinator.insightsViewModel)
-                    .environment(SettingsManager.shared)
-            } else {
-                OnboardingFlow()
-                    .environment(coordinator)
-                    .environment(coordinator.onboardingViewModel)
-                    .environment(coordinator.permissionViewModel)
-            }
+            RootView()
+                .environment(coordinator)
+                .environment(coordinator.menuBarViewModel)
+                .environment(coordinator.permissionManager)
+                .environment(coordinator.recordingViewModel)
+                .environment(coordinator.homeViewModel)
+                .environment(coordinator.shortcutsViewModel)
+                .environment(coordinator.styleViewModel)
+                .environment(coordinator.insightsViewModel)
+                .environment(coordinator.onboardingViewModel)
+                .environment(coordinator.settings)
         }
         .defaultSize(width: 920, height: 620)
         .windowResizability(.contentSize)
         .defaultLaunchBehavior(.presented)
+    }
+}
+
+/// Single root view that switches between onboarding and main window.
+/// All environment objects are injected once at the Window level,
+/// so transitions between states never invalidate environment references.
+private struct RootView: View {
+    @Environment(AppCoordinator.self) private var coordinator
+
+    var body: some View {
+        Group {
+            if coordinator.onboardingViewModel.isComplete {
+                MainWindowView()
+            } else {
+                OnboardingFlow()
+            }
+        }
     }
 }
 

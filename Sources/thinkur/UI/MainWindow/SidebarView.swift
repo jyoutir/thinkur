@@ -28,7 +28,8 @@ struct SidebarView: View {
 
             // Theme toggle
             Button {
-                settings.themeMode = settings.themeMode.next
+                let nextMode = settings.themeMode.next
+                settings.themeMode = nextMode
             } label: {
                 HStack(spacing: Spacing.xs) {
                     Image(systemName: settings.themeMode.iconName)

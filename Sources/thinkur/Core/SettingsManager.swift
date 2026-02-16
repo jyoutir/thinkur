@@ -6,93 +6,99 @@ import SwiftUI
 final class SettingsManager {
     static let shared = SettingsManager()
 
+    private let defaults: UserDefaults
+
     var hotkeyCode: UInt16 {
-        didSet { UserDefaults.standard.set(Int(hotkeyCode), forKey: "hotkeyCode") }
+        didSet { defaults.set(Int(hotkeyCode), forKey: "hotkeyCode") }
     }
 
     var vadThreshold: Float {
-        didSet { UserDefaults.standard.set(vadThreshold, forKey: "vadThreshold") }
+        didSet { defaults.set(vadThreshold, forKey: "vadThreshold") }
     }
 
     var postProcessingEnabled: Bool {
-        didSet { UserDefaults.standard.set(postProcessingEnabled, forKey: "postProcessingEnabled") }
+        didSet { defaults.set(postProcessingEnabled, forKey: "postProcessingEnabled") }
     }
 
     // Hotkey settings
     var hotkeyHoldMode: Bool {
-        didSet { UserDefaults.standard.set(hotkeyHoldMode, forKey: "hotkeyHoldMode") }
+        didSet { defaults.set(hotkeyHoldMode, forKey: "hotkeyHoldMode") }
     }
 
     // System settings
     var soundEffects: Bool {
-        didSet { UserDefaults.standard.set(soundEffects, forKey: "soundEffects") }
+        didSet { defaults.set(soundEffects, forKey: "soundEffects") }
     }
 
     var pauseMusicWhileRecording: Bool {
-        didSet { UserDefaults.standard.set(pauseMusicWhileRecording, forKey: "pauseMusicWhileRecording") }
+        didSet { defaults.set(pauseMusicWhileRecording, forKey: "pauseMusicWhileRecording") }
     }
 
     var floatingIndicator: Bool {
-        didSet { UserDefaults.standard.set(floatingIndicator, forKey: "floatingIndicator") }
+        didSet { defaults.set(floatingIndicator, forKey: "floatingIndicator") }
     }
 
     var showInDock: Bool {
-        didSet { UserDefaults.standard.set(showInDock, forKey: "showInDock") }
+        didSet { defaults.set(showInDock, forKey: "showInDock") }
     }
 
     var launchAtLogin: Bool {
-        didSet { UserDefaults.standard.set(launchAtLogin, forKey: "launchAtLogin") }
+        didSet { defaults.set(launchAtLogin, forKey: "launchAtLogin") }
     }
 
     var automaticUpdates: Bool {
-        didSet { UserDefaults.standard.set(automaticUpdates, forKey: "automaticUpdates") }
+        didSet { defaults.set(automaticUpdates, forKey: "automaticUpdates") }
     }
 
     // Dictation settings
     var removeFillerWords: Bool {
-        didSet { UserDefaults.standard.set(removeFillerWords, forKey: "removeFillerWords") }
+        didSet { defaults.set(removeFillerWords, forKey: "removeFillerWords") }
     }
 
     var autoPunctuation: Bool {
-        didSet { UserDefaults.standard.set(autoPunctuation, forKey: "autoPunctuation") }
+        didSet { defaults.set(autoPunctuation, forKey: "autoPunctuation") }
     }
 
     var intentCorrection: Bool {
-        didSet { UserDefaults.standard.set(intentCorrection, forKey: "intentCorrection") }
+        didSet { defaults.set(intentCorrection, forKey: "intentCorrection") }
     }
 
     var smartFormatting: Bool {
-        didSet { UserDefaults.standard.set(smartFormatting, forKey: "smartFormatting") }
+        didSet { defaults.set(smartFormatting, forKey: "smartFormatting") }
     }
 
     var codeContext: Bool {
-        didSet { UserDefaults.standard.set(codeContext, forKey: "codeContext") }
+        didSet { defaults.set(codeContext, forKey: "codeContext") }
     }
 
     var learnFromCorrections: Bool {
-        didSet { UserDefaults.standard.set(learnFromCorrections, forKey: "learnFromCorrections") }
+        didSet { defaults.set(learnFromCorrections, forKey: "learnFromCorrections") }
     }
 
     // Language settings
     var selectedLanguage: String {
-        didSet { UserDefaults.standard.set(selectedLanguage, forKey: "selectedLanguage") }
+        didSet { defaults.set(selectedLanguage, forKey: "selectedLanguage") }
     }
 
     var multilingualMode: Bool {
-        didSet { UserDefaults.standard.set(multilingualMode, forKey: "multilingualMode") }
+        didSet { defaults.set(multilingualMode, forKey: "multilingualMode") }
     }
 
     var modelSize: String {
-        didSet { UserDefaults.standard.set(modelSize, forKey: "modelSize") }
+        didSet { defaults.set(modelSize, forKey: "modelSize") }
     }
 
     // Theme
     var themeMode: ThemeMode {
-        didSet { UserDefaults.standard.set(themeMode.rawValue, forKey: "themeMode") }
+        didSet { defaults.set(themeMode.rawValue, forKey: "themeMode") }
     }
 
-    private init() {
-        let defaults = UserDefaults.standard
+    private convenience init() {
+        self.init(defaults: .standard)
+    }
+
+    init(defaults: UserDefaults) {
+        self.defaults = defaults
 
         if defaults.object(forKey: "hotkeyCode") == nil {
             defaults.set(Int(Constants.tabKeyCode), forKey: "hotkeyCode")

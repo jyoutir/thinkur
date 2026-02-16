@@ -7,24 +7,16 @@ final class ShortcutService {
     private let container: ModelContainer
 
     init() {
-        do {
-            let schema = Schema([Shortcut.self])
-            let config = ModelConfiguration(
-                "shortcuts",
-                schema: schema,
-                url: Constants.appSupportDirectory.appendingPathComponent("shortcuts.store")
-            )
-            container = try ModelContainer(for: schema, configurations: [config])
-        } catch {
-            Logger.app.error("Failed to create shortcuts ModelContainer: \(error)")
-            do {
-                let schema = Schema([Shortcut.self])
-                let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-                container = try ModelContainer(for: schema, configurations: [config])
-            } catch {
-                fatalError("Cannot create even in-memory shortcuts ModelContainer: \(error)")
-            }
-        }
+        let schema = Schema([Shortcut.self])
+        container = SwiftDataContainerFactory.create(
+            name: "shortcuts",
+            schema: schema,
+            storeURL: Constants.appSupportDirectory.appendingPathComponent("shortcuts.store")
+        )
+    }
+
+    init(container: ModelContainer) {
+        self.container = container
     }
 
     func fetchAll() async -> [Shortcut] {

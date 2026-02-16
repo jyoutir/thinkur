@@ -5,30 +5,34 @@ import os
 @Observable
 final class RecordingViewModel {
     var state: AppState = .idle
-    var isModelReady = false
 
     var onStateChanged: ((AppState) -> Void)?
     var onTranscription: ((String) -> Void)?
 
-    private let audioCaptureManager: AudioCaptureManager
-    private let transcriptionEngine: TranscriptionEngine
-    private let textInsertionService: TextInsertionService
+    private let audioCaptureManager: any AudioCapturing
+    private let transcriptionEngine: any Transcribing
+    private let textInsertionService: any TextInserting
     private let textPostProcessor: TextPostProcessor
     private let frontmostAppDetector: FrontmostAppDetector
     private let analyticsService: AnalyticsService
     private let amplitudeProvider: AudioAmplitudeProvider
-    private let hotkeyManager: HotkeyManager
+    private let hotkeyManager: any HotkeyListening
+    private let settings: SettingsManager
+    private let sharedState: SharedAppState?
     private var floatingPanel: FloatingIndicatorPanel?
 
     init(
-        audioCaptureManager: AudioCaptureManager,
-        transcriptionEngine: TranscriptionEngine,
-        textInsertionService: TextInsertionService,
+        audioCaptureManager: any AudioCapturing,
+        transcriptionEngine: any Transcribing,
+        textInsertionService: any TextInserting,
         textPostProcessor: TextPostProcessor,
         frontmostAppDetector: FrontmostAppDetector,
         analyticsService: AnalyticsService,
         amplitudeProvider: AudioAmplitudeProvider,
-        hotkeyManager: HotkeyManager
+        hotkeyManager: any HotkeyListening,
+        settings: SettingsManager = .shared,
+        sharedState: SharedAppState? = nil,
+        createFloatingPanel: Bool = true
     ) {
         self.audioCaptureManager = audioCaptureManager
         self.transcriptionEngine = transcriptionEngine
@@ -38,7 +42,16 @@ final class RecordingViewModel {
         self.analyticsService = analyticsService
         self.amplitudeProvider = amplitudeProvider
         self.hotkeyManager = hotkeyManager
-        self.floatingPanel = FloatingIndicatorPanel(amplitudeProvider: amplitudeProvider)
+        self.settings = settings
+        self.sharedState = sharedState
+        if createFloatingPanel {
+            self.floatingPanel = FloatingIndicatorPanel(amplitudeProvider: amplitudeProvider)
+        }
+    }
+
+    var isModelReady: Bool {
+        get { sharedState?.isModelReady ?? false }
+        set { sharedState?.isModelReady = newValue }
     }
 
     func setupHotkey() {
@@ -126,10 +139,11 @@ final class RecordingViewModel {
                 wordTimings: transcriptionEngine.lastWordTimings,
                 appStyle: AppStyleMap.style(for: frontmostAppDetector.bundleID)
             )
-            let text = SettingsManager.shared.postProcessingEnabled
+            let text = settings.postProcessingEnabled
                 ? textPostProcessor.process(rawText, context: context)
                 : rawText
             onTranscription?(text)
+            sharedState?.lastTranscription = text
             textInsertionService.insertText(text)
             Logger.app.info("Inserted transcription: \"\(text)\"")
 
@@ -151,6 +165,7 @@ final class RecordingViewModel {
 
     private func updateState(_ newState: AppState) {
         state = newState
+        sharedState?.appState = newState
         onStateChanged?(newState)
     }
 }
