@@ -4,7 +4,7 @@ import AppKit
 struct AppIconView: View {
     let bundleID: String
     let appName: String
-    var size: CGFloat = 36
+    var size: CGFloat = 44
 
     var body: some View {
         Group {

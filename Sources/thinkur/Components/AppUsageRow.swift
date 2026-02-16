@@ -9,7 +9,7 @@ struct AppUsageRow: View {
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
-            AppIconView(bundleID: bundleID, appName: appName, size: 28)
+            AppIconView(bundleID: bundleID, appName: appName, size: 44)
 
             Text(appName)
                 .font(Typography.body)

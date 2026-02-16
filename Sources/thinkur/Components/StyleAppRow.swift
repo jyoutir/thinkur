@@ -8,7 +8,7 @@ struct StyleAppRow: View {
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
-            AppIconView(bundleID: entry.id, appName: entry.appName, size: 36)
+            AppIconView(bundleID: entry.id, appName: entry.appName, size: 44)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.appName)
