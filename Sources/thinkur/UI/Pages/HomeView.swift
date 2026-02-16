@@ -2,24 +2,14 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(HomeViewModel.self) private var viewModel
-    @State private var greeting = GreetingProvider.greeting()
     @State private var appeared = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
-                // Personalized greeting
-                VStack(alignment: .leading, spacing: Spacing.xxs) {
-                    Text(greeting)
-                        .font(Typography.title)
-                        .foregroundStyle(ColorTokens.textPrimary)
-
-                    Text(GreetingProvider.formattedDate)
-                        .font(Typography.body)
-                        .foregroundStyle(ColorTokens.textTertiary)
-                }
-                .opacity(appeared ? 1 : 0)
-                .animation(.easeOut(duration: 0.4), value: appeared)
+                Text("Your recent voice typing activity.")
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textTertiary)
 
                 // Press Tab prompt
                 HStack(spacing: Spacing.sm) {

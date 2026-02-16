@@ -34,12 +34,6 @@ targets:
         ENABLE_HARDENED_RUNTIME: false
     entitlements:
       path: Sources/thinkur/Resources/thinkur.entitlements
-    preBuildScripts:
-      - script: |
-          # Prevent Spotlight from indexing the DerivedData build output
-          mkdir -p "${BUILT_PRODUCTS_DIR}"
-          touch "${BUILT_PRODUCTS_DIR}/.metadata_never_index"
-        name: "Prevent Spotlight indexing of DerivedData"
 
 schemes:
   thinkur:
