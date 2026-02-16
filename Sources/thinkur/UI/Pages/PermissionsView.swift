@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct PermissionsView: View {
-    @Environment(PermissionViewModel.self) private var viewModel
+    @Environment(PermissionManager.self) private var viewModel
 
     var body: some View {
         ScrollView {
@@ -56,7 +56,7 @@ struct PermissionsView: View {
         }
         .navigationTitle("Permissions")
         .task {
-            viewModel.checkPermissions()
+            viewModel.checkAll()
         }
     }
 }

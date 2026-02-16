@@ -4,101 +4,43 @@ import os
 @MainActor
 @Observable
 final class AppCoordinator {
-    // Services (private — views never touch these)
-    private let permissionManager: PermissionManager
-    private let transcriptionEngine: TranscriptionEngine
-    private let audioCaptureManager: AudioCaptureManager
-    private let hotkeyManager: HotkeyManager
-    private let textInsertionService: TextInsertionService
-    private let textPostProcessor: TextPostProcessor
-    private let frontmostAppDetector: FrontmostAppDetector
-    private let amplitudeProvider: AudioAmplitudeProvider
-    private let analyticsService: AnalyticsService
-    private let shortcutService: ShortcutService
-    private let stylePreferenceService: StylePreferenceService
-
-    // ViewModels (exposed to views)
-    let menuBarViewModel: MenuBarViewModel
-    let permissionViewModel: PermissionViewModel
-    let recordingViewModel: RecordingViewModel
-    let transcriptionViewModel: TranscriptionViewModel
-    let homeViewModel: HomeViewModel
-    let shortcutsViewModel: ShortcutsViewModel
-    let styleViewModel: StyleViewModel
-    let insightsViewModel: InsightsViewModel
-    let onboardingViewModel: OnboardingViewModel
+    let services: ServiceContainer
+    private let viewModels: ViewModelFactory
+    private let modelLoadCoordinator: ModelLoadCoordinator
 
     private var hasSetup = false
 
+    // Convenience accessors
+    var settings: SettingsManager { services.settings }
+    var sharedState: SharedAppState { services.sharedState }
+    var permissionManager: PermissionManager { services.permissionManager }
+
+    var menuBarViewModel: MenuBarViewModel { viewModels.menuBarViewModel }
+    var recordingViewModel: RecordingViewModel { viewModels.recordingViewModel }
+    var homeViewModel: HomeViewModel { viewModels.homeViewModel }
+    var shortcutsViewModel: ShortcutsViewModel { viewModels.shortcutsViewModel }
+    var styleViewModel: StyleViewModel { viewModels.styleViewModel }
+    var insightsViewModel: InsightsViewModel { viewModels.insightsViewModel }
+    var onboardingViewModel: OnboardingViewModel { viewModels.onboardingViewModel }
+
     init() {
-        // 1. Create services
-        let permissions = PermissionManager()
-        let transcription = TranscriptionEngine()
-        let audio = AudioCaptureManager()
-        let hotkey = HotkeyManager()
-        let textInsertion = TextInsertionService()
-        let frontmost = FrontmostAppDetector()
-        let amplitude = AudioAmplitudeProvider()
-        let analytics = AnalyticsService()
-        let shortcuts = ShortcutService()
-        let stylePrefs = StylePreferenceService()
-
-        let postProcessor = TextPostProcessor(processors: [
-            SelfCorrectionProcessor(),
-            FillerRemovalProcessor(),
-            SpokenPunctuationProcessor(),
-            NumberConversionProcessor(),
-            PausePunctuationProcessor(),
-            CapitalizationProcessor(),
-            StyleAdaptationProcessor(),
-        ])
-
-        self.permissionManager = permissions
-        self.transcriptionEngine = transcription
-        self.audioCaptureManager = audio
-        self.hotkeyManager = hotkey
-        self.textInsertionService = textInsertion
-        self.textPostProcessor = postProcessor
-        self.frontmostAppDetector = frontmost
-        self.amplitudeProvider = amplitude
-        self.analyticsService = analytics
-        self.shortcutService = shortcuts
-        self.stylePreferenceService = stylePrefs
-
-        // 2. Create ViewModels with injected dependencies
-        let menuBarVM = MenuBarViewModel(frontmostAppDetector: frontmost)
-        let permissionVM = PermissionViewModel(permissionManager: permissions)
-        let recordingVM = RecordingViewModel(
-            audioCaptureManager: audio,
-            transcriptionEngine: transcription,
-            textInsertionService: textInsertion,
-            textPostProcessor: postProcessor,
-            frontmostAppDetector: frontmost,
-            analyticsService: analytics,
-            amplitudeProvider: amplitude,
-            hotkeyManager: hotkey
+        let services = ServiceContainer()
+        self.services = services
+        self.viewModels = ViewModelFactory(services: services)
+        self.modelLoadCoordinator = ModelLoadCoordinator(
+            transcriptionEngine: services.transcriptionEngine,
+            sharedState: services.sharedState
         )
-        let transcriptionVM = TranscriptionViewModel(transcriptionEngine: transcription)
 
-        self.menuBarViewModel = menuBarVM
-        self.permissionViewModel = permissionVM
-        self.recordingViewModel = recordingVM
-        self.transcriptionViewModel = transcriptionVM
-        self.homeViewModel = HomeViewModel(analyticsService: analytics)
-        self.shortcutsViewModel = ShortcutsViewModel(shortcutService: shortcuts)
-        self.styleViewModel = StyleViewModel(stylePreferenceService: stylePrefs)
-        self.insightsViewModel = InsightsViewModel(analyticsService: analytics)
-        self.onboardingViewModel = OnboardingViewModel(permissionViewModel: permissionVM)
-
-        // 3. Wire cross-cutting callbacks
-        recordingVM.onStateChanged = { [weak menuBarVM] newState in
+        // Keep callback wiring for backward compatibility
+        let menuBarVM = viewModels.menuBarViewModel
+        viewModels.recordingViewModel.onStateChanged = { [weak menuBarVM] newState in
             menuBarVM?.appState = newState
         }
-        recordingVM.onTranscription = { [weak menuBarVM] text in
+        viewModels.recordingViewModel.onTranscription = { [weak menuBarVM] text in
             menuBarVM?.lastTranscription = text
         }
 
-        // 4. Kick off async setup
         Task { [weak self] in
             await self?.setup()
         }
@@ -108,50 +50,30 @@ final class AppCoordinator {
         guard !hasSetup else { return }
         hasSetup = true
 
-        // Check permissions
-        permissionViewModel.checkPermissions()
+        permissionManager.checkAll()
 
         if !permissionManager.microphoneGranted {
             await permissionManager.requestMicrophone()
-            permissionViewModel.checkPermissions()
+            permissionManager.checkAll()
         }
 
         if !permissionManager.accessibilityGranted {
             permissionManager.requestAccessibility()
-            permissionViewModel.checkPermissions()
+            permissionManager.checkAll()
         }
 
-        // Start frontmost app detection
-        frontmostAppDetector.startObserving()
-
-        // Start hotkey manager
+        services.frontmostAppDetector.startObserving()
         recordingViewModel.setupHotkey()
 
-        // Load WhisperKit model
-        await loadModelAndUpdateState()
-    }
-
-    private func loadModelAndUpdateState() async {
-        menuBarViewModel.appState = .loading
-        await transcriptionEngine.loadModel()
-
-        if transcriptionEngine.isLoaded {
-            menuBarViewModel.appState = .idle
-            recordingViewModel.isModelReady = true
-            Logger.app.info("thinkur ready")
-        } else {
-            let message = transcriptionEngine.errorMessage ?? "Model failed to load"
-            menuBarViewModel.appState = .error(message)
-            Logger.app.error("Failed to load transcription model: \(message)")
-        }
+        await modelLoadCoordinator.loadModel()
     }
 
     func retryModelLoad() async {
-        await loadModelAndUpdateState()
+        await modelLoadCoordinator.loadModel()
     }
 
     func clearAllHistory() async {
-        try? await analyticsService.clearAllHistory()
+        try? await services.analyticsService.clearAllHistory()
         await homeViewModel.loadData()
         await insightsViewModel.loadData()
     }

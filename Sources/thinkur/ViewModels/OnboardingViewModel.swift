@@ -12,10 +12,10 @@ final class OnboardingViewModel {
         set { UserDefaults.standard.set(newValue, forKey: "hasCompletedOnboarding") }
     }
 
-    private let permissionViewModel: PermissionViewModel
+    private let permissionManager: PermissionManager
 
-    init(permissionViewModel: PermissionViewModel) {
-        self.permissionViewModel = permissionViewModel
+    init(permissionManager: PermissionManager) {
+        self.permissionManager = permissionManager
     }
 
     var isLastStep: Bool {
@@ -39,17 +39,17 @@ final class OnboardingViewModel {
     }
 
     func requestMicrophone() async {
-        await permissionViewModel.requestMicrophone()
+        await permissionManager.requestMicrophone()
         nextStep()
     }
 
     func openAccessibilitySettings() {
-        permissionViewModel.openAccessibilitySettings()
+        permissionManager.openAccessibilitySettings()
         nextStep()
     }
 
     func openInputMonitoringSettings() {
-        permissionViewModel.openInputMonitoringSettings()
+        permissionManager.openInputMonitoringSettings()
         nextStep()
     }
 

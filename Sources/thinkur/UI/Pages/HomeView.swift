@@ -16,7 +16,7 @@ struct HomeView: View {
 
                     StatCardView(
                         title: "Words Dictated",
-                        value: formatNumber(viewModel.wordsDictated),
+                        value: Formatters.compactNumber(viewModel.wordsDictated),
                         unit: "words"
                     )
 
@@ -60,7 +60,7 @@ struct HomeView: View {
                                     appName: record.appName,
                                     timestamp: record.timestamp,
                                     preview: record.processedText,
-                                    appColor: colorForApp(record.appName)
+                                    appColor: AppColorMapper.color(for: record.appName)
                                 )
                                 if record.timestamp != viewModel.recentTranscriptions.last?.timestamp {
                                     Divider().padding(.leading, 40)
@@ -80,21 +80,4 @@ struct HomeView: View {
         }
     }
 
-    private func formatNumber(_ n: Int) -> String {
-        if n >= 1000 {
-            return String(format: "%.1fk", Double(n) / 1000.0)
-        }
-        return "\(n)"
-    }
-
-    private func colorForApp(_ name: String) -> Color {
-        switch name.lowercased() {
-        case let n where n.contains("slack"): return ColorTokens.accentPurple
-        case let n where n.contains("mail"): return ColorTokens.accentOrange
-        case let n where n.contains("note"): return ColorTokens.accentYellow
-        case let n where n.contains("xcode"): return ColorTokens.accentBlue
-        case let n where n.contains("chrome"): return ColorTokens.accentRed
-        default: return ColorTokens.accentBlue
-        }
-    }
 }

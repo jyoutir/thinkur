@@ -21,5 +21,13 @@ let package = Package(
                 .swiftLanguageMode(.v5)
             ]
         ),
+        .testTarget(
+            name: "thinkurTests",
+            dependencies: ["thinkur"],
+            path: "Tests/thinkurTests",
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
+            ]
+        ),
     ]
 )

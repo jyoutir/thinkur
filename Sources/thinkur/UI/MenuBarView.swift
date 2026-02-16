@@ -2,8 +2,7 @@ import SwiftUI
 
 struct MenuBarView: View {
     @Environment(MenuBarViewModel.self) private var viewModel
-    @Environment(PermissionViewModel.self) private var permissions
-    @Environment(TranscriptionViewModel.self) private var transcription
+    @Environment(PermissionManager.self) private var permissions
     @Environment(AppCoordinator.self) private var coordinator
     @Environment(\.openWindow) private var openWindow
 
@@ -28,26 +27,26 @@ struct MenuBarView: View {
             }
 
             // Last transcription or instructions
-            if transcription.isLoading {
+            if viewModel.isModelLoading {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text(transcription.loadingMessage.isEmpty ? "Loading..." : transcription.loadingMessage)
+                    Text(viewModel.modelLoadingMessage.isEmpty ? "Loading..." : viewModel.modelLoadingMessage)
                         .foregroundStyle(.secondary)
                 }
-            } else if case .error = viewModel.appState {
+            } else if case .error = viewModel.currentAppState {
                 HStack(spacing: 8) {
                     Button("Retry") {
                         Task { await coordinator.retryModelLoad() }
                     }
                     .controlSize(.small)
                 }
-            } else if !viewModel.lastTranscription.isEmpty {
-                Text(viewModel.lastTranscription)
+            } else if !viewModel.currentTranscription.isEmpty {
+                Text(viewModel.currentTranscription)
                     .font(.body)
                     .lineLimit(4)
                     .textSelection(.enabled)
-            } else if viewModel.appState == .idle {
+            } else if viewModel.currentAppState == .idle {
                 Text("Tap Tab to speak")
                     .foregroundStyle(.secondary)
                     .font(.callout)

@@ -7,24 +7,16 @@ final class StylePreferenceService {
     private let container: ModelContainer
 
     init() {
-        do {
-            let schema = Schema([AppStylePreference.self])
-            let config = ModelConfiguration(
-                "stylePreferences",
-                schema: schema,
-                url: Constants.appSupportDirectory.appendingPathComponent("stylePreferences.store")
-            )
-            container = try ModelContainer(for: schema, configurations: [config])
-        } catch {
-            Logger.app.error("Failed to create style preferences ModelContainer: \(error)")
-            do {
-                let schema = Schema([AppStylePreference.self])
-                let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-                container = try ModelContainer(for: schema, configurations: [config])
-            } catch {
-                fatalError("Cannot create even in-memory style preferences ModelContainer: \(error)")
-            }
-        }
+        let schema = Schema([AppStylePreference.self])
+        container = SwiftDataContainerFactory.create(
+            name: "stylePreferences",
+            schema: schema,
+            storeURL: Constants.appSupportDirectory.appendingPathComponent("stylePreferences.store")
+        )
+    }
+
+    init(container: ModelContainer) {
+        self.container = container
     }
 
     func fetchAll() async -> [AppStylePreference] {

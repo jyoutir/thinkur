@@ -7,24 +7,16 @@ final class AnalyticsService {
     private let container: ModelContainer
 
     init() {
-        do {
-            let schema = Schema([TranscriptionRecord.self, AppUsageRecord.self, DailyAnalytics.self])
-            let config = ModelConfiguration(
-                "analytics",
-                schema: schema,
-                url: Constants.appSupportDirectory.appendingPathComponent("analytics.store")
-            )
-            container = try ModelContainer(for: schema, configurations: [config])
-        } catch {
-            Logger.analytics.error("Failed to create ModelContainer: \(error)")
-            do {
-                let schema = Schema([TranscriptionRecord.self, AppUsageRecord.self, DailyAnalytics.self])
-                let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-                container = try ModelContainer(for: schema, configurations: [config])
-            } catch {
-                fatalError("Cannot create even in-memory ModelContainer: \(error)")
-            }
-        }
+        let schema = Schema([TranscriptionRecord.self, AppUsageRecord.self, DailyAnalytics.self])
+        container = SwiftDataContainerFactory.create(
+            name: "analytics",
+            schema: schema,
+            storeURL: Constants.appSupportDirectory.appendingPathComponent("analytics.store")
+        )
+    }
+
+    init(container: ModelContainer) {
+        self.container = container
     }
 
     func record(rawText: String, processedText: String, duration: Double, appBundleID: String, appName: String) {
