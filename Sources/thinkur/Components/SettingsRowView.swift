@@ -2,20 +2,17 @@ import SwiftUI
 
 struct SettingsRowView<Trailing: View>: View {
     let icon: String
-    let iconColor: Color
     let title: String
     var subtitle: String? = nil
     @ViewBuilder let trailing: Trailing
 
     init(
         icon: String,
-        iconColor: Color = .primary,
         title: String,
         subtitle: String? = nil,
         @ViewBuilder trailing: () -> Trailing
     ) {
         self.icon = icon
-        self.iconColor = iconColor
         self.title = title
         self.subtitle = subtitle
         self.trailing = trailing()
@@ -25,7 +22,7 @@ struct SettingsRowView<Trailing: View>: View {
         HStack(spacing: Spacing.sm) {
             Image(systemName: icon)
                 .font(.system(size: 14))
-                .foregroundStyle(iconColor)
+                .foregroundStyle(.primary)
                 .frame(width: 20)
 
             VStack(alignment: .leading, spacing: 2) {

@@ -19,7 +19,7 @@ struct LanguageSettingsView: View {
 
                 GroupedSettingsSection(title: "Language") {
                     VStack(spacing: 0) {
-                        SettingsRowView(icon: "globe", iconColor: .primary, title: "Primary Language") {
+                        SettingsRowView(icon: "globe", title: "Primary Language") {
                             Picker("", selection: $s.selectedLanguage) {
                                 ForEach(languages, id: \.self) { lang in
                                     Text(lang).tag(lang)
@@ -33,7 +33,6 @@ struct LanguageSettingsView: View {
 
                         ToggleRow(
                             icon: "globe.americas",
-                            iconColor: .primary,
                             title: "Multilingual Mode",
                             subtitle: "Auto-detect and transcribe multiple languages",
                             isOn: $s.multilingualMode
@@ -42,7 +41,7 @@ struct LanguageSettingsView: View {
                 }
 
                 GroupedSettingsSection(title: "Model") {
-                    SettingsRowView(icon: "cpu", iconColor: .primary, title: "Model Size", subtitle: "Larger models are more accurate but slower") {
+                    SettingsRowView(icon: "cpu", title: "Model Size", subtitle: "Larger models are more accurate but slower") {
                         Picker("", selection: $s.modelSize) {
                             ForEach(modelSizes, id: \.self) { size in
                                 Text(size).tag(size)

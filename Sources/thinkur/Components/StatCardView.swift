@@ -5,7 +5,6 @@ struct StatCardView: View {
     let value: String
     let unit: String
     var change: String? = nil
-    var tint: Color? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -31,18 +30,6 @@ struct StatCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.md)
-        .modifier(StatCardGlassModifier(tint: tint))
-    }
-}
-
-private struct StatCardGlassModifier: ViewModifier {
-    let tint: Color?
-
-    func body(content: Content) -> some View {
-        if let tint {
-            content.glassTinted(tint)
-        } else {
-            content.glassCard()
-        }
+        .glassCard()
     }
 }

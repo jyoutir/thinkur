@@ -31,7 +31,7 @@ struct InsightsView: View {
                         title: "Time Saved",
                         value: viewModel.timeSavedFormatted,
                         unit: "total",
-                        tint: nil
+
                     )
                     .hoverBrightness()
                     .opacity(appeared ? 1 : 0)
@@ -42,7 +42,7 @@ struct InsightsView: View {
                         title: "Total Words",
                         value: "\(viewModel.totalWords)",
                         unit: "words",
-                        tint: nil
+
                     )
                     .hoverBrightness()
                     .opacity(appeared ? 1 : 0)
@@ -53,7 +53,7 @@ struct InsightsView: View {
                         title: "Sessions",
                         value: "\(viewModel.totalSessions)",
                         unit: "total",
-                        tint: nil
+
                     )
                     .hoverBrightness()
                     .opacity(appeared ? 1 : 0)

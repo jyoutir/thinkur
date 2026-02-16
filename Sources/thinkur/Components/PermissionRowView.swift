@@ -2,7 +2,6 @@ import SwiftUI
 
 struct PermissionRowView: View {
     let icon: String
-    let iconColor: Color
     let name: String
     let description: String
     let isGranted: Bool
@@ -12,7 +11,7 @@ struct PermissionRowView: View {
         HStack(spacing: Spacing.sm) {
             Image(systemName: icon)
                 .font(.system(size: 18))
-                .foregroundStyle(iconColor)
+                .foregroundStyle(.primary)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 2) {

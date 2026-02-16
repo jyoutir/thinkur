@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 
 enum Formatters {
     /// Formats a number with "k" suffix for thousands: 999 → "999", 1000 → "1.0k", 15234 → "15.2k"
@@ -18,12 +17,5 @@ enum Formatters {
         let hours = minutes / 60
         let remainingMinutes = minutes % 60
         return "\(hours)h \(remainingMinutes)m"
-    }
-}
-
-enum AppColorMapper {
-    static func color(for appName: String) -> Color {
-        // Monochrome — all apps use primary color
-        return .primary
     }
 }

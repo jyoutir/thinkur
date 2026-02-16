@@ -12,7 +12,7 @@ struct BillingView: View {
 
                 GroupedSettingsSection(title: "Current Plan") {
                     VStack(spacing: 0) {
-                        SettingsRowView(icon: "crown.fill", iconColor: .primary, title: "Plan") {
+                        SettingsRowView(icon: "crown.fill", title: "Plan") {
                             Text("Lifetime")
                                 .font(Typography.caption)
                                 .foregroundStyle(.white)
@@ -23,7 +23,7 @@ struct BillingView: View {
 
                         Divider()
 
-                        SettingsRowView(icon: "calendar", iconColor: .primary, title: "Activated") {
+                        SettingsRowView(icon: "calendar", title: "Activated") {
                             Text("February 2026")
                                 .font(Typography.body)
                                 .foregroundStyle(ColorTokens.textSecondary)
@@ -31,7 +31,7 @@ struct BillingView: View {
 
                         Divider()
 
-                        SettingsRowView(icon: "creditcard", iconColor: .primary, title: "Payment") {
+                        SettingsRowView(icon: "creditcard", title: "Payment") {
                             Text("One-time purchase")
                                 .font(Typography.body)
                                 .foregroundStyle(ColorTokens.textSecondary)
