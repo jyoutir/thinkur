@@ -5,6 +5,23 @@ protocol TextProcessor {
     func process(_ text: String, context: ProcessingContext) -> String
 }
 
+extension TextProcessor {
+    /// Collapses multiple consecutive horizontal spaces into one and trims.
+    func normalizeWhitespace(_ text: String) -> String {
+        text.replacingOccurrences(of: "[\\t ]{2,}", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Removes spaces before common punctuation marks.
+    func cleanPunctuationSpacing(_ text: String) -> String {
+        var result = text
+        for mark in [".", ",", "?", "!", ":", ";"] {
+            result = result.replacingOccurrences(of: " \(mark)", with: mark)
+        }
+        return result
+    }
+}
+
 struct ProcessingContext {
     let frontmostAppBundleID: String
     let frontmostAppName: String

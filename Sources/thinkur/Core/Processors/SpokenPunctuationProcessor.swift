@@ -38,19 +38,7 @@ struct SpokenPunctuationProcessor: TextProcessor {
             )
         }
 
-        // Clean up spaces before punctuation
-        result = result.replacingOccurrences(of: " .", with: ".")
-        result = result.replacingOccurrences(of: " ,", with: ",")
-        result = result.replacingOccurrences(of: " ?", with: "?")
-        result = result.replacingOccurrences(of: " !", with: "!")
-        result = result.replacingOccurrences(of: " :", with: ":")
-        result = result.replacingOccurrences(of: " ;", with: ";")
-
-        // Collapse multiple spaces
-        while result.contains("  ") {
-            result = result.replacingOccurrences(of: "  ", with: " ")
-        }
-
-        return result.trimmingCharacters(in: .whitespaces)
+        result = cleanPunctuationSpacing(result)
+        return normalizeWhitespace(result)
     }
 }

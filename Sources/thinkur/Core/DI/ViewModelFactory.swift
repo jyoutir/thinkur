@@ -25,7 +25,8 @@ final class ViewModelFactory {
             amplitudeProvider: services.amplitudeProvider,
             hotkeyManager: services.hotkeyManager,
             settings: services.settings,
-            sharedState: services.sharedState
+            sharedState: services.sharedState,
+            shortcutService: services.shortcutService
         )
         self.homeViewModel = HomeViewModel(analyticsService: services.analyticsService)
         self.shortcutsViewModel = ShortcutsViewModel(shortcutService: services.shortcutService)

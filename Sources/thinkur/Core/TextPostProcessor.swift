@@ -8,9 +8,12 @@ final class TextPostProcessor {
         self.processors = processors
     }
 
-    func process(_ text: String, context: ProcessingContext) -> String {
+    func process(_ text: String, context: ProcessingContext, disabledProcessors: Set<String> = []) -> String {
         var result = text
         for processor in processors {
+            if disabledProcessors.contains(processor.name) {
+                continue
+            }
             let before = result
             result = processor.process(result, context: context)
             if result != before {

@@ -16,7 +16,7 @@ struct AppCoordinatorTests {
         // All ViewModels should be created without crashing
         #expect(factory.menuBarViewModel.currentAppState == .loading)
         #expect(factory.recordingViewModel.state == .idle)
-        #expect(factory.homeViewModel.wordsDictated == 0)
+        #expect(factory.homeViewModel.recentTranscriptions.isEmpty)
         #expect(factory.shortcutsViewModel.shortcuts.isEmpty)
         #expect(factory.insightsViewModel.totalWords == 0)
         #expect(factory.onboardingViewModel.currentStep == 0)

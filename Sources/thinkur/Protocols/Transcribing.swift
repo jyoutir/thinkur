@@ -7,6 +7,6 @@ protocol Transcribing: AnyObject {
     var loadingMessage: String { get }
     var errorMessage: String? { get }
     var lastWordTimings: [WordTimingInfo] { get }
-    func loadModel() async
+    func loadModel(name: String?) async
     func transcribe(audioSamples: [Float]) async -> String?
 }

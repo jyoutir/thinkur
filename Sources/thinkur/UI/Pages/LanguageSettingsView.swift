@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LanguageSettingsView: View {
     @Environment(SettingsManager.self) private var settings
+    @Environment(AppCoordinator.self) private var coordinator
 
     private let languages = ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Korean"]
     private let modelSizes = ["tiny.en", "base.en", "small.en", "medium.en", "large-v3"]
@@ -50,5 +51,8 @@ struct LanguageSettingsView: View {
             .padding(Spacing.lg)
         }
         .navigationTitle("Language")
+        .onChange(of: settings.modelSize) {
+            Task { await coordinator.retryModelLoad() }
+        }
     }
 }

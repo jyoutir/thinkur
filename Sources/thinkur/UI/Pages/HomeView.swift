@@ -6,27 +6,6 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.lg) {
-                // Stat cards
-                HStack(spacing: Spacing.md) {
-                    StatCardView(
-                        title: "Time Saved",
-                        value: viewModel.timeSavedFormatted,
-                        unit: "total"
-                    )
-
-                    StatCardView(
-                        title: "Words Dictated",
-                        value: Formatters.compactNumber(viewModel.wordsDictated),
-                        unit: "words"
-                    )
-
-                    StatCardView(
-                        title: "Sessions",
-                        value: "\(viewModel.totalSessions)",
-                        unit: "total"
-                    )
-                }
-
                 // Press Tab prompt
                 HStack(spacing: Spacing.sm) {
                     Text("Press")
@@ -54,21 +33,16 @@ struct HomeView: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, Spacing.xl)
                     } else {
-                        VStack(spacing: 0) {
-                            ForEach(viewModel.recentTranscriptions, id: \.timestamp) { record in
-                                TranscriptRowView(
-                                    appName: record.appName,
-                                    timestamp: record.timestamp,
-                                    preview: record.processedText,
-                                    appColor: AppColorMapper.color(for: record.appName)
-                                )
-                                if record.timestamp != viewModel.recentTranscriptions.last?.timestamp {
-                                    Divider().padding(.leading, 40)
-                                }
-                            }
+                        ForEach(viewModel.recentTranscriptions, id: \.timestamp) { record in
+                            TranscriptRowView(
+                                appName: record.appName,
+                                timestamp: record.timestamp,
+                                preview: record.processedText,
+                                appColor: AppColorMapper.color(for: record.appName)
+                            )
+                            .padding(Spacing.sm)
+                            .glassCard()
                         }
-                        .padding(Spacing.sm)
-                        .glassCard()
                     }
                 }
             }

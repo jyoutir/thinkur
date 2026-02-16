@@ -15,6 +15,7 @@ final class RecordingViewModel {
     private let textPostProcessor: TextPostProcessor
     private let frontmostAppDetector: FrontmostAppDetector
     private let analyticsService: AnalyticsService
+    private let shortcutService: ShortcutService?
     private let amplitudeProvider: AudioAmplitudeProvider
     private let hotkeyManager: any HotkeyListening
     private let settings: SettingsManager
@@ -32,6 +33,7 @@ final class RecordingViewModel {
         hotkeyManager: any HotkeyListening,
         settings: SettingsManager = .shared,
         sharedState: SharedAppState? = nil,
+        shortcutService: ShortcutService? = nil,
         createFloatingPanel: Bool = true
     ) {
         self.audioCaptureManager = audioCaptureManager
@@ -40,6 +42,7 @@ final class RecordingViewModel {
         self.textPostProcessor = textPostProcessor
         self.frontmostAppDetector = frontmostAppDetector
         self.analyticsService = analyticsService
+        self.shortcutService = shortcutService
         self.amplitudeProvider = amplitudeProvider
         self.hotkeyManager = hotkeyManager
         self.settings = settings
@@ -57,10 +60,14 @@ final class RecordingViewModel {
     func setupHotkey() {
         hotkeyManager.onKeyDown = { [weak self] in
             Task { @MainActor in
-                self?.toggleListening()
+                self?.handleKeyDown()
             }
         }
-        hotkeyManager.onKeyUp = nil
+        hotkeyManager.onKeyUp = { [weak self] in
+            Task { @MainActor in
+                self?.handleKeyUp()
+            }
+        }
 
         let success = hotkeyManager.start()
         if !success {
@@ -75,6 +82,27 @@ final class RecordingViewModel {
                     }
                 }
                 Logger.app.error("Hotkey manager failed after 5 retries — grant Accessibility permission and restart thinkur")
+            }
+        }
+    }
+
+    private func handleKeyDown() {
+        if settings.hotkeyHoldMode {
+            // Hold mode: key down starts listening
+            if state == .idle || state == .loading {
+                startListening()
+            }
+        } else {
+            // Toggle mode: key down toggles
+            toggleListening()
+        }
+    }
+
+    private func handleKeyUp() {
+        if settings.hotkeyHoldMode && state == .listening {
+            // Hold mode: key up stops listening
+            Task {
+                await stopListeningAndTranscribe()
             }
         }
     }
@@ -98,11 +126,20 @@ final class RecordingViewModel {
             try audioCaptureManager.startCapture()
             updateState(.listening)
 
+            if settings.soundEffects {
+                NSSound(named: "Tink")?.play()
+            }
+            if settings.pauseMusicWhileRecording {
+                MediaControlService.pausePlayback()
+            }
+
             amplitudeProvider.startPolling { [weak self] in
                 self?.audioCaptureManager.currentAudioLevel ?? 0
             }
-            floatingPanel?.show()
-            Logger.app.info("Listening started — waveform visible")
+            if settings.floatingIndicator {
+                floatingPanel?.show()
+            }
+            Logger.app.info("Listening started")
         } catch {
             updateState(previousState)
             Logger.app.error("Failed to start audio capture: \(error)")
@@ -111,6 +148,13 @@ final class RecordingViewModel {
 
     private func stopListeningAndTranscribe() async {
         guard state == .listening else { return }
+
+        if settings.soundEffects {
+            NSSound(named: "Pop")?.play()
+        }
+        if settings.pauseMusicWhileRecording {
+            MediaControlService.resumePlayback()
+        }
 
         amplitudeProvider.stopPolling()
         floatingPanel?.hide()
@@ -139,12 +183,26 @@ final class RecordingViewModel {
                 wordTimings: transcriptionEngine.lastWordTimings,
                 appStyle: AppStyleMap.style(for: frontmostAppDetector.bundleID)
             )
-            let text = settings.postProcessingEnabled
-                ? textPostProcessor.process(rawText, context: context)
-                : rawText
-            onTranscription?(text)
-            sharedState?.lastTranscription = text
-            textInsertionService.insertText(text)
+            let text: String
+            if settings.postProcessingEnabled {
+                var disabled = Set<String>()
+                if !settings.removeFillerWords { disabled.insert("FillerRemoval") }
+                if !settings.autoPunctuation { disabled.insert("SpokenPunctuation"); disabled.insert("PausePunctuation") }
+                if !settings.intentCorrection { disabled.insert("SelfCorrection") }
+                if !settings.smartFormatting { disabled.insert("NumberConversion"); disabled.insert("Capitalization"); disabled.insert("StyleAdaptation") }
+                text = textPostProcessor.process(rawText, context: context, disabledProcessors: disabled)
+            } else {
+                text = rawText
+            }
+            // Check for shortcut expansion
+            var finalText = text
+            if let shortcutService, let expansion = await shortcutService.findExpansion(for: text.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                finalText = expansion
+            }
+
+            onTranscription?(finalText)
+            sharedState?.lastTranscription = finalText
+            textInsertionService.insertText(finalText)
             Logger.app.info("Inserted transcription: \"\(text)\"")
 
             Task {
