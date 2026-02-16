@@ -150,6 +150,6 @@ final class SettingsManager {
         self.modelSize = defaults.string(forKey: "modelSize") ?? "small.en"
 
         // Theme
-        self.themeMode = ThemeMode(rawValue: defaults.string(forKey: "themeMode") ?? "") ?? .system
+        self.themeMode = ThemeMode(rawValue: defaults.string(forKey: "themeMode") ?? "") ?? .dark
     }
 }
