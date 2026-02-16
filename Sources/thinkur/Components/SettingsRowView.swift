@@ -45,6 +45,6 @@ struct SettingsRowView<Trailing: View>: View {
             trailing
         }
         .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.sm)
+        .padding(.vertical, 14)
     }
 }

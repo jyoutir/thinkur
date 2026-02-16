@@ -5,7 +5,7 @@ struct StyleView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.lg) {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
                 Text("Adapt your voice typing style for each application.")
                     .font(Typography.body)
                     .foregroundStyle(ColorTokens.textSecondary)
@@ -23,7 +23,9 @@ struct StyleView: View {
                     }
                 }
             }
-            .padding(Spacing.lg)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.xxl)
+            .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Style")
         .task {

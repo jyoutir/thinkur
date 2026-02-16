@@ -7,7 +7,7 @@ struct HotkeySettingsView: View {
         @Bindable var s = settings
 
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.lg) {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
                 GroupedSettingsSection(title: "Activation") {
                     VStack(spacing: 0) {
                         SettingsRowView(icon: "keyboard", iconColor: ColorTokens.accentBlue, title: "Record Shortcut") {
@@ -32,7 +32,9 @@ struct HotkeySettingsView: View {
                     }
                 }
             }
-            .padding(Spacing.lg)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.xxl)
+            .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Hotkey")
     }

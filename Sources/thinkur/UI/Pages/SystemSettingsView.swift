@@ -9,7 +9,7 @@ struct SystemSettingsView: View {
         @Bindable var s = settings
 
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.lg) {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
                 GroupedSettingsSection(title: "General") {
                     VStack(spacing: 0) {
                         ToggleRow(
@@ -98,7 +98,9 @@ struct SystemSettingsView: View {
                     }
                 }
             }
-            .padding(Spacing.lg)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.xxl)
+            .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("System")
     }

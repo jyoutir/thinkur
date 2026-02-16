@@ -4,22 +4,23 @@ struct SidebarView: View {
     @Binding var selectedPage: NavigationPage
     @Environment(ShortcutsViewModel.self) private var shortcutsVM
     @Environment(SettingsManager.self) private var settings
+    @State private var settingsExpanded = false
 
     var body: some View {
         VStack(spacing: 0) {
             List(selection: $selectedPage) {
-                Section("Main") {
-                    ForEach(NavigationPage.mainPages) { page in
-                        sidebarLabel(for: page)
-                            .tag(page)
-                    }
+                ForEach(NavigationPage.mainPages) { page in
+                    sidebarLabel(for: page)
+                        .tag(page)
                 }
 
-                Section("Settings") {
+                DisclosureGroup(isExpanded: $settingsExpanded) {
                     ForEach(NavigationPage.settingsPages) { page in
                         sidebarLabel(for: page)
                             .tag(page)
                     }
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
                 }
             }
             .listStyle(.sidebar)
@@ -45,6 +46,12 @@ struct SidebarView: View {
             .buttonStyle(.plain)
         }
         .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
+        .onChange(of: selectedPage) { _, newPage in
+            // Auto-expand settings group when a settings page is selected
+            if newPage.section == .settings {
+                settingsExpanded = true
+            }
+        }
     }
 
     @ViewBuilder

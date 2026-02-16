@@ -16,7 +16,7 @@ struct GroupedSettingsSection<Content: View>: View {
                     .font(Typography.caption)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .textCase(.uppercase)
-                    .padding(.bottom, Spacing.xs)
+                    .padding(.bottom, Spacing.sm)
             }
 
             VStack(spacing: 0) {

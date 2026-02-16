@@ -7,7 +7,7 @@ struct ShortcutsView: View {
         @Bindable var vm = viewModel
 
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.lg) {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
                 // Add shortcut form
                 GroupedSettingsSection(title: "New Shortcut") {
                     VStack(spacing: Spacing.sm) {
@@ -44,11 +44,21 @@ struct ShortcutsView: View {
                         .foregroundStyle(ColorTokens.textPrimary)
 
                     if viewModel.shortcuts.isEmpty {
-                        Text("No shortcuts yet. Add one above to expand text automatically.")
-                            .font(Typography.body)
-                            .foregroundStyle(ColorTokens.textTertiary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, Spacing.xl)
+                        VStack(spacing: Spacing.sm) {
+                            Image(systemName: "text.badge.plus")
+                                .font(.system(size: 40))
+                                .foregroundStyle(ColorTokens.textTertiary.opacity(0.5))
+
+                            Text("No shortcuts yet")
+                                .font(Typography.headline)
+                                .foregroundStyle(ColorTokens.textSecondary)
+
+                            Text("Create one above")
+                                .font(Typography.caption)
+                                .foregroundStyle(ColorTokens.textTertiary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Spacing.xl)
                     } else {
                         VStack(spacing: 0) {
                             ForEach(viewModel.shortcuts, id: \.trigger) { shortcut in
@@ -64,7 +74,9 @@ struct ShortcutsView: View {
                     }
                 }
             }
-            .padding(Spacing.lg)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.xxl)
+            .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Shortcuts")
         .task {
