@@ -1,13 +1,32 @@
 import Foundation
 
 enum GreetingProvider {
-    /// Returns a time-aware, personalized greeting for the current user.
-    /// Picks one randomly per call — caller should cache per app launch.
-    static func greeting() -> String {
-        let firstName = extractFirstName()
+    /// The user's first name extracted from macOS account.
+    static var firstName: String {
+        let fullName = NSFullUserName()
+        let first = fullName.split(separator: " ").first.map(String.init) ?? fullName
+        return first.isEmpty ? "there" : first
+    }
+
+    /// Rotating phrases (without the name — name goes on its own line).
+    static func phrases() -> [String] {
         let hour = Calendar.current.component(.hour, from: Date())
-        let pool = greetingPool(for: hour, name: firstName)
-        return pool.randomElement() ?? "Hello, \(firstName)"
+        var pool: [String]
+        switch hour {
+        case 0..<12:
+            pool = ["Good morning...", "Rise and shine..."]
+        case 12..<17:
+            pool = ["Good afternoon...", "Welcome back..."]
+        default:
+            pool = ["Good evening...", "Winding down..."]
+        }
+        pool += [
+            "Let's get thinking...",
+            "Don't type, just speak...",
+            "Ready when you are...",
+            "What's on your mind...",
+        ]
+        return pool.shuffled()
     }
 
     /// Formatted current date string (e.g. "Sunday, February 16")
@@ -17,36 +36,14 @@ enum GreetingProvider {
         return formatter.string(from: Date())
     }
 
-    private static func extractFirstName() -> String {
-        let fullName = NSFullUserName()
-        let first = fullName.split(separator: " ").first.map(String.init) ?? fullName
-        return first.isEmpty ? "there" : first
-    }
-
-    private static func greetingPool(for hour: Int, name: String) -> [String] {
-        var pool: [String]
+    /// Legacy single greeting (used by pages that don't animate).
+    static func greeting() -> String {
+        let name = firstName
+        let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
-        case 0..<12:
-            pool = [
-                "Good morning, \(name)",
-                "Rise and shine, \(name)",
-            ]
-        case 12..<17:
-            pool = [
-                "Good afternoon, \(name)",
-                "Welcome back, \(name)",
-            ]
-        default:
-            pool = [
-                "Good evening, \(name)",
-                "Winding down, \(name)?",
-            ]
+        case 0..<12: return "Good morning, \(name)"
+        case 12..<17: return "Good afternoon, \(name)"
+        default: return "Good evening, \(name)"
         }
-        // Anytime greetings mixed in
-        pool += [
-            "Ready to dictate, \(name)?",
-            "Let's get typing, \(name)",
-        ]
-        return pool
     }
 }
