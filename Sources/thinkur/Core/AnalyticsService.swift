@@ -77,24 +77,24 @@ final class AnalyticsService {
 
     func fetchTotalTimeSaved() async -> TimeInterval {
         let context = container.mainContext
-        let descriptor = FetchDescriptor<TranscriptionRecord>()
+        let descriptor = FetchDescriptor<DailyAnalytics>()
         guard let records = try? context.fetch(descriptor) else { return 0 }
-        let totalDuration = records.reduce(0.0) { $0 + $1.duration }
+        let totalDuration = records.reduce(0.0) { $0 + $1.totalDuration }
         return totalDuration * 2.3 // typing multiplier
     }
 
     func fetchTotalWords() async -> Int {
         let context = container.mainContext
-        let descriptor = FetchDescriptor<TranscriptionRecord>()
+        let descriptor = FetchDescriptor<DailyAnalytics>()
         guard let records = try? context.fetch(descriptor) else { return 0 }
-        return records.reduce(0) { $0 + $1.wordCount }
+        return records.reduce(0) { $0 + $1.totalWords }
     }
 
     func fetchTotalSessions() async -> Int {
         let context = container.mainContext
-        let descriptor = FetchDescriptor<TranscriptionRecord>()
+        let descriptor = FetchDescriptor<DailyAnalytics>()
         guard let records = try? context.fetch(descriptor) else { return 0 }
-        return records.count
+        return records.reduce(0) { $0 + $1.transcriptionCount }
     }
 
     func fetchDailyAnalytics(for period: InsightsPeriod) async -> [DailyAnalytics] {
@@ -124,6 +124,28 @@ final class AnalyticsService {
         descriptor.sortBy = [SortDescriptor(\.timestamp, order: .reverse)]
         descriptor.fetchLimit = limit
         return (try? context.fetch(descriptor)) ?? []
+    }
+
+    func fetchTranscriptions(since days: Int, limit: Int = 200) async -> [TranscriptionRecord] {
+        let context = container.mainContext
+        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: .now) ?? .now
+        let predicate = #Predicate<TranscriptionRecord> { $0.timestamp >= cutoff }
+        var descriptor = FetchDescriptor<TranscriptionRecord>(predicate: predicate)
+        descriptor.sortBy = [SortDescriptor(\.timestamp, order: .reverse)]
+        descriptor.fetchLimit = limit
+        return (try? context.fetch(descriptor)) ?? []
+    }
+
+    func fetchActiveDateStrings(since days: Int) async -> Set<String> {
+        let context = container.mainContext
+        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: .now) ?? .now
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let cutoffString = formatter.string(from: cutoff)
+        let predicate = #Predicate<DailyAnalytics> { $0.dateString >= cutoffString }
+        let descriptor = FetchDescriptor<DailyAnalytics>(predicate: predicate)
+        guard let records = try? context.fetch(descriptor) else { return [] }
+        return Set(records.map(\.dateString))
     }
 
     func clearAllHistory() async throws {

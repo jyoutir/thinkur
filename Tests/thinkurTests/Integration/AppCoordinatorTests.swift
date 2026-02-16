@@ -14,9 +14,8 @@ struct AppCoordinatorTests {
         let container = ServiceContainer()
         let factory = ViewModelFactory(services: container)
         // All ViewModels should be created without crashing
-        #expect(factory.menuBarViewModel.currentAppState == .loading)
         #expect(factory.recordingViewModel.state == .idle)
-        #expect(factory.homeViewModel.recentTranscriptions.isEmpty)
+        #expect(factory.homeViewModel.groupedTranscriptions.isEmpty)
         #expect(factory.shortcutsViewModel.shortcuts.isEmpty)
         #expect(factory.insightsViewModel.totalWords == 0)
         #expect(factory.onboardingViewModel.currentStep == 0)

@@ -6,6 +6,8 @@ struct TranscriptRowView: View {
     let timestamp: Date
     let preview: String
 
+    @State private var isHovered = false
+
     var body: some View {
         HStack(spacing: Spacing.sm) {
             AppIconView(bundleID: appBundleID, appName: appName, size: 44)
@@ -26,7 +28,12 @@ struct TranscriptRowView: View {
                     .foregroundStyle(ColorTokens.textSecondary)
                     .lineLimit(1)
             }
+
+            CopyButton(text: preview)
+                .opacity(isHovered ? 1 : 0)
+                .animation(Animations.hoverFade, value: isHovered)
         }
         .padding(.vertical, Spacing.xxs)
+        .onHover { isHovered = $0 }
     }
 }
