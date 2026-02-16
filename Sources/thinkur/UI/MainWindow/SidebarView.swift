@@ -67,7 +67,6 @@ struct SidebarView: View {
                 .padding(.vertical, Spacing.sm)
             }
             .buttonStyle(.plain)
-            .glassClear(cornerRadius: 6)
         }
         .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
         .onChange(of: selectedPage) { _, newPage in
