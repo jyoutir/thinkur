@@ -45,7 +45,7 @@ struct SupportView: View {
                 }
 
                 GroupedSettingsSection(title: "About") {
-                    SettingsRowView(icon: "info.circle", iconColor: .primary, title: "Version") {
+                    SettingsRowView(icon: "info.circle", title: "Version") {
                         Text("1.0.0")
                             .font(Typography.body)
                             .foregroundStyle(ColorTokens.textSecondary)
@@ -65,7 +65,7 @@ struct SupportView: View {
 
     @ViewBuilder
     private func supportLink(icon: String, title: String, subtitle: String) -> some View {
-        SettingsRowView(icon: icon, iconColor: .primary, title: title, subtitle: subtitle) {
+        SettingsRowView(icon: icon, title: title, subtitle: subtitle) {
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(ColorTokens.textTertiary)

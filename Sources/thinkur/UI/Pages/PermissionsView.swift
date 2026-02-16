@@ -15,7 +15,6 @@ struct PermissionsView: View {
                     VStack(spacing: 0) {
                         PermissionRowView(
                             icon: "mic.fill",
-                            iconColor: .primary,
                             name: "Microphone",
                             description: "Required to capture your voice for transcription",
                             isGranted: viewModel.microphoneGranted,
@@ -26,7 +25,6 @@ struct PermissionsView: View {
 
                         PermissionRowView(
                             icon: "hand.raised.fill",
-                            iconColor: .primary,
                             name: "Accessibility",
                             description: "Required to insert text into other applications",
                             isGranted: viewModel.accessibilityGranted,
@@ -37,7 +35,6 @@ struct PermissionsView: View {
 
                         PermissionRowView(
                             icon: "keyboard.fill",
-                            iconColor: .primary,
                             name: "Input Monitoring",
                             description: "Required to detect the hotkey for activating voice typing",
                             isGranted: viewModel.inputMonitoringGranted,

@@ -6,9 +6,6 @@ import os
 final class RecordingViewModel {
     var state: AppState = .idle
 
-    var onStateChanged: ((AppState) -> Void)?
-    var onTranscription: ((String) -> Void)?
-
     private let audioCaptureManager: any AudioCapturing
     private let transcriptionEngine: any Transcribing
     private let textInsertionService: any TextInserting
@@ -200,7 +197,6 @@ final class RecordingViewModel {
                 finalText = expansion
             }
 
-            onTranscription?(finalText)
             sharedState?.lastTranscription = finalText
             textInsertionService.insertText(finalText)
             Logger.app.info("Inserted transcription: \"\(text)\"")
@@ -224,6 +220,5 @@ final class RecordingViewModel {
     private func updateState(_ newState: AppState) {
         state = newState
         sharedState?.appState = newState
-        onStateChanged?(newState)
     }
 }

@@ -17,7 +17,6 @@ struct DictationSettingsView: View {
                     VStack(spacing: 0) {
                         ToggleRow(
                             icon: "text.badge.minus",
-                            iconColor: .primary,
                             title: "Remove Filler Words",
                             subtitle: "Removes um, uh, like, you know",
                             isOn: $s.removeFillerWords
@@ -27,7 +26,6 @@ struct DictationSettingsView: View {
 
                         ToggleRow(
                             icon: "textformat.abc",
-                            iconColor: .primary,
                             title: "Auto Punctuation",
                             subtitle: "Automatically adds periods, commas, and question marks",
                             isOn: $s.autoPunctuation
@@ -37,7 +35,6 @@ struct DictationSettingsView: View {
 
                         ToggleRow(
                             icon: "wand.and.stars",
-                            iconColor: .primary,
                             title: "Intent Correction",
                             subtitle: "Fixes self-corrections like 'I went to the sto... restaurant'",
                             isOn: $s.intentCorrection
@@ -47,7 +44,6 @@ struct DictationSettingsView: View {
 
                         ToggleRow(
                             icon: "number",
-                            iconColor: .primary,
                             title: "Smart Formatting",
                             subtitle: "Formats numbers, dates, and common patterns",
                             isOn: $s.smartFormatting
@@ -57,7 +53,6 @@ struct DictationSettingsView: View {
 
                         ToggleRow(
                             icon: "chevron.left.forwardslash.chevron.right",
-                            iconColor: .primary,
                             title: "Code Context",
                             subtitle: "Preserves code-specific formatting when dictating in editors",
                             isOn: $s.codeContext
@@ -67,7 +62,6 @@ struct DictationSettingsView: View {
 
                         ToggleRow(
                             icon: "brain",
-                            iconColor: .primary,
                             title: "Learn from Corrections",
                             subtitle: "Improves accuracy based on your editing patterns",
                             isOn: $s.learnFromCorrections

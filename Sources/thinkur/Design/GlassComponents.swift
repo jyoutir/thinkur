@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Glass Card (existing)
+// MARK: - Glass Card
 
 struct GlassCard: ViewModifier {
     var cornerRadius: CGFloat = CornerRadius.card
@@ -31,25 +31,6 @@ struct GlassClear: ViewModifier {
 extension View {
     func glassClear(cornerRadius: CGFloat = CornerRadius.card) -> some View {
         modifier(GlassClear(cornerRadius: cornerRadius))
-    }
-}
-
-// MARK: - Glass Tinted
-
-struct GlassTinted: ViewModifier {
-    let tint: Color
-    var opacity: Double = 0.3
-    var cornerRadius: CGFloat = CornerRadius.card
-
-    func body(content: Content) -> some View {
-        content
-            .glassEffect(.regular.tint(tint.opacity(opacity)), in: .rect(cornerRadius: cornerRadius))
-    }
-}
-
-extension View {
-    func glassTinted(_ tint: Color, opacity: Double = 0.3, cornerRadius: CGFloat = CornerRadius.card) -> some View {
-        modifier(GlassTinted(tint: tint, opacity: opacity, cornerRadius: cornerRadius))
     }
 }
 

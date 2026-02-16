@@ -19,7 +19,6 @@ struct SystemSettingsView: View {
                     VStack(spacing: 0) {
                         ToggleRow(
                             icon: "speaker.wave.2",
-                            iconColor: .primary,
                             title: "Sound Effects",
                             subtitle: "Play sounds when starting and stopping recording",
                             isOn: $s.soundEffects
@@ -29,7 +28,6 @@ struct SystemSettingsView: View {
 
                         ToggleRow(
                             icon: "pause.circle",
-                            iconColor: .primary,
                             title: "Pause Music While Recording",
                             subtitle: "Automatically pause playback during dictation",
                             isOn: $s.pauseMusicWhileRecording
@@ -39,7 +37,6 @@ struct SystemSettingsView: View {
 
                         ToggleRow(
                             icon: "waveform",
-                            iconColor: .primary,
                             title: "Floating Indicator",
                             subtitle: "Show waveform visualization while recording",
                             isOn: $s.floatingIndicator
@@ -49,7 +46,6 @@ struct SystemSettingsView: View {
 
                         ToggleRow(
                             icon: "power",
-                            iconColor: .primary,
                             title: "Launch at Login",
                             subtitle: "Start thinkur automatically when you log in",
                             isOn: $s.launchAtLogin
@@ -59,7 +55,6 @@ struct SystemSettingsView: View {
 
                         ToggleRow(
                             icon: "arrow.triangle.2.circlepath",
-                            iconColor: .primary,
                             title: "Automatic Updates",
                             subtitle: "Keep thinkur up to date automatically",
                             isOn: $s.automaticUpdates

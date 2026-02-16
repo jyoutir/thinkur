@@ -15,7 +15,7 @@ struct HotkeySettingsView: View {
 
                 GroupedSettingsSection(title: "Activation") {
                     VStack(spacing: 0) {
-                        SettingsRowView(icon: "keyboard", iconColor: .primary, title: "Record Shortcut") {
+                        SettingsRowView(icon: "keyboard", title: "Record Shortcut") {
                             KeyboardShortcutBadge(key: hotkeyDisplayName)
                         }
 
@@ -23,7 +23,6 @@ struct HotkeySettingsView: View {
 
                         ToggleRow(
                             icon: "hand.tap",
-                            iconColor: .primary,
                             title: "Hold Mode",
                             subtitle: "Hold key to record, release to stop",
                             isOn: $s.hotkeyHoldMode
@@ -32,7 +31,7 @@ struct HotkeySettingsView: View {
                 }
 
                 GroupedSettingsSection(title: "Cancel") {
-                    SettingsRowView(icon: "escape", iconColor: .primary, title: "Cancel Recording") {
+                    SettingsRowView(icon: "escape", title: "Cancel Recording") {
                         KeyboardShortcutBadge(key: "Esc")
                     }
                 }
