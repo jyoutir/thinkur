@@ -30,29 +30,35 @@ struct InsightsView: View {
                     StatCardView(
                         title: "Time Saved",
                         value: viewModel.timeSavedFormatted,
-                        unit: "total"
+                        unit: "total",
+                        tint: nil
                     )
                     .hoverBrightness()
                     .opacity(appeared ? 1 : 0)
-                    .animation(.easeOut(duration: 0.3).delay(0.0), value: appeared)
+                    .offset(y: appeared ? 0 : 8)
+                    .animation(Animations.glassStagger(index: 0), value: appeared)
 
                     StatCardView(
                         title: "Total Words",
                         value: "\(viewModel.totalWords)",
-                        unit: "words"
+                        unit: "words",
+                        tint: nil
                     )
                     .hoverBrightness()
                     .opacity(appeared ? 1 : 0)
-                    .animation(.easeOut(duration: 0.3).delay(0.05), value: appeared)
+                    .offset(y: appeared ? 0 : 8)
+                    .animation(Animations.glassStagger(index: 1), value: appeared)
 
                     StatCardView(
                         title: "Sessions",
                         value: "\(viewModel.totalSessions)",
-                        unit: "total"
+                        unit: "total",
+                        tint: nil
                     )
                     .hoverBrightness()
                     .opacity(appeared ? 1 : 0)
-                    .animation(.easeOut(duration: 0.3).delay(0.1), value: appeared)
+                    .offset(y: appeared ? 0 : 8)
+                    .animation(Animations.glassStagger(index: 2), value: appeared)
                 }
 
                 // Chart
@@ -62,7 +68,7 @@ struct InsightsView: View {
                         .foregroundStyle(ColorTokens.textPrimary)
 
                     if viewModel.chartData.isEmpty {
-                        emptyState(
+                        GlassEmptyState(
                             icon: "chart.bar",
                             title: "No data yet",
                             subtitle: "Start dictating to see your insights"
@@ -81,7 +87,7 @@ struct InsightsView: View {
                         .foregroundStyle(ColorTokens.textPrimary)
 
                     if viewModel.topApps.isEmpty {
-                        emptyState(
+                        GlassEmptyState(
                             icon: "app.dashed",
                             title: "No app usage yet",
                             subtitle: "Start dictating to see your top apps"
@@ -98,7 +104,8 @@ struct InsightsView: View {
                                 )
                                 .hoverBrightness()
                                 .opacity(appeared ? 1 : 0)
-                                .animation(.easeOut(duration: 0.3).delay(Double(index) * 0.05), value: appeared)
+                                .offset(y: appeared ? 0 : 8)
+                                .animation(Animations.glassStagger(index: index), value: appeared)
                             }
                         }
                         .padding(Spacing.md)
@@ -109,30 +116,14 @@ struct InsightsView: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 6)
+            .animation(Animations.glassMaterialize, value: appeared)
         }
         .navigationTitle("Insights")
         .task {
             await viewModel.loadData()
             appeared = true
         }
-    }
-
-    @ViewBuilder
-    private func emptyState(icon: String, title: String, subtitle: String) -> some View {
-        VStack(spacing: Spacing.sm) {
-            Image(systemName: icon)
-                .font(.system(size: 40))
-                .foregroundStyle(ColorTokens.textTertiary.opacity(0.5))
-
-            Text(title)
-                .font(Typography.headline)
-                .foregroundStyle(ColorTokens.textSecondary)
-
-            Text(subtitle)
-                .font(Typography.caption)
-                .foregroundStyle(ColorTokens.textTertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Spacing.xl)
     }
 }

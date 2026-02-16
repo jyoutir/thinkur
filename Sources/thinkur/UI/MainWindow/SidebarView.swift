@@ -67,11 +67,12 @@ struct SidebarView: View {
                 .padding(.vertical, Spacing.sm)
             }
             .buttonStyle(.plain)
+            .glassClear(cornerRadius: 6)
         }
         .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
         .onChange(of: selectedPage) { _, newPage in
             if newPage.section == .settings && !settingsExpanded {
-                withAnimation(.easeInOut(duration: 0.15)) {
+                withAnimation(Animations.glassMorph) {
                     settingsExpanded = true
                 }
             }
@@ -97,7 +98,7 @@ struct SidebarView: View {
     private var settingsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button {
-                withAnimation(.easeInOut(duration: 0.15)) {
+                withAnimation(Animations.glassMorph) {
                     settingsExpanded.toggle()
                 }
             } label: {
@@ -106,7 +107,7 @@ struct SidebarView: View {
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(ColorTokens.textTertiary)
                         .rotationEffect(settingsExpanded ? .degrees(90) : .zero)
-                        .animation(.easeInOut(duration: 0.15), value: settingsExpanded)
+                        .animation(Animations.glassMorph, value: settingsExpanded)
                     Image(systemName: "gearshape")
                         .font(.system(size: 13))
                     Text("Settings")
@@ -130,7 +131,7 @@ struct SidebarView: View {
                     .padding(.bottom, Spacing.xxs)
                 }
                 .frame(maxHeight: 220)
-                .transition(.opacity)
+                .transition(.blurReplace)
             }
         }
     }
@@ -165,12 +166,12 @@ struct SidebarView: View {
         } label: {
             Label(page.title, systemImage: page.icon)
                 .font(Typography.body)
-                .foregroundStyle(isSelected ? .white : ColorTokens.textPrimary)
+                .foregroundStyle(ColorTokens.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 6)
                 .padding(.horizontal, Spacing.sm)
                 .background(
-                    isSelected ? Color.accentColor : Color.clear,
+                    isSelected ? Color.primary.opacity(0.1) : Color.clear,
                     in: RoundedRectangle(cornerRadius: 5)
                 )
                 .contentShape(Rectangle())

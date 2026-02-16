@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DictationSettingsView: View {
     @Environment(SettingsManager.self) private var settings
+    @State private var appeared = false
 
     var body: some View {
         @Bindable var s = settings
@@ -16,7 +17,7 @@ struct DictationSettingsView: View {
                     VStack(spacing: 0) {
                         ToggleRow(
                             icon: "text.badge.minus",
-                            iconColor: ColorTokens.accentOrange,
+                            iconColor: .primary,
                             title: "Remove Filler Words",
                             subtitle: "Removes um, uh, like, you know",
                             isOn: $s.removeFillerWords
@@ -26,7 +27,7 @@ struct DictationSettingsView: View {
 
                         ToggleRow(
                             icon: "textformat.abc",
-                            iconColor: ColorTokens.accentBlue,
+                            iconColor: .primary,
                             title: "Auto Punctuation",
                             subtitle: "Automatically adds periods, commas, and question marks",
                             isOn: $s.autoPunctuation
@@ -36,7 +37,7 @@ struct DictationSettingsView: View {
 
                         ToggleRow(
                             icon: "wand.and.stars",
-                            iconColor: ColorTokens.accentPurple,
+                            iconColor: .primary,
                             title: "Intent Correction",
                             subtitle: "Fixes self-corrections like 'I went to the sto... restaurant'",
                             isOn: $s.intentCorrection
@@ -46,7 +47,7 @@ struct DictationSettingsView: View {
 
                         ToggleRow(
                             icon: "number",
-                            iconColor: ColorTokens.accentGreen,
+                            iconColor: .primary,
                             title: "Smart Formatting",
                             subtitle: "Formats numbers, dates, and common patterns",
                             isOn: $s.smartFormatting
@@ -56,7 +57,7 @@ struct DictationSettingsView: View {
 
                         ToggleRow(
                             icon: "chevron.left.forwardslash.chevron.right",
-                            iconColor: ColorTokens.textSecondary,
+                            iconColor: .primary,
                             title: "Code Context",
                             subtitle: "Preserves code-specific formatting when dictating in editors",
                             isOn: $s.codeContext
@@ -66,7 +67,7 @@ struct DictationSettingsView: View {
 
                         ToggleRow(
                             icon: "brain",
-                            iconColor: ColorTokens.accentRed,
+                            iconColor: .primary,
                             title: "Learn from Corrections",
                             subtitle: "Improves accuracy based on your editing patterns",
                             isOn: $s.learnFromCorrections
@@ -77,7 +78,11 @@ struct DictationSettingsView: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 6)
+            .animation(Animations.glassMaterialize, value: appeared)
         }
         .navigationTitle("Dictation")
+        .onAppear { appeared = true }
     }
 }

@@ -4,6 +4,7 @@ struct SystemSettingsView: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(AppCoordinator.self) private var coordinator
     @State private var showClearConfirmation = false
+    @State private var appeared = false
 
     var body: some View {
         @Bindable var s = settings
@@ -18,7 +19,7 @@ struct SystemSettingsView: View {
                     VStack(spacing: 0) {
                         ToggleRow(
                             icon: "speaker.wave.2",
-                            iconColor: ColorTokens.accentBlue,
+                            iconColor: .primary,
                             title: "Sound Effects",
                             subtitle: "Play sounds when starting and stopping recording",
                             isOn: $s.soundEffects
@@ -28,7 +29,7 @@ struct SystemSettingsView: View {
 
                         ToggleRow(
                             icon: "pause.circle",
-                            iconColor: ColorTokens.accentOrange,
+                            iconColor: .primary,
                             title: "Pause Music While Recording",
                             subtitle: "Automatically pause playback during dictation",
                             isOn: $s.pauseMusicWhileRecording
@@ -38,7 +39,7 @@ struct SystemSettingsView: View {
 
                         ToggleRow(
                             icon: "waveform",
-                            iconColor: ColorTokens.accentGreen,
+                            iconColor: .primary,
                             title: "Floating Indicator",
                             subtitle: "Show waveform visualization while recording",
                             isOn: $s.floatingIndicator
@@ -47,18 +48,8 @@ struct SystemSettingsView: View {
                         Divider()
 
                         ToggleRow(
-                            icon: "dock.rectangle",
-                            iconColor: ColorTokens.accentPurple,
-                            title: "Show in Dock",
-                            subtitle: "Display thinkur icon in the Dock",
-                            isOn: $s.showInDock
-                        )
-
-                        Divider()
-
-                        ToggleRow(
                             icon: "power",
-                            iconColor: ColorTokens.textSecondary,
+                            iconColor: .primary,
                             title: "Launch at Login",
                             subtitle: "Start thinkur automatically when you log in",
                             isOn: $s.launchAtLogin
@@ -68,7 +59,7 @@ struct SystemSettingsView: View {
 
                         ToggleRow(
                             icon: "arrow.triangle.2.circlepath",
-                            iconColor: ColorTokens.accentBlue,
+                            iconColor: .primary,
                             title: "Automatic Updates",
                             subtitle: "Keep thinkur up to date automatically",
                             isOn: $s.automaticUpdates
@@ -105,7 +96,11 @@ struct SystemSettingsView: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 6)
+            .animation(Animations.glassMaterialize, value: appeared)
         }
         .navigationTitle("System")
+        .onAppear { appeared = true }
     }
 }

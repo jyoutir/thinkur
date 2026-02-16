@@ -27,7 +27,7 @@ struct OnboardingStepView: View {
                     ForEach(step.bullets, id: \.self) { bullet in
                         HStack(alignment: .top, spacing: Spacing.xs) {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(ColorTokens.accentGreen)
+                                .foregroundStyle(.primary)
                                 .font(.system(size: 14))
                             Text(bullet)
                                 .font(Typography.body)
@@ -48,7 +48,7 @@ struct OnboardingStepView: View {
             }
             .buttonStyle(.glassProminent)
             .controlSize(.large)
-            .tint(ColorTokens.accentBlue)
+            .tint(.primary)
 
             Spacer()
                 .frame(height: Spacing.xl)

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ShortcutsView: View {
     @Environment(ShortcutsViewModel.self) private var viewModel
+    @State private var appeared = false
 
     var body: some View {
         @Bindable var vm = viewModel
@@ -48,21 +49,11 @@ struct ShortcutsView: View {
                         .foregroundStyle(ColorTokens.textPrimary)
 
                     if viewModel.shortcuts.isEmpty {
-                        VStack(spacing: Spacing.sm) {
-                            Image(systemName: "text.badge.plus")
-                                .font(.system(size: 40))
-                                .foregroundStyle(ColorTokens.textTertiary.opacity(0.5))
-
-                            Text("No shortcuts yet")
-                                .font(Typography.headline)
-                                .foregroundStyle(ColorTokens.textSecondary)
-
-                            Text("Create one above")
-                                .font(Typography.caption)
-                                .foregroundStyle(ColorTokens.textTertiary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Spacing.xl)
+                        GlassEmptyState(
+                            icon: "text.badge.plus",
+                            title: "No shortcuts yet",
+                            subtitle: "Create one above"
+                        )
                     } else {
                         VStack(spacing: 0) {
                             ForEach(viewModel.shortcuts, id: \.trigger) { shortcut in
@@ -81,10 +72,14 @@ struct ShortcutsView: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 6)
+            .animation(Animations.glassMaterialize, value: appeared)
         }
         .navigationTitle("Shortcuts")
         .task {
             await viewModel.loadData()
+            appeared = true
         }
     }
 }

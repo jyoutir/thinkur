@@ -44,7 +44,7 @@ struct OnboardingFlow: View {
                 HStack(spacing: Spacing.xs) {
                     ForEach(0..<steps.count, id: \.self) { index in
                         Capsule()
-                            .fill(index == viewModel.currentStep ? ColorTokens.accentBlue : ColorTokens.border)
+                            .fill(index == viewModel.currentStep ? ColorTokens.textPrimary : ColorTokens.border)
                             .frame(width: index == viewModel.currentStep ? 24 : 8, height: 8)
                             .animation(Animations.springBounce, value: viewModel.currentStep)
                     }

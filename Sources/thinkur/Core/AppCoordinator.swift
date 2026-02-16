@@ -15,7 +15,6 @@ final class AppCoordinator {
     var sharedState: SharedAppState { services.sharedState }
     var permissionManager: PermissionManager { services.permissionManager }
 
-    var menuBarViewModel: MenuBarViewModel { viewModels.menuBarViewModel }
     var recordingViewModel: RecordingViewModel { viewModels.recordingViewModel }
     var homeViewModel: HomeViewModel { viewModels.homeViewModel }
     var shortcutsViewModel: ShortcutsViewModel { viewModels.shortcutsViewModel }
@@ -31,15 +30,6 @@ final class AppCoordinator {
             transcriptionEngine: services.transcriptionEngine,
             sharedState: services.sharedState
         )
-
-        // Keep callback wiring for backward compatibility
-        let menuBarVM = viewModels.menuBarViewModel
-        viewModels.recordingViewModel.onStateChanged = { [weak menuBarVM] newState in
-            menuBarVM?.appState = newState
-        }
-        viewModels.recordingViewModel.onTranscription = { [weak menuBarVM] text in
-            menuBarVM?.lastTranscription = text
-        }
 
         Task { [weak self] in
             await self?.setup()

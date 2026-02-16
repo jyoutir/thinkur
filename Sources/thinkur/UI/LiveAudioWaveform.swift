@@ -26,7 +26,7 @@ struct LiveAudioWaveform: View {
         }
         .padding(.horizontal, Self.horizontalPadding)
         .frame(height: height)
-        .background(.black, in: .capsule)
+        .glassCapsule()
     }
 
     private func sampleAmplitudes(_ buffer: [Double], targetCount: Int) -> [Double] {
@@ -53,7 +53,7 @@ private struct WaveformBar: View {
         let barHeight = Self.baseHeight + clamped * Self.maxBoost
 
         RoundedRectangle(cornerRadius: 1.5)
-            .fill(.white)
+            .fill(Color.primary)
             .frame(width: LiveAudioWaveform.barWidth, height: barHeight)
             .animation(.easeOut(duration: 0.1), value: barHeight)
     }

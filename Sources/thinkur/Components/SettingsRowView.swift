@@ -9,7 +9,7 @@ struct SettingsRowView<Trailing: View>: View {
 
     init(
         icon: String,
-        iconColor: Color = ColorTokens.accentBlue,
+        iconColor: Color = .primary,
         title: String,
         subtitle: String? = nil,
         @ViewBuilder trailing: () -> Trailing

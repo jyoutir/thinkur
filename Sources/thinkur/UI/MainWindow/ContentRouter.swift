@@ -31,8 +31,8 @@ struct ContentRouter: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .transition(.opacity)
+        .transition(.blurReplace)
         .id(page)
-        .animation(.easeInOut(duration: 0.15), value: page)
+        .animation(Animations.glassMorph, value: page)
     }
 }

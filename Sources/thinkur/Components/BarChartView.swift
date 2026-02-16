@@ -2,7 +2,7 @@ import SwiftUI
 
 struct BarChartView: View {
     let data: [(label: String, value: Double)]
-    var barColor: Color = ColorTokens.accentBlue
+    var barColor: Color = .primary
 
     var body: some View {
         let maxValue = data.map(\.value).max() ?? 1.0

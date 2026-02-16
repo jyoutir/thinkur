@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PermissionsView: View {
     @Environment(PermissionManager.self) private var viewModel
+    @State private var appeared = false
 
     var body: some View {
         ScrollView {
@@ -14,7 +15,7 @@ struct PermissionsView: View {
                     VStack(spacing: 0) {
                         PermissionRowView(
                             icon: "mic.fill",
-                            iconColor: ColorTokens.accentRed,
+                            iconColor: .primary,
                             name: "Microphone",
                             description: "Required to capture your voice for transcription",
                             isGranted: viewModel.microphoneGranted,
@@ -25,7 +26,7 @@ struct PermissionsView: View {
 
                         PermissionRowView(
                             icon: "hand.raised.fill",
-                            iconColor: ColorTokens.accentBlue,
+                            iconColor: .primary,
                             name: "Accessibility",
                             description: "Required to insert text into other applications",
                             isGranted: viewModel.accessibilityGranted,
@@ -36,7 +37,7 @@ struct PermissionsView: View {
 
                         PermissionRowView(
                             icon: "keyboard.fill",
-                            iconColor: ColorTokens.accentPurple,
+                            iconColor: .primary,
                             name: "Input Monitoring",
                             description: "Required to detect the hotkey for activating voice typing",
                             isGranted: viewModel.inputMonitoringGranted,
@@ -55,10 +56,14 @@ struct PermissionsView: View {
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 6)
+            .animation(Animations.glassMaterialize, value: appeared)
         }
         .navigationTitle("Permissions")
         .task {
             viewModel.checkAll()
         }
+        .onAppear { appeared = true }
     }
 }
