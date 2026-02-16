@@ -10,7 +10,7 @@ final class MockTranscribing: Transcribing {
     var lastWordTimings: [WordTimingInfo] = []
     var transcriptionResult: String? = "hello world"
 
-    func loadModel() async {
+    func loadModel(name: String? = nil) async {
         isLoaded = true
         isLoading = false
     }

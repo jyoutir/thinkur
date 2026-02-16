@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import ServiceManagement
 
 @MainActor
 @Observable
@@ -39,11 +40,21 @@ final class SettingsManager {
     }
 
     var showInDock: Bool {
-        didSet { defaults.set(showInDock, forKey: "showInDock") }
+        didSet {
+            defaults.set(showInDock, forKey: "showInDock")
+            NSApplication.shared.setActivationPolicy(showInDock ? .regular : .accessory)
+        }
     }
 
     var launchAtLogin: Bool {
-        didSet { defaults.set(launchAtLogin, forKey: "launchAtLogin") }
+        didSet {
+            defaults.set(launchAtLogin, forKey: "launchAtLogin")
+            if launchAtLogin {
+                try? SMAppService.mainApp.register()
+            } else {
+                try? SMAppService.mainApp.unregister()
+            }
+        }
     }
 
     var automaticUpdates: Bool {

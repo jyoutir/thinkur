@@ -45,21 +45,16 @@ struct InsightsView: View {
                         .font(Typography.title3)
                         .foregroundStyle(ColorTokens.textPrimary)
 
-                    if viewModel.dailyAnalytics.isEmpty {
+                    if viewModel.chartData.isEmpty {
                         Text("No data for this period.")
                             .font(Typography.body)
                             .foregroundStyle(ColorTokens.textTertiary)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, Spacing.xl)
                     } else {
-                        BarChartView(
-                            data: viewModel.dailyAnalytics.map { daily in
-                                let label = String(daily.dateString.suffix(2))
-                                return (label: label, value: Double(daily.totalWords))
-                            }
-                        )
-                        .padding(Spacing.md)
-                        .glassCard()
+                        BarChartView(data: viewModel.chartData)
+                            .padding(Spacing.md)
+                            .glassCard()
                     }
                 }
 

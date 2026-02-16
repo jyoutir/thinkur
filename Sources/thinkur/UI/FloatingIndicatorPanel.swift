@@ -40,7 +40,16 @@ final class FloatingIndicatorPanel: NSPanel {
     }
 
     func show() {
+        recenter()
         orderFrontRegardless()
+    }
+
+    private func recenter() {
+        let screenFrame = NSScreen.main?.visibleFrame ?? .zero
+        let panelWidth = frame.width
+        let originX = screenFrame.midX - panelWidth / 2
+        let originY = screenFrame.minY + 40
+        setFrameOrigin(NSPoint(x: originX, y: originY))
     }
 
     func hide() {

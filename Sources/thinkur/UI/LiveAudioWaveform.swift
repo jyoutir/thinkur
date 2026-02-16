@@ -26,7 +26,7 @@ struct LiveAudioWaveform: View {
         }
         .padding(.horizontal, Self.horizontalPadding)
         .frame(height: height)
-        .glassEffect(.regular, in: .capsule)
+        .background(.black, in: .capsule)
     }
 
     private func sampleAmplitudes(_ buffer: [Double], targetCount: Int) -> [Double] {

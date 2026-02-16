@@ -16,7 +16,7 @@ struct TranscriptRowView: View {
                         .font(Typography.headline)
                         .foregroundStyle(ColorTokens.textPrimary)
                     Spacer()
-                    Text(timestamp, style: .relative)
+                    Text(timestamp, format: .dateTime.hour().minute())
                         .font(Typography.caption2)
                         .foregroundStyle(ColorTokens.textTertiary)
                 }

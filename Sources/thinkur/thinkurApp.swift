@@ -62,6 +62,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApplication.shared.terminate(nil)
             return
         }
+
+        // Apply dock visibility preference
+        let showInDock = SettingsManager.shared.showInDock
+        NSApplication.shared.setActivationPolicy(showInDock ? .regular : .accessory)
+
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
 }

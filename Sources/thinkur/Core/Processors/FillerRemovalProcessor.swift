@@ -44,11 +44,7 @@ struct FillerRemovalProcessor: TextProcessor {
         }
 
         result = cleaned.joined(separator: " ")
-        // Collapse multiple spaces
-        while result.contains("  ") {
-            result = result.replacingOccurrences(of: "  ", with: " ")
-        }
-        return result.trimmingCharacters(in: .whitespaces)
+        return normalizeWhitespace(result)
     }
 
     private func isFillerLike(words: [Substring], index: Int) -> Bool {

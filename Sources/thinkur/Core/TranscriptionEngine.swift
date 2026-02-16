@@ -12,27 +12,40 @@ final class TranscriptionEngine: Transcribing {
     private(set) var lastWordTimings: [WordTimingInfo] = []
 
     private var whisperKit: WhisperKit?
+    private(set) var currentModel: String = ""
 
-    func loadModel() async {
-        guard !isLoading, !isLoaded else { return }
+    func loadModel(name: String? = nil) async {
+        let modelName = name ?? Constants.whisperModel
+
+        // If already loaded with the same model, skip
+        if isLoaded && currentModel == modelName { return }
+
+        // If switching models, reset state
+        if isLoaded {
+            whisperKit = nil
+            isLoaded = false
+        }
+
+        guard !isLoading else { return }
 
         isLoading = true
         errorMessage = nil
 
         do {
             let config = WhisperKitConfig(
-                model: Constants.whisperModel,
+                model: modelName,
                 downloadBase: Constants.appSupportDirectory,
                 verbose: false,
                 logLevel: .none
             )
-            Logger.transcription.info("Loading WhisperKit model: \(Constants.whisperModel)")
+            Logger.transcription.info("Loading WhisperKit model: \(modelName)")
 
             loadingMessage = "Downloading model..."
             whisperKit = try await WhisperKit(config)
             loadingMessage = "Loading model..."
 
             isLoaded = true
+            currentModel = modelName
             loadingMessage = ""
             Logger.transcription.info("WhisperKit model loaded successfully")
         } catch {
