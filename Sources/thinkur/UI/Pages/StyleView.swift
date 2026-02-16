@@ -7,8 +7,8 @@ struct StyleView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
                 Text("Adapt your voice typing style for each application.")
-                    .font(Typography.body)
-                    .foregroundStyle(ColorTokens.textSecondary)
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textTertiary)
 
                 GroupedSettingsSection(title: "Per-App Styles") {
                     VStack(spacing: 0) {
@@ -24,7 +24,7 @@ struct StyleView: View {
                 }
             }
             .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.xxl)
+            .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Style")

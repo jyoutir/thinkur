@@ -8,6 +8,10 @@ struct HotkeySettingsView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
+                Text("Configure the keyboard shortcut for voice typing.")
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textTertiary)
+
                 GroupedSettingsSection(title: "Activation") {
                     VStack(spacing: 0) {
                         SettingsRowView(icon: "keyboard", iconColor: ColorTokens.accentBlue, title: "Record Shortcut") {
@@ -33,7 +37,7 @@ struct HotkeySettingsView: View {
                 }
             }
             .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.xxl)
+            .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Hotkey")

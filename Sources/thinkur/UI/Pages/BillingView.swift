@@ -4,6 +4,10 @@ struct BillingView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
+                Text("Manage your subscription and payment details.")
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textTertiary)
+
                 GroupedSettingsSection(title: "Current Plan") {
                     VStack(spacing: 0) {
                         SettingsRowView(icon: "crown.fill", iconColor: ColorTokens.accentYellow, title: "Plan") {
@@ -38,7 +42,7 @@ struct BillingView: View {
                     .disabled(true)
             }
             .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.xxl)
+            .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Billing")
