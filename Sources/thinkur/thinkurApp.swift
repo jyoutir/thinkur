@@ -30,6 +30,7 @@ struct thinkurApp: App {
 /// so transitions between states never invalidate environment references.
 private struct RootView: View {
     @Environment(AppCoordinator.self) private var coordinator
+    @Environment(SettingsManager.self) private var settings
 
     var body: some View {
         Group {
@@ -39,6 +40,7 @@ private struct RootView: View {
                 OnboardingFlow()
             }
         }
+        .preferredColorScheme(settings.themeMode.colorScheme)
     }
 }
 
