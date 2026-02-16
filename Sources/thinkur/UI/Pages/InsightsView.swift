@@ -9,6 +9,10 @@ struct InsightsView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
+                Text("Track your dictation usage and productivity.")
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textTertiary)
+
                 // Period picker
                 Picker("Period", selection: $vm.selectedPeriod) {
                     ForEach(InsightsPeriod.allCases) { period in
@@ -103,7 +107,7 @@ struct InsightsView: View {
                 }
             }
             .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.xxl)
+            .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Insights")

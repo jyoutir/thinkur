@@ -7,7 +7,11 @@ struct DictationSettingsView: View {
         @Bindable var s = settings
 
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.lg) {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
+                Text("Fine-tune how your speech is processed and formatted.")
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textTertiary)
+
                 GroupedSettingsSection(title: "Text Processing") {
                     VStack(spacing: 0) {
                         ToggleRow(
@@ -71,7 +75,7 @@ struct DictationSettingsView: View {
                 }
             }
             .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.xxl)
+            .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Dictation")

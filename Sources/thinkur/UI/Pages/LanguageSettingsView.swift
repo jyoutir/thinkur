@@ -12,6 +12,10 @@ struct LanguageSettingsView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
+                Text("Set your language and choose a transcription model.")
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textTertiary)
+
                 GroupedSettingsSection(title: "Language") {
                     VStack(spacing: 0) {
                         SettingsRowView(icon: "globe", iconColor: ColorTokens.accentBlue, title: "Primary Language") {
@@ -49,7 +53,7 @@ struct LanguageSettingsView: View {
                 }
             }
             .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.xxl)
+            .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Language")

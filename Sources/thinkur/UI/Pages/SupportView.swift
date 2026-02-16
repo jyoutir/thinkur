@@ -4,6 +4,10 @@ struct SupportView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
+                Text("Get help, report bugs, or contact the team.")
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textTertiary)
+
                 GroupedSettingsSection(title: "Help") {
                     VStack(spacing: 0) {
                         supportLink(
@@ -51,7 +55,7 @@ struct SupportView: View {
                 }
             }
             .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.xxl)
+            .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Support")

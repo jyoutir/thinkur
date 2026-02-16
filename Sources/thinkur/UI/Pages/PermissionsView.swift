@@ -7,8 +7,8 @@ struct PermissionsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
                 Text("thinkur needs these permissions to work properly.")
-                    .font(Typography.body)
-                    .foregroundStyle(ColorTokens.textSecondary)
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textTertiary)
 
                 GroupedSettingsSection {
                     VStack(spacing: 0) {
@@ -53,7 +53,7 @@ struct PermissionsView: View {
                 .controlSize(.regular)
             }
             .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.xxl)
+            .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Permissions")

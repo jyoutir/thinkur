@@ -10,6 +10,10 @@ struct SystemSettingsView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
+                Text("Control app behavior, sounds, and startup preferences.")
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textTertiary)
+
                 GroupedSettingsSection(title: "General") {
                     VStack(spacing: 0) {
                         ToggleRow(
@@ -99,7 +103,7 @@ struct SystemSettingsView: View {
                 }
             }
             .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.xxl)
+            .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("System")

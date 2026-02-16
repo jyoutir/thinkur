@@ -8,6 +8,10 @@ struct ShortcutsView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
+                Text("Create text shortcuts that expand when you dictate them.")
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textTertiary)
+
                 // Add shortcut form
                 GroupedSettingsSection(title: "New Shortcut") {
                     VStack(spacing: Spacing.sm) {
@@ -75,7 +79,7 @@ struct ShortcutsView: View {
                 }
             }
             .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.xxl)
+            .padding(.top, Spacing.lg)
             .padding(.bottom, Spacing.lg)
         }
         .navigationTitle("Shortcuts")
