@@ -77,9 +77,7 @@ struct ShortcutsView: View {
             .animation(Animations.glassMaterialize, value: appeared)
         }
         .navigationTitle("Shortcuts")
-        .task {
-            await viewModel.loadData()
-            appeared = true
-        }
+        .task { await viewModel.loadData() }
+        .onAppear { appeared = true }
     }
 }

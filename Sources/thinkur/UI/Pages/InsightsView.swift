@@ -121,9 +121,7 @@ struct InsightsView: View {
             .animation(Animations.glassMaterialize, value: appeared)
         }
         .navigationTitle("Insights")
-        .task {
-            await viewModel.loadData()
-            appeared = true
-        }
+        .task { await viewModel.loadData() }
+        .onAppear { appeared = true }
     }
 }
