@@ -3,7 +3,7 @@ import SwiftData
 import os
 
 @MainActor
-final class ShortcutService {
+final class ShortcutService: ShortcutLookup {
     private let container: ModelContainer
 
     init() {

@@ -3,7 +3,7 @@ import SwiftData
 import os
 
 @MainActor
-final class AnalyticsService {
+final class AnalyticsService: AnalyticsRecording {
     private let container: ModelContainer
 
     init() {

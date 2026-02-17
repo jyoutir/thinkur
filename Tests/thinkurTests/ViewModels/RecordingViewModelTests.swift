@@ -22,9 +22,13 @@ struct RecordingViewModelTests {
         let amplitude = AudioAmplitudeProvider()
         let sharedState = SharedAppState()
 
-        let schema = Schema([TranscriptionRecord.self, AppUsageRecord.self, DailyAnalytics.self])
-        let container = SwiftDataContainerFactory.createInMemory(schema: schema)
-        let analytics = AnalyticsService(container: container)
+        let analyticsSchema = Schema([TranscriptionRecord.self, AppUsageRecord.self, DailyAnalytics.self])
+        let analyticsContainer = SwiftDataContainerFactory.createInMemory(schema: analyticsSchema)
+        let analytics = AnalyticsService(container: analyticsContainer)
+
+        let shortcutSchema = Schema([Shortcut.self])
+        let shortcutContainer = SwiftDataContainerFactory.createInMemory(schema: shortcutSchema)
+        let shortcuts = ShortcutService(container: shortcutContainer)
 
         let suiteName = "com.thinkur.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -32,7 +36,7 @@ struct RecordingViewModelTests {
 
         let postProcessor = TextPostProcessor(processors: [])
 
-        let vm = RecordingViewModel(
+        let coordinator = RecordingCoordinator(
             audioCaptureManager: audio,
             transcriptionEngine: transcription,
             textInsertionService: textInserter,
@@ -40,10 +44,17 @@ struct RecordingViewModelTests {
             frontmostAppDetector: frontmost,
             analyticsService: analytics,
             amplitudeProvider: amplitude,
-            hotkeyManager: hotkey,
             settings: settings,
             sharedState: sharedState,
+            shortcutService: shortcuts,
             createFloatingPanel: false
+        )
+
+        let vm = RecordingViewModel(
+            coordinator: coordinator,
+            hotkeyManager: hotkey,
+            settings: settings,
+            sharedState: sharedState
         )
 
         return (audio, transcription, textInserter, hotkey, sharedState, vm)

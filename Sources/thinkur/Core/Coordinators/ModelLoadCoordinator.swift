@@ -7,7 +7,7 @@ final class ModelLoadCoordinator {
     private let sharedState: SharedAppState
     private let settings: SettingsManager
 
-    init(transcriptionEngine: TranscriptionEngine, sharedState: SharedAppState, settings: SettingsManager = .shared) {
+    init(transcriptionEngine: TranscriptionEngine, sharedState: SharedAppState, settings: SettingsManager) {
         self.transcriptionEngine = transcriptionEngine
         self.sharedState = sharedState
         self.settings = settings

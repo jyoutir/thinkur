@@ -28,7 +28,8 @@ final class AppCoordinator {
         self.viewModels = ViewModelFactory(services: services)
         self.modelLoadCoordinator = ModelLoadCoordinator(
             transcriptionEngine: services.transcriptionEngine,
-            sharedState: services.sharedState
+            sharedState: services.sharedState,
+            settings: services.settings
         )
 
         Task { [weak self] in

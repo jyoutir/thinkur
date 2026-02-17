@@ -95,7 +95,7 @@ struct HomeView: View {
                         subtitle: "Press Tab to start dictating"
                     )
                 } else {
-                    ForEach(Array(viewModel.groupedTranscriptions.enumerated()), id: \.element.id) { groupIndex, group in
+                    ForEach(viewModel.groupedTranscriptions) { group in
                         let isExpanded = !viewModel.collapsedGroups.contains(group.id)
 
                         VStack(alignment: .leading, spacing: Spacing.sm) {
@@ -123,7 +123,7 @@ struct HomeView: View {
                             .buttonStyle(.plain)
 
                             if isExpanded {
-                                ForEach(Array(group.records.enumerated()), id: \.element.timestamp) { recordIndex, record in
+                                ForEach(group.records, id: \.timestamp) { record in
                                     TranscriptRowView(
                                         appName: record.appName,
                                         appBundleID: record.appBundleID,
@@ -133,12 +133,7 @@ struct HomeView: View {
                                     .padding(Spacing.sm)
                                     .glassCard()
                                     .hoverBrightness()
-                                    .opacity(appeared ? 1 : 0)
-                                    .offset(y: appeared ? 0 : 8)
-                                    .animation(
-                                        Animations.glassMaterialize.delay(min(Double(groupIndex * 3 + recordIndex) * 0.05, 0.5)),
-                                        value: appeared
-                                    )
+                                    .transition(.opacity.combined(with: .move(edge: .top)))
                                 }
                             }
                         }
