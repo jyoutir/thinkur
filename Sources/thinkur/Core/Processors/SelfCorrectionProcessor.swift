@@ -17,7 +17,7 @@ struct SelfCorrectionProcessor: TextProcessor {
         "start over",
     ]
 
-    func process(_ text: String, context: ProcessingContext) -> String {
+    func process(_ text: String, context: ProcessingContext) -> ProcessorResult {
         var result = text
         let lower = result.lowercased()
 
@@ -34,6 +34,6 @@ struct SelfCorrectionProcessor: TextProcessor {
             break
         }
 
-        return result.trimmingCharacters(in: .whitespaces)
+        return ProcessorResult(text: result.trimmingCharacters(in: .whitespaces))
     }
 }

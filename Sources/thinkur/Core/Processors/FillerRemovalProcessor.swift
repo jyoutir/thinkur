@@ -10,7 +10,7 @@ struct FillerRemovalProcessor: TextProcessor {
         "you know", "i guess", "sort of", "kind of",
     ]
 
-    func process(_ text: String, context: ProcessingContext) -> String {
+    func process(_ text: String, context: ProcessingContext) -> ProcessorResult {
         var result = text
 
         // Remove multi-word fillers first
@@ -44,7 +44,7 @@ struct FillerRemovalProcessor: TextProcessor {
         }
 
         result = cleaned.joined(separator: " ")
-        return normalizeWhitespace(result)
+        return ProcessorResult(text: normalizeWhitespace(result))
     }
 
     private func isFillerLike(words: [Substring], index: Int) -> Bool {

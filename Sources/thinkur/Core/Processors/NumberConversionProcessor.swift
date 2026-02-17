@@ -31,7 +31,7 @@ struct NumberConversionProcessor: TextProcessor {
         return words
     }
 
-    func process(_ text: String, context: ProcessingContext) -> String {
+    func process(_ text: String, context: ProcessingContext) -> ProcessorResult {
         let words = text.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
         var result: [String] = []
         var i = 0
@@ -80,7 +80,7 @@ struct NumberConversionProcessor: TextProcessor {
             }
         }
 
-        return result.joined(separator: " ")
+        return ProcessorResult(text: result.joined(separator: " "))
     }
 
     private func parseNumber(_ words: [String]) -> Int {

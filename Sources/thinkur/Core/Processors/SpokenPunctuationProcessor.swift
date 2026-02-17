@@ -26,7 +26,7 @@ struct SpokenPunctuationProcessor: TextProcessor {
         (#"\bnew paragraph\b"#, "\n\n"),
     ]
 
-    func process(_ text: String, context: ProcessingContext) -> String {
+    func process(_ text: String, context: ProcessingContext) -> ProcessorResult {
         var result = text
 
         for (pattern, replacement) in Self.replacements {
@@ -39,6 +39,6 @@ struct SpokenPunctuationProcessor: TextProcessor {
         }
 
         result = cleanPunctuationSpacing(result)
-        return normalizeWhitespace(result)
+        return ProcessorResult(text: normalizeWhitespace(result))
     }
 }

@@ -4,8 +4,8 @@ import NaturalLanguage
 struct CapitalizationProcessor: TextProcessor {
     let name = "Capitalization"
 
-    func process(_ text: String, context: ProcessingContext) -> String {
-        guard !text.isEmpty else { return text }
+    func process(_ text: String, context: ProcessingContext) -> ProcessorResult {
+        guard !text.isEmpty else { return ProcessorResult(text: text) }
 
         var result = text
 
@@ -18,7 +18,7 @@ struct CapitalizationProcessor: TextProcessor {
         // Capitalize proper nouns using NLTagger
         result = capitalizeProperNouns(result)
 
-        return result
+        return ProcessorResult(text: result)
     }
 
     private func capitalizeSentenceStarts(_ text: String) -> String {

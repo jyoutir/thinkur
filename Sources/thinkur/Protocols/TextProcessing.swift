@@ -1,8 +1,26 @@
 import Foundation
 
+struct ProcessorResult {
+    let text: String
+    let corrections: [CorrectionEntry]
+
+    init(text: String, corrections: [CorrectionEntry] = []) {
+        self.text = text
+        self.corrections = corrections
+    }
+}
+
+struct CorrectionEntry {
+    let processorName: String
+    let ruleName: String
+    let originalFragment: String
+    let replacement: String
+    let confidence: Float
+}
+
 protocol TextProcessor {
     var name: String { get }
-    func process(_ text: String, context: ProcessingContext) -> String
+    func process(_ text: String, context: ProcessingContext) -> ProcessorResult
 }
 
 extension TextProcessor {
