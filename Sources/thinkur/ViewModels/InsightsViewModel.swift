@@ -10,9 +10,9 @@ final class InsightsViewModel {
     var totalWords: Int = 0
     var totalSessions: Int = 0
 
-    private let analyticsService: AnalyticsService
+    private let analyticsService: any AnalyticsRecording
 
-    init(analyticsService: AnalyticsService) {
+    init(analyticsService: any AnalyticsRecording) {
         self.analyticsService = analyticsService
     }
 

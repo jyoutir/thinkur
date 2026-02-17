@@ -97,6 +97,11 @@ final class SettingsManager {
         didSet { defaults.set(themeMode.rawValue, forKey: "themeMode") }
     }
 
+    // Onboarding
+    var hasCompletedOnboarding: Bool {
+        didSet { defaults.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding") }
+    }
+
     private convenience init() {
         self.init(defaults: .standard)
     }
@@ -143,5 +148,8 @@ final class SettingsManager {
 
         // Theme
         self.themeMode = ThemeMode(rawValue: defaults.string(forKey: "themeMode") ?? "") ?? .dark
+
+        // Onboarding
+        self.hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
     }
 }

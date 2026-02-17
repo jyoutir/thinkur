@@ -16,7 +16,7 @@ final class HomeViewModel {
     var collapsedGroups: Set<String> = []
 
     private var allRecords: [TranscriptionRecord] = []
-    private let analyticsService: AnalyticsService
+    private let analyticsService: any AnalyticsRecording
 
     private static let dateKeyFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -36,7 +36,7 @@ final class HomeViewModel {
         return f
     }()
 
-    init(analyticsService: AnalyticsService) {
+    init(analyticsService: any AnalyticsRecording) {
         self.analyticsService = analyticsService
     }
 

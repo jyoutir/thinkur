@@ -2,6 +2,7 @@ import Foundation
 
 @MainActor
 final class ViewModelFactory {
+    let recordingCoordinator: RecordingCoordinator
     let recordingViewModel: RecordingViewModel
     let homeViewModel: HomeViewModel
     let shortcutsViewModel: ShortcutsViewModel
@@ -10,7 +11,7 @@ final class ViewModelFactory {
     let onboardingViewModel: OnboardingViewModel
 
     init(services: ServiceContainer) {
-        self.recordingViewModel = RecordingViewModel(
+        self.recordingCoordinator = RecordingCoordinator(
             audioCaptureManager: services.audioCaptureManager,
             transcriptionEngine: services.transcriptionEngine,
             textInsertionService: services.textInsertionService,
@@ -18,15 +19,20 @@ final class ViewModelFactory {
             frontmostAppDetector: services.frontmostAppDetector,
             analyticsService: services.analyticsService,
             amplitudeProvider: services.amplitudeProvider,
-            hotkeyManager: services.hotkeyManager,
             settings: services.settings,
             sharedState: services.sharedState,
             shortcutService: services.shortcutService
+        )
+        self.recordingViewModel = RecordingViewModel(
+            coordinator: self.recordingCoordinator,
+            hotkeyManager: services.hotkeyManager,
+            settings: services.settings,
+            sharedState: services.sharedState
         )
         self.homeViewModel = HomeViewModel(analyticsService: services.analyticsService)
         self.shortcutsViewModel = ShortcutsViewModel(shortcutService: services.shortcutService)
         self.styleViewModel = StyleViewModel(stylePreferenceService: services.stylePreferenceService)
         self.insightsViewModel = InsightsViewModel(analyticsService: services.analyticsService)
-        self.onboardingViewModel = OnboardingViewModel(permissionManager: services.permissionManager)
+        self.onboardingViewModel = OnboardingViewModel(permissionManager: services.permissionManager, settings: services.settings)
     }
 }

@@ -8,14 +8,16 @@ final class OnboardingViewModel {
     private let totalSteps = 6
 
     var isComplete: Bool {
-        get { UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") }
-        set { UserDefaults.standard.set(newValue, forKey: "hasCompletedOnboarding") }
+        get { settings.hasCompletedOnboarding }
+        set { settings.hasCompletedOnboarding = newValue }
     }
 
     private let permissionManager: PermissionManager
+    private let settings: SettingsManager
 
-    init(permissionManager: PermissionManager) {
+    init(permissionManager: PermissionManager, settings: SettingsManager) {
         self.permissionManager = permissionManager
+        self.settings = settings
     }
 
     var isLastStep: Bool {
