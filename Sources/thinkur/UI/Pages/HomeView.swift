@@ -31,20 +31,21 @@ struct HomeView: View {
                 // Collapsible calendar
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     Button {
-                        withAnimation(Animations.springBounce) {
+                        withAnimation(Animations.glassMorph) {
                             calendarExpanded.toggle()
                         }
                     } label: {
                         HStack(spacing: Spacing.xs) {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(ColorTokens.textTertiary)
+                                .rotationEffect(calendarExpanded ? .degrees(90) : .zero)
+                                .animation(Animations.glassMorph, value: calendarExpanded)
                             Image(systemName: "calendar")
                                 .font(Typography.headline)
                             Text("Calendar")
                                 .font(Typography.headline)
                             Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(Typography.caption)
-                                .rotationEffect(.degrees(calendarExpanded ? 90 : 0))
-                                .animation(Animations.springBounce, value: calendarExpanded)
                         }
                         .foregroundStyle(ColorTokens.textPrimary)
                     }
@@ -53,24 +54,29 @@ struct HomeView: View {
                     if calendarExpanded {
                         MiniCalendarView(
                             activeDateStrings: viewModel.activeDateStrings,
-                            selectedDay: Binding(
-                                get: { viewModel.selectedDay },
-                                set: { viewModel.selectDay($0) }
-                            )
+                            rangeStart: Binding(
+                                get: { viewModel.rangeStart },
+                                set: { _ in }
+                            ),
+                            rangeEnd: Binding(
+                                get: { viewModel.rangeEnd },
+                                set: { _ in }
+                            ),
+                            onSelectDate: { viewModel.selectDate($0) }
                         )
                         .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
 
                 // Filter indicator
-                if let day = viewModel.selectedDay {
+                if let description = viewModel.filterDescription {
                     HStack(spacing: Spacing.sm) {
-                        Text("Showing: \(day, format: .dateTime.weekday(.wide).month(.abbreviated).day())")
+                        Text("Showing: \(description)")
                             .font(Typography.caption)
                             .foregroundStyle(ColorTokens.textSecondary)
                         Spacer()
                         Button("Clear") {
-                            viewModel.selectDay(nil)
+                            viewModel.clearFilter()
                         }
                         .font(Typography.caption)
                         .buttonStyle(.plain)
@@ -90,27 +96,50 @@ struct HomeView: View {
                     )
                 } else {
                     ForEach(Array(viewModel.groupedTranscriptions.enumerated()), id: \.element.id) { groupIndex, group in
-                        VStack(alignment: .leading, spacing: Spacing.sm) {
-                            Text(group.title)
-                                .font(Typography.title3)
-                                .foregroundStyle(ColorTokens.textPrimary)
+                        let isExpanded = !viewModel.collapsedGroups.contains(group.id)
 
-                            ForEach(Array(group.records.enumerated()), id: \.element.timestamp) { recordIndex, record in
-                                TranscriptRowView(
-                                    appName: record.appName,
-                                    appBundleID: record.appBundleID,
-                                    timestamp: record.timestamp,
-                                    preview: record.processedText
-                                )
-                                .padding(Spacing.sm)
-                                .glassCard()
-                                .hoverBrightness()
-                                .opacity(appeared ? 1 : 0)
-                                .offset(y: appeared ? 0 : 8)
-                                .animation(
-                                    Animations.glassMaterialize.delay(min(Double(groupIndex * 3 + recordIndex) * 0.05, 0.5)),
-                                    value: appeared
-                                )
+                        VStack(alignment: .leading, spacing: Spacing.sm) {
+                            // Collapsible day header
+                            Button {
+                                withAnimation(Animations.glassMorph) {
+                                    viewModel.toggleGroup(group.id)
+                                }
+                            } label: {
+                                HStack(spacing: Spacing.xs) {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(ColorTokens.textTertiary)
+                                        .rotationEffect(isExpanded ? .degrees(90) : .zero)
+                                        .animation(Animations.glassMorph, value: isExpanded)
+                                    Text(group.title)
+                                        .font(Typography.headline)
+                                    Text("\(group.records.count)")
+                                        .font(Typography.caption)
+                                        .foregroundStyle(ColorTokens.textTertiary)
+                                    Spacer()
+                                }
+                                .foregroundStyle(ColorTokens.textPrimary)
+                            }
+                            .buttonStyle(.plain)
+
+                            if isExpanded {
+                                ForEach(Array(group.records.enumerated()), id: \.element.timestamp) { recordIndex, record in
+                                    TranscriptRowView(
+                                        appName: record.appName,
+                                        appBundleID: record.appBundleID,
+                                        timestamp: record.timestamp,
+                                        preview: record.processedText
+                                    )
+                                    .padding(Spacing.sm)
+                                    .glassCard()
+                                    .hoverBrightness()
+                                    .opacity(appeared ? 1 : 0)
+                                    .offset(y: appeared ? 0 : 8)
+                                    .animation(
+                                        Animations.glassMaterialize.delay(min(Double(groupIndex * 3 + recordIndex) * 0.05, 0.5)),
+                                        value: appeared
+                                    )
+                                }
                             }
                         }
                     }

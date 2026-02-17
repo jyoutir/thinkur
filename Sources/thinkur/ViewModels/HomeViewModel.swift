@@ -11,7 +11,9 @@ struct TranscriptionGroup: Identifiable {
 final class HomeViewModel {
     var groupedTranscriptions: [TranscriptionGroup] = []
     var activeDateStrings: Set<String> = []
-    var selectedDay: Date?
+    var rangeStart: Date?
+    var rangeEnd: Date?
+    var collapsedGroups: Set<String> = []
 
     private var allRecords: [TranscriptionRecord] = []
     private let analyticsService: AnalyticsService
@@ -28,6 +30,12 @@ final class HomeViewModel {
         return f
     }()
 
+    private static let shortDisplayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return f
+    }()
+
     init(analyticsService: AnalyticsService) {
         self.analyticsService = analyticsService
     }
@@ -38,17 +46,76 @@ final class HomeViewModel {
         rebuildGroups()
     }
 
-    func selectDay(_ day: Date?) {
-        selectedDay = day
+    /// Tap logic: first tap = start, second different day = end, re-tap bound = clear all
+    func selectDate(_ day: Date) {
+        let calendar = Calendar.current
+
+        if let start = rangeStart, calendar.isDate(day, inSameDayAs: start) {
+            // Tapped on start bound — clear filter
+            rangeStart = nil
+            rangeEnd = nil
+        } else if let end = rangeEnd, calendar.isDate(day, inSameDayAs: end) {
+            // Tapped on end bound — clear filter
+            rangeStart = nil
+            rangeEnd = nil
+        } else if rangeStart == nil {
+            // No selection yet — set start
+            rangeStart = day
+            rangeEnd = nil
+        } else if rangeEnd == nil {
+            // Have start, no end — set end (auto-swap if needed)
+            let start = rangeStart!
+            if day < start {
+                rangeStart = day
+                rangeEnd = start
+            } else {
+                rangeEnd = day
+            }
+        } else {
+            // Both set, tapping new day — reset to new single selection
+            rangeStart = day
+            rangeEnd = nil
+        }
+
         rebuildGroups()
+    }
+
+    func clearFilter() {
+        rangeStart = nil
+        rangeEnd = nil
+        rebuildGroups()
+    }
+
+    func toggleGroup(_ groupID: String) {
+        if collapsedGroups.contains(groupID) {
+            collapsedGroups.remove(groupID)
+        } else {
+            collapsedGroups.insert(groupID)
+        }
+    }
+
+    var filterDescription: String? {
+        guard let start = rangeStart else { return nil }
+        let startStr = Self.shortDisplayFormatter.string(from: start)
+        if let end = rangeEnd {
+            let endStr = Self.shortDisplayFormatter.string(from: end)
+            return "\(startStr) – \(endStr)"
+        }
+        return startStr
     }
 
     private func rebuildGroups() {
         let calendar = Calendar.current
         let records: [TranscriptionRecord]
 
-        if let day = selectedDay {
-            records = allRecords.filter { calendar.isDate($0.timestamp, inSameDayAs: day) }
+        if let start = rangeStart {
+            let startOfStart = calendar.startOfDay(for: start)
+            if let end = rangeEnd {
+                let endOfEnd = calendar.startOfDay(for: calendar.date(byAdding: .day, value: 1, to: end)!)
+                records = allRecords.filter { $0.timestamp >= startOfStart && $0.timestamp < endOfEnd }
+            } else {
+                records = allRecords.filter { calendar.isDate($0.timestamp, inSameDayAs: start) }
+            }
         } else {
             records = allRecords
         }
