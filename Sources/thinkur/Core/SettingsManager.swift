@@ -71,6 +71,10 @@ final class SettingsManager {
         didSet { defaults.set(smartFormatting, forKey: "smartFormatting") }
     }
 
+    var listFormatting: Bool {
+        didSet { defaults.set(listFormatting, forKey: "listFormatting") }
+    }
+
     var codeContext: Bool {
         didSet { defaults.set(codeContext, forKey: "codeContext") }
     }
@@ -138,6 +142,7 @@ final class SettingsManager {
         self.autoPunctuation = defaults.object(forKey: "autoPunctuation") != nil ? defaults.bool(forKey: "autoPunctuation") : true
         self.intentCorrection = defaults.object(forKey: "intentCorrection") != nil ? defaults.bool(forKey: "intentCorrection") : true
         self.smartFormatting = defaults.object(forKey: "smartFormatting") != nil ? defaults.bool(forKey: "smartFormatting") : true
+        self.listFormatting = defaults.object(forKey: "listFormatting") != nil ? defaults.bool(forKey: "listFormatting") : true
         self.codeContext = defaults.bool(forKey: "codeContext")
         self.learnFromCorrections = defaults.bool(forKey: "learnFromCorrections")
 

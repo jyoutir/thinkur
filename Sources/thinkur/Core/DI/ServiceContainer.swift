@@ -33,10 +33,12 @@ final class ServiceContainer {
             SelfCorrectionProcessor(),
             FillerRemovalProcessor(),
             SpokenPunctuationProcessor(),
-            NumberConversionProcessor(),
+            SmartFormattingProcessor(),
             PausePunctuationProcessor(),
             CapitalizationProcessor(),
             StyleAdaptationProcessor(),
+            ListDetectionProcessor(),
+            CodeContextProcessor(),
         ])
     }
 

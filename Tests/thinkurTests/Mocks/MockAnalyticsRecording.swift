@@ -3,7 +3,7 @@ import Foundation
 
 @MainActor
 final class MockAnalyticsRecording: AnalyticsRecording {
-    var recordedEntries: [(rawText: String, processedText: String, duration: Double, appBundleID: String, appName: String)] = []
+    var recordedEntries: [(rawText: String, processedText: String, duration: Double, appBundleID: String, appName: String, correctionCount: Int)] = []
     var transcriptionsToReturn: [TranscriptionRecord] = []
     var activeDateStringsToReturn: Set<String> = []
     var totalTimeSavedToReturn: TimeInterval = 0
@@ -12,8 +12,8 @@ final class MockAnalyticsRecording: AnalyticsRecording {
     var dailyAnalyticsToReturn: [DailyAnalytics] = []
     var topAppsToReturn: [AppUsageRecord] = []
 
-    func record(rawText: String, processedText: String, duration: Double, appBundleID: String, appName: String) {
-        recordedEntries.append((rawText, processedText, duration, appBundleID, appName))
+    func record(rawText: String, processedText: String, duration: Double, appBundleID: String, appName: String, correctionCount: Int) {
+        recordedEntries.append((rawText, processedText, duration, appBundleID, appName, correctionCount))
     }
 
     func fetchTranscriptions(since days: Int, limit: Int) async -> [TranscriptionRecord] {

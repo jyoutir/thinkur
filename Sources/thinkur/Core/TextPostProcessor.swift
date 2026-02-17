@@ -8,18 +8,21 @@ final class TextPostProcessor {
         self.processors = processors
     }
 
-    func process(_ text: String, context: ProcessingContext, disabledProcessors: Set<String> = []) -> String {
-        var result = text
+    func process(_ text: String, context: ProcessingContext, disabledProcessors: Set<String> = []) -> ProcessorResult {
+        var currentText = text
+        var allCorrections: [CorrectionEntry] = []
         for processor in processors {
             if disabledProcessors.contains(processor.name) {
                 continue
             }
-            let before = result
-            result = processor.process(result, context: context)
-            if result != before {
-                Logger.postProcessing.debug("\(processor.name): \"\(before)\" → \"\(result)\"")
+            let before = currentText
+            let processorResult = processor.process(currentText, context: context)
+            currentText = processorResult.text
+            allCorrections.append(contentsOf: processorResult.corrections)
+            if currentText != before {
+                Logger.postProcessing.debug("\(processor.name): \"\(before)\" → \"\(currentText)\"")
             }
         }
-        return result
+        return ProcessorResult(text: currentText, corrections: allCorrections)
     }
 }
