@@ -19,7 +19,7 @@ final class AnalyticsService: AnalyticsRecording {
         self.container = container
     }
 
-    func record(rawText: String, processedText: String, duration: Double, appBundleID: String, appName: String) {
+    func record(rawText: String, processedText: String, duration: Double, appBundleID: String, appName: String, correctionCount: Int) {
         let context = container.mainContext
         let wordCount = processedText.split(separator: " ").count
 
@@ -28,7 +28,8 @@ final class AnalyticsService: AnalyticsRecording {
             processedText: processedText,
             duration: duration,
             appBundleID: appBundleID,
-            appName: appName
+            appName: appName,
+            correctionCount: correctionCount
         )
         context.insert(record)
 

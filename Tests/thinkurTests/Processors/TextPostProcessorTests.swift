@@ -12,13 +12,13 @@ struct TextPostProcessorTests {
 
     @Test func emptyPipelineReturnsOriginal() {
         let pipeline = TextPostProcessor(processors: [])
-        let result = pipeline.process("hello world", context: ctx)
+        let result = pipeline.process("hello world", context: ctx).text
         #expect(result == "hello world")
     }
 
     @Test func singleProcessorApplied() {
         let pipeline = TextPostProcessor(processors: [SpokenPunctuationProcessor()])
-        let result = pipeline.process("hello period", context: ctx)
+        let result = pipeline.process("hello period", context: ctx).text
         #expect(result == "hello.")
     }
 
@@ -28,7 +28,7 @@ struct TextPostProcessorTests {
             SpokenPunctuationProcessor(),
             CapitalizationProcessor(),
         ])
-        let result = pipeline.process("hello period world", context: ctx)
+        let result = pipeline.process("hello period world", context: ctx).text
         #expect(result == "Hello. World")
     }
 
@@ -37,12 +37,14 @@ struct TextPostProcessorTests {
             SelfCorrectionProcessor(),
             FillerRemovalProcessor(),
             SpokenPunctuationProcessor(),
-            NumberConversionProcessor(),
+            SmartFormattingProcessor(),
             PausePunctuationProcessor(),
             CapitalizationProcessor(),
             StyleAdaptationProcessor(),
+            ListDetectionProcessor(),
+            CodeContextProcessor(),
         ])
-        let result = pipeline.process("um hello period world", context: ctx)
+        let result = pipeline.process("um hello period world", context: ctx).text
         #expect(!result.isEmpty)
     }
 
@@ -51,7 +53,7 @@ struct TextPostProcessorTests {
             FillerRemovalProcessor(),
             SpokenPunctuationProcessor(),
         ])
-        let result = pipeline.process("um hello period", context: ctx)
+        let result = pipeline.process("um hello period", context: ctx).text
         #expect(result == "hello.")
     }
 }

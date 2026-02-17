@@ -110,15 +110,21 @@ final class RecordingCoordinator {
                 appStyle: AppStyleMap.style(for: frontmostAppDetector.bundleID)
             )
             let text: String
+            let correctionCount: Int
             if settings.postProcessingEnabled {
                 var disabled = Set<String>()
                 if !settings.removeFillerWords { disabled.insert("FillerRemoval") }
                 if !settings.autoPunctuation { disabled.insert("SpokenPunctuation"); disabled.insert("PausePunctuation") }
                 if !settings.intentCorrection { disabled.insert("SelfCorrection") }
-                if !settings.smartFormatting { disabled.insert("NumberConversion"); disabled.insert("Capitalization"); disabled.insert("StyleAdaptation") }
-                text = textPostProcessor.process(rawText, context: context, disabledProcessors: disabled)
+                if !settings.smartFormatting { disabled.insert("SmartFormatting"); disabled.insert("Capitalization"); disabled.insert("StyleAdaptation") }
+                if !settings.listFormatting { disabled.insert("ListDetection") }
+                if !settings.codeContext { disabled.insert("CodeContext") }
+                let result = textPostProcessor.process(rawText, context: context, disabledProcessors: disabled)
+                text = result.text
+                correctionCount = result.corrections.count
             } else {
                 text = rawText
+                correctionCount = 0
             }
             // Check for shortcut expansion
             var finalText = text
@@ -136,7 +142,8 @@ final class RecordingCoordinator {
                     processedText: text,
                     duration: duration,
                     appBundleID: frontmostAppDetector.bundleID,
-                    appName: frontmostAppDetector.appName
+                    appName: frontmostAppDetector.appName,
+                    correctionCount: correctionCount
                 )
             }
         } else {

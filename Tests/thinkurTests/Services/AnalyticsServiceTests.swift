@@ -18,7 +18,8 @@ struct AnalyticsServiceTests {
             processedText: "Hello world.",
             duration: 2.0,
             appBundleID: "com.test.app",
-            appName: "TestApp"
+            appName: "TestApp",
+            correctionCount: 0
         )
         let words = await service.fetchTotalWords()
         #expect(words == 2)
@@ -34,7 +35,8 @@ struct AnalyticsServiceTests {
             processedText: "test",
             duration: 10.0,
             appBundleID: "com.test",
-            appName: "Test"
+            appName: "Test",
+            correctionCount: 0
         )
         let timeSaved = await service.fetchTotalTimeSaved()
         // 10.0 * 2.3 = 23.0
@@ -45,13 +47,15 @@ struct AnalyticsServiceTests {
         let service = makeService()
         service.record(
             rawText: "a", processedText: "a", duration: 1.0,
-            appBundleID: "com.app1", appName: "App1"
+            appBundleID: "com.app1", appName: "App1",
+            correctionCount: 0
         )
         service.record(
             rawText: "one two three four five",
             processedText: "one two three four five",
             duration: 1.0,
-            appBundleID: "com.app2", appName: "App2"
+            appBundleID: "com.app2", appName: "App2",
+            correctionCount: 0
         )
         let topApps = await service.fetchTopApps(limit: 5)
         #expect(topApps.count == 2)
@@ -62,7 +66,8 @@ struct AnalyticsServiceTests {
         let service = makeService()
         service.record(
             rawText: "test", processedText: "test", duration: 1.0,
-            appBundleID: "com.test", appName: "Test"
+            appBundleID: "com.test", appName: "Test",
+            correctionCount: 0
         )
         try await service.clearAllHistory()
         let words = await service.fetchTotalWords()
@@ -75,11 +80,13 @@ struct AnalyticsServiceTests {
         let service = makeService()
         service.record(
             rawText: "hello", processedText: "hello", duration: 1.0,
-            appBundleID: "com.test", appName: "Test"
+            appBundleID: "com.test", appName: "Test",
+            correctionCount: 0
         )
         service.record(
             rawText: "world", processedText: "world", duration: 2.0,
-            appBundleID: "com.test", appName: "Test"
+            appBundleID: "com.test", appName: "Test",
+            correctionCount: 0
         )
         let sessions = await service.fetchTotalSessions()
         #expect(sessions == 2)

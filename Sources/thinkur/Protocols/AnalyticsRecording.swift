@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 protocol AnalyticsRecording {
-    func record(rawText: String, processedText: String, duration: Double, appBundleID: String, appName: String)
+    func record(rawText: String, processedText: String, duration: Double, appBundleID: String, appName: String, correctionCount: Int)
     func fetchTranscriptions(since days: Int, limit: Int) async -> [TranscriptionRecord]
     func fetchActiveDateStrings(since days: Int) async -> Set<String>
     func fetchTotalTimeSaved() async -> TimeInterval
