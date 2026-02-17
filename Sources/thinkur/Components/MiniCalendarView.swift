@@ -2,7 +2,9 @@ import SwiftUI
 
 struct MiniCalendarView: View {
     let activeDateStrings: Set<String>
-    @Binding var selectedDay: Date?
+    @Binding var rangeStart: Date?
+    @Binding var rangeEnd: Date?
+    let onSelectDate: (Date) -> Void
 
     @State private var displayedMonth: Date = .now
 
@@ -58,15 +60,12 @@ struct MiniCalendarView: View {
                         DayCellView(
                             date: date,
                             hasActivity: activeDateStrings.contains(dateFormatter.string(from: date)),
-                            isSelected: isSameDay(date, selectedDay),
+                            isSelected: isSelectedBound(date),
+                            isInRange: isInRange(date),
                             isToday: calendar.isDateInToday(date)
                         )
                         .onTapGesture {
-                            if isSameDay(date, selectedDay) {
-                                selectedDay = nil
-                            } else {
-                                selectedDay = date
-                            }
+                            onSelectDate(date)
                         }
                     } else {
                         Color.clear
@@ -77,6 +76,7 @@ struct MiniCalendarView: View {
         }
         .padding(Spacing.sm)
         .glassCard()
+        .frame(maxWidth: 240)
     }
 
     private func shiftMonth(_ delta: Int) {
@@ -85,9 +85,18 @@ struct MiniCalendarView: View {
         }
     }
 
-    private func isSameDay(_ a: Date, _ b: Date?) -> Bool {
-        guard let b else { return false }
-        return calendar.isDate(a, inSameDayAs: b)
+    private func isSelectedBound(_ date: Date) -> Bool {
+        if let start = rangeStart, calendar.isDate(date, inSameDayAs: start) { return true }
+        if let end = rangeEnd, calendar.isDate(date, inSameDayAs: end) { return true }
+        return false
+    }
+
+    private func isInRange(_ date: Date) -> Bool {
+        guard let start = rangeStart, let end = rangeEnd else { return false }
+        let startOfDate = calendar.startOfDay(for: date)
+        let startOfStart = calendar.startOfDay(for: start)
+        let startOfEnd = calendar.startOfDay(for: end)
+        return startOfDate > startOfStart && startOfDate < startOfEnd
     }
 
     private var dayCells: [DayCell] {
@@ -122,6 +131,7 @@ private struct DayCellView: View {
     let date: Date
     let hasActivity: Bool
     let isSelected: Bool
+    let isInRange: Bool
     let isToday: Bool
 
     var body: some View {
@@ -133,6 +143,8 @@ private struct DayCellView: View {
                 .background {
                     if isSelected {
                         Circle().fill(.blue)
+                    } else if isInRange {
+                        Circle().fill(.blue.opacity(0.15))
                     } else if isToday {
                         Circle().strokeBorder(.blue, lineWidth: 1)
                     }
