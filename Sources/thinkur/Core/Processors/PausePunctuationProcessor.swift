@@ -13,12 +13,12 @@ struct PausePunctuationProcessor: TextProcessor {
     private static let periodPauseThreshold: Float = 0.8
     private static let commaPauseThreshold: Float = 0.4
 
-    func process(_ text: String, context: ProcessingContext) -> String {
+    func process(_ text: String, context: ProcessingContext) -> ProcessorResult {
         let timings = context.wordTimings
-        guard timings.count >= 2 else { return text }
+        guard timings.count >= 2 else { return ProcessorResult(text: text) }
 
         var words = text.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
-        guard words.count >= 2 else { return text }
+        guard words.count >= 2 else { return ProcessorResult(text: text) }
 
         // Match timings to words (best-effort: same count assumption)
         let count = min(words.count, timings.count)
@@ -63,7 +63,7 @@ struct PausePunctuationProcessor: TextProcessor {
         var result = words.joined(separator: " ")
         result = markQuestions(result)
 
-        return result
+        return ProcessorResult(text: result)
     }
 
     private func markQuestions(_ text: String) -> String {

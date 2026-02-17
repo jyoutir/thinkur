@@ -3,18 +3,18 @@ import Foundation
 struct StyleAdaptationProcessor: TextProcessor {
     let name = "StyleAdaptation"
 
-    func process(_ text: String, context: ProcessingContext) -> String {
-        guard !text.isEmpty else { return text }
+    func process(_ text: String, context: ProcessingContext) -> ProcessorResult {
+        guard !text.isEmpty else { return ProcessorResult(text: text) }
 
         switch context.appStyle {
         case .casual:
-            return applyCasualStyle(text)
+            return ProcessorResult(text: applyCasualStyle(text))
         case .formal:
-            return applyFormalStyle(text)
+            return ProcessorResult(text: applyFormalStyle(text))
         case .code:
-            return text // Minimal changes for code contexts
+            return ProcessorResult(text: text)
         case .standard:
-            return text
+            return ProcessorResult(text: text)
         }
     }
 
