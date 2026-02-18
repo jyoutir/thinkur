@@ -192,7 +192,7 @@ struct SmartFormattingProcessor: TextProcessor {
                     }
                 }
 
-                // 3g. Cardinal: multi-word numbers → digits (only convert 2+ words)
+                // 3g. Cardinal: number words → digits
                 if numberWords.count >= 2 {
                     let value = parseNumber(numberWords)
                     let original = words[i..<endIndex].joined(separator: " ")
@@ -205,7 +205,19 @@ struct SmartFormattingProcessor: TextProcessor {
                     continue
                 }
 
-                // Single number word — don't convert
+                // 3h. Single number word → digit (unless idiomatic)
+                if !shouldKeepNumberWord(lower, words: words, index: i) {
+                    let value = parseNumber(numberWords)
+                    let original = words[i]
+                    corrections.append(CorrectionEntry(
+                        processorName: name, ruleName: "cardinal_single",
+                        originalFragment: original, replacement: String(value), confidence: 0.8
+                    ))
+                    result.append(String(value))
+                    i = endIndex
+                    continue
+                }
+
                 result.append(words[i])
                 i += 1
             } else {
@@ -277,6 +289,30 @@ struct SmartFormattingProcessor: TextProcessor {
     private func shouldKeepOrdinal(_ word: String, words: [String], index: Int) -> Bool {
         let sentence = words.joined(separator: " ")
         return DisambiguatingMatcher.anyPatternMatches(SmartFormattingRules.ordinalKeepPatterns, in: sentence)
+    }
+
+    // MARK: - Single Number Word Keep Patterns
+
+    private static let singleNumberKeepPatterns: [String] = [
+        #"(?i)\bno\s+one\b"#,
+        #"(?i)\bone\s+of\b"#,
+        #"(?i)\bone\s+another\b"#,
+        #"(?i)\bfor\s+one\b"#,
+        #"(?i)\bone\s+more\b"#,
+        #"(?i)\bone\s+day\b"#,
+        #"(?i)\bone\s+time\b"#,
+        #"(?i)\bone\s+thing\b"#,
+        #"(?i)\bone\s+way\b"#,
+        #"(?i)\bat\s+one\s+point\b"#,
+        #"(?i)\bone\s+by\s+one\b"#,
+    ]
+
+    private func shouldKeepNumberWord(_ word: String, words: [String], index: Int) -> Bool {
+        if word == "one" {
+            let sentence = words.joined(separator: " ")
+            return DisambiguatingMatcher.anyPatternMatches(Self.singleNumberKeepPatterns, in: sentence)
+        }
+        return false
     }
 
     private func ordinalSuffix(for n: Int) -> String {

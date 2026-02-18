@@ -20,6 +20,9 @@ struct ListDetectionProcessor: TextProcessor {
             }
         }
 
+        // Bare number markers already pass sequential validation in the matcher
+        // No additional disambiguation needed here
+
         // Determine list type from markers
         let category = markers.first?.category ?? "bullet"
         var corrections: [CorrectionEntry] = []
@@ -46,9 +49,11 @@ struct ListDetectionProcessor: TextProcessor {
             let prefix: String
             switch category {
             case "numbered":
-                prefix = "\(i + 1). "
+                prefix = "\(i + 1)) "
             case "ordinal":
-                prefix = "\(i + 1). "
+                prefix = "\(i + 1)) "
+            case "bare_number":
+                prefix = "\(i + 1)) "
             default:
                 prefix = ListDetectionRules.defaultBulletCharacter
             }

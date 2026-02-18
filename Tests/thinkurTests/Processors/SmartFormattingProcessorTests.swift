@@ -28,9 +28,14 @@ struct SmartFormattingProcessorTests {
         #expect(result.text == "2300")
     }
 
-    @Test func singleSmallNumberNotConverted() {
+    @Test func singleSmallNumberConverted() {
         let result = processor.process("I have one dog", context: ctx)
-        #expect(result.text == "I have one dog")
+        #expect(result.text == "I have 1 dog")
+    }
+
+    @Test func singleNumberWordPreservedInIdiom() {
+        let result = processor.process("one of the best", context: ctx)
+        #expect(result.text == "one of the best")
     }
 
     @Test func mixedTextAndNumbers() {

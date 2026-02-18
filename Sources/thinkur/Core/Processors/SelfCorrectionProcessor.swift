@@ -66,22 +66,26 @@ struct SelfCorrectionProcessor: TextProcessor {
             return result
         }
 
-        // Find the rightmost correction phrase (explicit + contextual)
-        let rules = SelfCorrectionRules.allExplicitPhrases + SelfCorrectionRules.contextualPhrases
+        // Find the rightmost correction phrase.
+        // Check explicit phrases first (high + medium confidence),
+        // then contextual only if no explicit match found.
         var bestMatch: (range: Range<String.Index>, rule: ReplacementRule)?
 
-        for rule in rules {
-            let escaped = NSRegularExpression.escapedPattern(for: rule.pattern)
-            let pattern = #"\b"# + escaped + #"\b"#
-            guard let regex = RegexCache.shared.regex(for: pattern) else { continue }
-            let nsRange = NSRange(lower.startIndex..., in: lower)
-            let matches = regex.matches(in: lower, range: nsRange)
+        for rule in SelfCorrectionRules.allExplicitPhrases {
+            if let match = findRightmostMatch(for: rule, in: lower) {
+                if bestMatch == nil || match.lowerBound > bestMatch!.range.lowerBound {
+                    bestMatch = (match, rule)
+                }
+            }
+        }
 
-            // Take the last (rightmost) match
-            if let lastMatch = matches.last,
-               let matchRange = Range(lastMatch.range, in: lower) {
-                if bestMatch == nil || matchRange.lowerBound > bestMatch!.range.lowerBound {
-                    bestMatch = (matchRange, rule)
+        // Only check contextual phrases if no explicit match was found
+        if bestMatch == nil {
+            for rule in SelfCorrectionRules.contextualPhrases {
+                if let match = findRightmostMatch(for: rule, in: lower) {
+                    if bestMatch == nil || match.lowerBound > bestMatch!.range.lowerBound {
+                        bestMatch = (match, rule)
+                    }
                 }
             }
         }
@@ -91,6 +95,13 @@ struct SelfCorrectionProcessor: TextProcessor {
         // Check disambiguation for contextual phrases
         if rule.category == "contextual" {
             if !shouldTreatAsCorrection(rule.pattern, in: text) {
+                return (text, nil)
+            }
+        }
+
+        // Check disambiguation for "never mind" (literal use vs correction)
+        if rule.pattern == "never mind" || rule.pattern == "nevermind" {
+            if DisambiguatingMatcher.anyPatternMatches(SelfCorrectionRules.neverMindKeepPatterns, in: text) {
                 return (text, nil)
             }
         }
@@ -196,6 +207,19 @@ struct SelfCorrectionProcessor: TextProcessor {
         return nil
     }
 
+    // MARK: - Pattern Matching Helper
+
+    private func findRightmostMatch(for rule: ReplacementRule, in lower: String) -> Range<String.Index>? {
+        let escaped = NSRegularExpression.escapedPattern(for: rule.pattern)
+        let pattern = #"(?<![a-zA-Z\-])"# + escaped + #"\b"#
+        guard let regex = RegexCache.shared.regex(for: pattern) else { return nil }
+        let nsRange = NSRange(lower.startIndex..., in: lower)
+        let matches = regex.matches(in: lower, range: nsRange)
+        guard let lastMatch = matches.last,
+              let matchRange = Range(lastMatch.range, in: lower) else { return nil }
+        return matchRange
+    }
+
     // MARK: - Disambiguation
 
     private func shouldTreatAsCorrection(_ phrase: String, in text: String) -> Bool {
@@ -206,18 +230,29 @@ struct SelfCorrectionProcessor: TextProcessor {
             return !DisambiguatingMatcher.anyPatternMatches(SelfCorrectionRules.actuallyKeepPatterns, in: text)
         case "wait":
             return !DisambiguatingMatcher.anyPatternMatches(SelfCorrectionRules.waitKeepPatterns, in: text)
+        case "no":
+            return !DisambiguatingMatcher.anyPatternMatches(SelfCorrectionRules.noKeepPatterns, in: text)
+        case "sorry":
+            return !DisambiguatingMatcher.anyPatternMatches(SelfCorrectionRules.sorryKeepPatterns, in: text)
         default:
-            return true
+            return false
         }
     }
 
     private func isInQuotedSpeech(_ range: Range<String.Index>, in text: String) -> Bool {
         guard let regex = RegexCache.shared.regex(for: SelfCorrectionRules.quotedSpeechPattern) else { return false }
-        let beforeRange = NSRange(text.startIndex..<range.lowerBound, in: text)
-        // Check if a speech verb appears near before the correction phrase
-        let searchStart = max(0, beforeRange.location - 30)
-        let searchRange = NSRange(location: searchStart, length: beforeRange.location - searchStart + beforeRange.length)
-        guard searchRange.location >= 0, searchRange.location + searchRange.length <= text.utf16.count else { return false }
-        return regex.firstMatch(in: text, range: searchRange) != nil
+        // Only treat as quoted speech if a speech verb appears immediately before the correction phrase
+        // (within ~5 chars of whitespace/quotes, not separated by other words)
+        let beforeStart = text.startIndex
+        let beforeEnd = range.lowerBound
+        guard beforeStart < beforeEnd else { return false }
+        let beforeText = String(text[beforeStart..<beforeEnd])
+        let nsRange = NSRange(beforeText.startIndex..., in: beforeText)
+        let matches = regex.matches(in: beforeText, range: nsRange)
+        guard let lastMatch = matches.last,
+              let matchRange = Range(lastMatch.range, in: beforeText) else { return false }
+        // The speech verb match must end within 5 characters of the correction phrase start
+        let gapAfterVerb = beforeText.distance(from: matchRange.upperBound, to: beforeText.endIndex)
+        return gapAfterVerb <= 5
     }
 }
