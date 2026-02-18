@@ -12,7 +12,7 @@ struct HomeViewModelTests {
         let mock = MockAnalyticsRecording()
         mock.transcriptionsToReturn = records
         mock.activeDateStringsToReturn = activeDates
-        let vm = HomeViewModel(analyticsService: mock)
+        let vm = HomeViewModel(analyticsService: mock, sharedState: SharedAppState())
         return (mock, vm)
     }
 

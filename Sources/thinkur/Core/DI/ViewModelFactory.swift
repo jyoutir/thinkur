@@ -29,7 +29,7 @@ final class ViewModelFactory {
             settings: services.settings,
             sharedState: services.sharedState
         )
-        self.homeViewModel = HomeViewModel(analyticsService: services.analyticsService)
+        self.homeViewModel = HomeViewModel(analyticsService: services.analyticsService, sharedState: services.sharedState)
         self.shortcutsViewModel = ShortcutsViewModel(shortcutService: services.shortcutService)
         self.styleViewModel = StyleViewModel(stylePreferenceService: services.stylePreferenceService)
         self.insightsViewModel = InsightsViewModel(analyticsService: services.analyticsService)

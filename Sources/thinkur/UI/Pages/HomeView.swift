@@ -128,7 +128,9 @@ struct HomeView: View {
                                         appName: record.appName,
                                         appBundleID: record.appBundleID,
                                         timestamp: record.timestamp,
-                                        preview: record.processedText
+                                        preview: record.processedText,
+                                        rawText: record.rawText,
+                                        correctionCount: record.correctionCount
                                     )
                                     .padding(Spacing.sm)
                                     .glassCard()
@@ -149,6 +151,9 @@ struct HomeView: View {
         }
         .navigationTitle("Home")
         .task { await viewModel.loadData() }
+        .onChange(of: viewModel.transcriptionVersion) {
+            Task { await viewModel.loadData() }
+        }
         .onAppear { appeared = true }
     }
 

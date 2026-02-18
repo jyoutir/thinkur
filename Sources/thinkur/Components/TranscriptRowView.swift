@@ -6,9 +6,14 @@ struct TranscriptRowView: View {
     let appBundleID: String
     let timestamp: Date
     let preview: String
+    let rawText: String
+    let correctionCount: Int
 
     @State private var copied = false
     @State private var isHovered = false
+    @State private var showDiff = false
+
+    private var hasDiff: Bool { correctionCount > 0 }
 
     var body: some View {
         ZStack {
@@ -26,13 +31,29 @@ struct TranscriptRowView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(ColorTokens.textTertiary)
                             .opacity(isHovered && !copied ? 1 : 0)
+                            .onTapGesture { copyText() }
+                        if correctionCount > 0 {
+                            Text("\(correctionCount)")
+                                .font(Typography.caption2)
+                                .foregroundStyle(.purple)
+                            Text("·")
+                                .font(Typography.caption)
+                                .foregroundStyle(ColorTokens.textTertiary)
+                        }
                         Text(timestamp, format: .dateTime.hour().minute())
                             .font(Typography.caption)
                             .foregroundStyle(ColorTokens.textTertiary)
                     }
-                    Text(preview)
-                        .font(Typography.caption)
-                        .foregroundStyle(ColorTokens.textSecondary)
+                    if showDiff {
+                        Text(TextDiffBuilder.buildGhostDiff(raw: rawText, processed: preview))
+                            .font(Typography.caption)
+                            .foregroundStyle(ColorTokens.textSecondary)
+                    } else {
+                        Text(preview)
+                            .font(Typography.caption)
+                            .foregroundStyle(ColorTokens.textSecondary)
+                            .lineLimit(1)
+                    }
                 }
             }
             .opacity(copied ? 0 : 1)
@@ -50,7 +71,15 @@ struct TranscriptRowView: View {
         }
         .padding(.vertical, Spacing.xxs)
         .contentShape(Rectangle())
-        .onTapGesture { copyText() }
+        .onTapGesture {
+            if hasDiff {
+                withAnimation(Animations.glassMorph) {
+                    showDiff.toggle()
+                }
+            } else {
+                copyText()
+            }
+        }
         .onHover { isHovered = $0 }
         .animation(.spring(duration: 0.4, bounce: 0.2), value: copied)
         .animation(Animations.hoverFade, value: isHovered)
