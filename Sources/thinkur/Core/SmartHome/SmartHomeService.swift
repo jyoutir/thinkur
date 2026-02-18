@@ -13,6 +13,7 @@ final class SmartHomeService {
 
     let hueBackend = HueBridgeBackend()
     var homeKitBackend: HomeKitBackend?
+    var hueBluetoothBackend: HueBluetoothBackend?
 
     var hasAnyConnection: Bool {
         backends.contains { $0.isConnected }
@@ -36,6 +37,23 @@ final class SmartHomeService {
         hueBackend.disconnect()
         backends.removeAll { $0.backendType == .hue }
         removeLights(for: .hue)
+    }
+
+    func connectHueBluetooth() async throws {
+        let backend = HueBluetoothBackend()
+        hueBluetoothBackend = backend
+        if !backends.contains(where: { $0.backendType == .hueBluetooth }) {
+            backends.append(backend)
+        }
+        try await backend.connect()
+        await refreshLights()
+    }
+
+    func disconnectHueBluetooth() {
+        hueBluetoothBackend?.disconnect()
+        hueBluetoothBackend = nil
+        backends.removeAll { $0.backendType == .hueBluetooth }
+        removeLights(for: .hueBluetooth)
     }
 
     func connectHomeKit() async throws {

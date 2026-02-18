@@ -11,4 +11,5 @@ extension Logger {
     static let app = Logger(subsystem: subsystem, category: "app")
     static let postProcessing = Logger(subsystem: subsystem, category: "postProcessing")
     static let analytics = Logger(subsystem: subsystem, category: "analytics")
+    static let bluetooth = Logger(subsystem: subsystem, category: "bluetooth")
 }

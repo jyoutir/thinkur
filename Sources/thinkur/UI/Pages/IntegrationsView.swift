@@ -71,6 +71,27 @@ struct IntegrationsView: View {
                         onCancel: { viewModel.disconnectHue() }
                     )
                 }
+
+                Divider()
+
+                SettingsRowView(
+                    icon: "antenna.radiowaves.left.and.right",
+                    title: "Philips Hue Bluetooth",
+                    subtitle: viewModel.isHueBluetoothConnected ? "Connected" : "Direct to bulb, no bridge"
+                ) {
+                    if viewModel.isHueBluetoothConnected {
+                        Button("Disconnect") {
+                            viewModel.disconnectHueBluetooth()
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(ColorTokens.danger)
+                    } else {
+                        Button("Connect") {
+                            Task { await viewModel.connectHueBluetooth() }
+                        }
+                        .disabled(viewModel.isConnectingHueBluetooth)
+                    }
+                }
             }
         }
     }

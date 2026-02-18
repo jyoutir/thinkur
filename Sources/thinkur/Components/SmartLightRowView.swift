@@ -34,11 +34,19 @@ struct SmartLightRowView: View {
 
             Spacer()
 
-            Text(light.backend == .hue ? "Hue" : "HomeKit")
+            Text(backendLabel(light.backend))
                 .font(Typography.caption)
                 .foregroundStyle(ColorTokens.textTertiary)
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, 10)
+    }
+
+    private func backendLabel(_ type: SmartHomeBackendType) -> String {
+        switch type {
+        case .hue: return "Hue"
+        case .homekit: return "HomeKit"
+        case .hueBluetooth: return "Hue BLE"
+        }
     }
 }
