@@ -21,6 +21,7 @@ final class AppCoordinator {
     var styleViewModel: StyleViewModel { viewModels.styleViewModel }
     var insightsViewModel: InsightsViewModel { viewModels.insightsViewModel }
     var onboardingViewModel: OnboardingViewModel { viewModels.onboardingViewModel }
+    var integrationsViewModel: IntegrationsViewModel { viewModels.integrationsViewModel }
 
     init() {
         let services = ServiceContainer()

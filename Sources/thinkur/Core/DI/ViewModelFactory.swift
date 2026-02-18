@@ -9,6 +9,7 @@ final class ViewModelFactory {
     let styleViewModel: StyleViewModel
     let insightsViewModel: InsightsViewModel
     let onboardingViewModel: OnboardingViewModel
+    let integrationsViewModel: IntegrationsViewModel
 
     init(services: ServiceContainer) {
         self.recordingCoordinator = RecordingCoordinator(
@@ -21,7 +22,8 @@ final class ViewModelFactory {
             amplitudeProvider: services.amplitudeProvider,
             settings: services.settings,
             sharedState: services.sharedState,
-            shortcutService: services.shortcutService
+            shortcutService: services.shortcutService,
+            smartHomeService: services.smartHomeService
         )
         self.recordingViewModel = RecordingViewModel(
             coordinator: self.recordingCoordinator,
@@ -34,5 +36,6 @@ final class ViewModelFactory {
         self.styleViewModel = StyleViewModel(stylePreferenceService: services.stylePreferenceService)
         self.insightsViewModel = InsightsViewModel(analyticsService: services.analyticsService)
         self.onboardingViewModel = OnboardingViewModel(permissionManager: services.permissionManager, settings: services.settings)
+        self.integrationsViewModel = IntegrationsViewModel(smartHomeService: services.smartHomeService)
     }
 }

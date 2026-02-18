@@ -83,6 +83,11 @@ final class SettingsManager {
         didSet { defaults.set(learnFromCorrections, forKey: "learnFromCorrections") }
     }
 
+    // Smart Home
+    var smartHomeEnabled: Bool {
+        didSet { defaults.set(smartHomeEnabled, forKey: "smartHomeEnabled") }
+    }
+
     // Language settings
     var selectedLanguage: String {
         didSet { defaults.set(selectedLanguage, forKey: "selectedLanguage") }
@@ -145,6 +150,9 @@ final class SettingsManager {
         self.listFormatting = defaults.object(forKey: "listFormatting") != nil ? defaults.bool(forKey: "listFormatting") : true
         self.codeContext = defaults.bool(forKey: "codeContext")
         self.learnFromCorrections = defaults.bool(forKey: "learnFromCorrections")
+
+        // Smart Home
+        self.smartHomeEnabled = defaults.object(forKey: "smartHomeEnabled") != nil ? defaults.bool(forKey: "smartHomeEnabled") : true
 
         // Language
         self.selectedLanguage = defaults.string(forKey: "selectedLanguage") ?? "English"

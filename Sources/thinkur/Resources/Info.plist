@@ -28,5 +28,11 @@
     <string>thinkur uses on-device speech recognition to convert your voice to text.</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>thinkur needs local network access to discover and control your Philips Hue Bridge.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_hue._tcp</string>
+    </array>
 </dict>
 </plist>

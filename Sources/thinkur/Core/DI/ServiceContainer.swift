@@ -15,6 +15,7 @@ final class ServiceContainer {
     let shortcutService: ShortcutService
     let stylePreferenceService: StylePreferenceService
     let textPostProcessor: TextPostProcessor
+    let smartHomeService: SmartHomeService
 
     init() {
         self.settings = .shared
@@ -28,6 +29,7 @@ final class ServiceContainer {
         self.amplitudeProvider = AudioAmplitudeProvider()
         self.analyticsService = AnalyticsService()
         self.shortcutService = ShortcutService()
+        self.smartHomeService = SmartHomeService()
         self.stylePreferenceService = StylePreferenceService()
         self.textPostProcessor = TextPostProcessor(processors: [
             SelfCorrectionProcessor(),
@@ -56,7 +58,8 @@ final class ServiceContainer {
         analyticsService: AnalyticsService,
         shortcutService: ShortcutService,
         stylePreferenceService: StylePreferenceService,
-        textPostProcessor: TextPostProcessor
+        textPostProcessor: TextPostProcessor,
+        smartHomeService: SmartHomeService
     ) {
         self.settings = settings
         self.sharedState = sharedState
@@ -71,5 +74,6 @@ final class ServiceContainer {
         self.shortcutService = shortcutService
         self.stylePreferenceService = stylePreferenceService
         self.textPostProcessor = textPostProcessor
+        self.smartHomeService = smartHomeService
     }
 }
