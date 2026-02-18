@@ -41,6 +41,12 @@ private struct RootView: View {
             }
         }
         .preferredColorScheme(settings.themeMode.colorScheme)
+        .onAppear { applyAppearance(settings.themeMode) }
+        .onChange(of: settings.themeMode) { _, newMode in applyAppearance(newMode) }
+    }
+
+    private func applyAppearance(_ mode: ThemeMode) {
+        NSApp.appearance = NSAppearance(named: mode == .dark ? .darkAqua : .aqua)
     }
 }
 

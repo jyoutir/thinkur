@@ -52,12 +52,12 @@ struct SidebarView: View {
 
             // Theme toggle — whole row clickable, light/dark only
             Button {
-                settings.themeMode = settings.themeMode == .light ? .dark : .light
+                settings.themeMode = settings.themeMode.next
             } label: {
                 HStack(spacing: Spacing.xs) {
-                    Image(systemName: settings.themeMode == .dark ? "moon.fill" : "sun.max.fill")
+                    Image(systemName: settings.themeMode.iconName)
                         .font(.system(size: 13))
-                    Text(settings.themeMode == .dark ? "Dark" : "Light")
+                    Text(settings.themeMode.title)
                         .font(Typography.caption)
                     Spacer()
                 }
