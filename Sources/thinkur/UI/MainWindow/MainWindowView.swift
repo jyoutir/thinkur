@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainWindowView: View {
     @State private var selectedPage: NavigationPage = .home
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         GlassEffectContainer {
@@ -11,6 +12,7 @@ struct MainWindowView: View {
                 ContentRouter(page: selectedPage)
             }
         }
+        .id(colorScheme)
         .frame(minWidth: 920, minHeight: 620)
     }
 }
