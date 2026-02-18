@@ -36,6 +36,24 @@ enum ListDetectionRules {
                        replacement: "", confidence: 0.85, isRegex: true, category: "continuation_marker"),
     ]
 
+    // MARK: - Bare Number Marker Patterns (word-form and digit-form since SmartFormatting runs first)
+
+    static let bareNumberMarkerPatterns: [ReplacementRule] = [
+        ReplacementRule(pattern: #"\b(one|two|three|four|five|six|seven|eight|nine|ten|1|2|3|4|5|6|7|8|9|10)\b[,:]?\s+"#,
+                       replacement: "", confidence: 0.7, isRegex: true, category: "bare_number_marker"),
+    ]
+
+    // MARK: - Bare Number Narrative Patterns (NOT a list)
+
+    static let bareNumberNarrativePatterns: [String] = [
+        #"(?i)\bone\s+of\s+(the|them|those|these|my|your|his|her|our|their)\b"#,
+        #"(?i)\bat\s+one\s+point\b"#,
+        #"(?i)\bno\s+one\b"#,
+        #"(?i)\bone\s+more\b"#,
+        #"(?i)\bone\s+another\b"#,
+        #"(?i)\b(two|three|four|five|six|seven|eight|nine|ten)\s+(of|more|less|times|people|things|ways|days|weeks|months|years)\b"#,
+    ]
+
     // MARK: - Ordinal Disambiguation (narrative use — NOT a list)
 
     static let ordinalNarrativePatterns: [String] = [

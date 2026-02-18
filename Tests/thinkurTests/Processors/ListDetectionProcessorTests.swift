@@ -34,8 +34,8 @@ struct ListDetectionProcessorTests {
     @Test func numberedList() {
         let result = processor.process("number one apples number two bananas", context: ctx).text
         #expect(result.contains("\n"))
-        #expect(result.contains("1."))
-        #expect(result.contains("2."))
+        #expect(result.contains("1)"))
+        #expect(result.contains("2)"))
         #expect(result.contains("apples"))
         #expect(result.contains("bananas"))
     }

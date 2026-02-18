@@ -34,7 +34,6 @@ enum SelfCorrectionRules {
         ReplacementRule(pattern: "or rather",            replacement: "", confidence: 0.85, category: "correction"),
         ReplacementRule(pattern: "or actually",          replacement: "", confidence: 0.85, category: "correction"),
         ReplacementRule(pattern: "well actually",        replacement: "", confidence: 0.85, category: "correction"),
-        ReplacementRule(pattern: "correction",           replacement: "", confidence: 0.85, category: "correction"),
         ReplacementRule(pattern: "let me rephrase that", replacement: "", confidence: 0.85, category: "correction"),
         ReplacementRule(pattern: "let me rephrase",      replacement: "", confidence: 0.85, category: "correction"),
         ReplacementRule(pattern: "what i meant was",     replacement: "", confidence: 0.85, category: "correction"),
@@ -81,13 +80,15 @@ enum SelfCorrectionRules {
         #"(?i)\bwhat\s+i\s+mean\b"#,
         #"(?i)\bknow\s+what\s+i\s+mean\b"#,
         #"(?i)\bi\s+mean\s*$"#,
+        #"(?i)^i\s+mean\b"#,
     ]
 
     // MARK: - "actually" disambiguation (non-correction uses)
 
     static let actuallyKeepPatterns: [String] = [
-        #"(?i)\bactually\s+(is|was|were|are|did|does|do|have|has|had|can|could|would|should|went|came|got|made|said|like|really|quite|pretty|very)\b"#,
+        #"(?i)\bactually\s+(is|was|were|are|did|does|do|have|has|had|can|could|would|should|went|came|got|made|said|like|really|quite|pretty|very|works|looks|seems|feels|turns|helps|means|happens|matters|worked|looked)\b"#,
         #"(?i)\b(i|we|they|he|she|it|you)\s+actually\b"#,
+        #"(?i)\b\w+\s+actually\s+\w+"#,
     ]
 
     // MARK: - "wait" disambiguation (non-correction uses)
@@ -95,6 +96,24 @@ enum SelfCorrectionRules {
     static let waitKeepPatterns: [String] = [
         #"(?i)\bwait\s+(for|here|there|until|a\s+moment|a\s+minute|a\s+second|a\s+sec|up)\b"#,
         #"(?i)\b(can|could|please|just|have\s+to|need\s+to)\s+wait\b"#,
+    ]
+
+    // MARK: - "no" disambiguation (non-correction uses)
+
+    static let noKeepPatterns: [String] = [
+        #"(?i)\bno\s+(problem|way|doubt|need|longer|more|one|matter|rush|thanks|thank|worries)\b"#,
+        #"(?i)\bsaid\s+no\b"#,
+        #"(?i)\bno,\s"#,
+        #"(?i)^no\s+(i|we|he|she|they|it|you|the|that|this)\b"#,
+        #"(?i)\bno\s+(i|we)\s+(don't|do\s+not|didn't|did\s+not|can't|cannot|won't|will\s+not|think|believe|have)\b"#,
+    ]
+
+    // MARK: - "sorry" disambiguation (non-correction uses)
+
+    static let sorryKeepPatterns: [String] = [
+        #"(?i)\bi'm\s+sorry\b"#,
+        #"(?i)\bsorry\s+(about|for|to|if|that|but|i'm)\b"#,
+        #"(?i)^sorry\b"#,
     ]
 
     // MARK: - Intentional repetitions (do NOT remove)
@@ -121,6 +140,12 @@ enum SelfCorrectionRules {
     ]
 
     // MARK: - Quoted speech detection (don't treat as correction)
+
+    // MARK: - "never mind" disambiguation (literal vs correction)
+
+    static let neverMindKeepPatterns: [String] = [
+        #"(?i)\bnever\s+mind\s+(the|about|that|what|how|if|whether|my|your|his|her|our|their)\b"#,
+    ]
 
     static let quotedSpeechPattern = #"(?i)\b(said|says|wrote|typed|means|meaning|called|titled|named)\s+["']?"#
 

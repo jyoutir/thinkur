@@ -121,8 +121,8 @@ struct SelfCorrectionProcessorTests {
     // MARK: - New tests: multiple corrections and sentence preservation
 
     @Test func multipleCorrections() {
-        let result = processor.process("I like no I love cats", context: ctx).text
-        #expect(result == "I love cats")
+        let result = processor.process("send to John wait no send to Sarah", context: ctx).text
+        #expect(result == "send to Sarah")
     }
 
     @Test func correctionPreservesOtherSentences() {
@@ -176,5 +176,38 @@ struct SelfCorrectionProcessorTests {
     @Test func correctionMetadata() {
         let result = processor.process("I want pizza scratch that I want pasta", context: ctx)
         #expect(!result.corrections.isEmpty)
+    }
+
+    // MARK: - Regression: false positive prevention
+
+    @Test func noAsAnswerPreserved() {
+        let result = processor.process("no I don't think that's the right approach", context: ctx).text
+        #expect(result.lowercased().contains("no"))
+        #expect(result.contains("don't think"))
+    }
+
+    @Test func sorryAsApologyPreserved() {
+        let result = processor.process("sorry I'm late the traffic was terrible", context: ctx).text
+        #expect(result.lowercased().contains("sorry"))
+        #expect(result.contains("late"))
+    }
+
+    @Test func selfCorrectionHyphenatedWordPreserved() {
+        // "correction" inside "self-correction" should NOT trigger
+        let result = processor.process("the self correction rules based system works well", context: ctx).text
+        #expect(result.contains("self correction"))
+        #expect(result.contains("rules based system"))
+    }
+
+    @Test func noRushPreserved() {
+        let result = processor.process("no rush or anything", context: ctx).text
+        #expect(result.contains("no rush"))
+    }
+
+    @Test func noActuallyInlineCorrection() {
+        let input = "i talked to sarah and she said tuesday no actually wednesday"
+        let result = processor.process(input, context: ctx)
+        #expect(!result.corrections.isEmpty, "Expected corrections but got none. Text: \(result.text)")
+        #expect(result.text == "wednesday", "Expected 'wednesday' but got: '\(result.text)'")
     }
 }
