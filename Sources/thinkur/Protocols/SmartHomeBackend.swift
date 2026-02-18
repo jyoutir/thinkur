@@ -31,6 +31,7 @@ struct LightStateChange {
 enum SmartHomeBackendType: String, Codable {
     case hue
     case homekit
+    case hueBluetooth
 }
 
 /// Backend-agnostic smart home control

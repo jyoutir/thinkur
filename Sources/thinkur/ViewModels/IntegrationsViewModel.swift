@@ -6,6 +6,7 @@ final class IntegrationsViewModel {
     let smartHomeService: SmartHomeService
 
     var isConnectingHue = false
+    var isConnectingHueBluetooth = false
     var isConnectingHomeKit = false
     var errorMessage: String?
 
@@ -16,6 +17,7 @@ final class IntegrationsViewModel {
     var isRefreshing: Bool { smartHomeService.isRefreshing }
 
     var isHueConnected: Bool { hueBackend.isConnected }
+    var isHueBluetoothConnected: Bool { smartHomeService.hueBluetoothBackend?.isConnected ?? false }
     var isHomeKitConnected: Bool { smartHomeService.homeKitBackend?.isConnected ?? false }
 
     var huePairingState: HueBridgeBackend.PairingState { hueBackend.pairingState }
@@ -37,6 +39,21 @@ final class IntegrationsViewModel {
 
     func disconnectHue() {
         smartHomeService.disconnectHue()
+    }
+
+    func connectHueBluetooth() async {
+        isConnectingHueBluetooth = true
+        errorMessage = nil
+        do {
+            try await smartHomeService.connectHueBluetooth()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isConnectingHueBluetooth = false
+    }
+
+    func disconnectHueBluetooth() {
+        smartHomeService.disconnectHueBluetooth()
     }
 
     func connectHomeKit() async {
