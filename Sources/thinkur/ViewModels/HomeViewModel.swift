@@ -14,6 +14,8 @@ final class HomeViewModel {
     var rangeStart: Date?
     var rangeEnd: Date?
     var collapsedGroups: Set<String> = []
+    var totalTimeSaved: TimeInterval = 0
+    var totalWords: Int = 0
 
     private var allRecords: [TranscriptionRecord] = []
     private let analyticsService: any AnalyticsRecording
@@ -47,6 +49,8 @@ final class HomeViewModel {
     func loadData() async {
         allRecords = await analyticsService.fetchTranscriptions(since: 30)
         activeDateStrings = await analyticsService.fetchActiveDateStrings(since: 30)
+        totalTimeSaved = await analyticsService.fetchTotalTimeSaved()
+        totalWords = await analyticsService.fetchTotalWords()
         rebuildGroups()
     }
 
