@@ -13,6 +13,7 @@ final class RecordingCoordinator {
     private let frontmostAppDetector: FrontmostAppDetector
     private let analyticsService: any AnalyticsRecording
     private let shortcutService: any ShortcutLookup
+    private let smartHomeService: SmartHomeService?
     private let amplitudeProvider: AudioAmplitudeProvider
     private let settings: SettingsManager
     private let sharedState: SharedAppState
@@ -29,6 +30,7 @@ final class RecordingCoordinator {
         settings: SettingsManager,
         sharedState: SharedAppState,
         shortcutService: any ShortcutLookup,
+        smartHomeService: SmartHomeService? = nil,
         createFloatingPanel: Bool = true
     ) {
         self.audioCaptureManager = audioCaptureManager
@@ -38,6 +40,7 @@ final class RecordingCoordinator {
         self.frontmostAppDetector = frontmostAppDetector
         self.analyticsService = analyticsService
         self.shortcutService = shortcutService
+        self.smartHomeService = smartHomeService
         self.amplitudeProvider = amplitudeProvider
         self.settings = settings
         self.sharedState = sharedState
@@ -126,6 +129,25 @@ final class RecordingCoordinator {
                 text = rawText
                 correctionCount = 0
             }
+            // Check for smart home command (before shortcuts and text insertion)
+            if let smartHome = smartHomeService,
+               await smartHome.tryExecuteCommand(text: text) {
+                sharedState.lastSmartHomeAction = smartHome.lastActionMessage
+                sharedState.lastTranscription = text
+                Logger.app.info("Smart home command executed, skipping text insertion")
+                analyticsService.record(
+                    rawText: rawText,
+                    processedText: text,
+                    duration: duration,
+                    appBundleID: frontmostAppDetector.bundleID,
+                    appName: frontmostAppDetector.appName,
+                    correctionCount: correctionCount
+                )
+                sharedState.transcriptionVersion += 1
+                updateState(.idle)
+                return
+            }
+
             // Check for shortcut expansion
             var finalText = text
             if let expansion = await shortcutService.findExpansion(for: text.trimmingCharacters(in: .whitespacesAndNewlines)) {

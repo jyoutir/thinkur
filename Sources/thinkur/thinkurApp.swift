@@ -16,6 +16,7 @@ struct thinkurApp: App {
                 .environment(coordinator.styleViewModel)
                 .environment(coordinator.insightsViewModel)
                 .environment(coordinator.onboardingViewModel)
+                .environment(coordinator.integrationsViewModel)
                 .environment(coordinator.settings)
                 .tint(.primary)
         }

@@ -14,6 +14,8 @@ struct ContentRouter: View {
                 StyleView()
             case .insights:
                 InsightsView()
+            case .integrations:
+                IntegrationsView()
             case .hotkey:
                 HotkeySettingsView()
             case .dictation:
