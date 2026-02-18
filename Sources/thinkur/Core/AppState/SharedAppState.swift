@@ -8,4 +8,5 @@ final class SharedAppState {
     var isModelReady: Bool = false
     var isModelLoading: Bool = false
     var modelLoadingMessage: String = ""
+    var transcriptionVersion: Int = 0
 }

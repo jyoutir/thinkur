@@ -136,16 +136,15 @@ final class RecordingCoordinator {
             textInsertionService.insertText(finalText)
             Logger.app.info("Inserted transcription: \"\(text)\"")
 
-            Task {
-                analyticsService.record(
-                    rawText: rawText,
-                    processedText: text,
-                    duration: duration,
-                    appBundleID: frontmostAppDetector.bundleID,
-                    appName: frontmostAppDetector.appName,
-                    correctionCount: correctionCount
-                )
-            }
+            analyticsService.record(
+                rawText: rawText,
+                processedText: text,
+                duration: duration,
+                appBundleID: frontmostAppDetector.bundleID,
+                appName: frontmostAppDetector.appName,
+                correctionCount: correctionCount
+            )
+            sharedState.transcriptionVersion += 1
         } else {
             Logger.app.info("No transcription result")
         }

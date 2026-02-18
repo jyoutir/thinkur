@@ -17,6 +17,9 @@ final class HomeViewModel {
 
     private var allRecords: [TranscriptionRecord] = []
     private let analyticsService: any AnalyticsRecording
+    private let sharedState: SharedAppState
+
+    var transcriptionVersion: Int { sharedState.transcriptionVersion }
 
     private static let dateKeyFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -36,8 +39,9 @@ final class HomeViewModel {
         return f
     }()
 
-    init(analyticsService: any AnalyticsRecording) {
+    init(analyticsService: any AnalyticsRecording, sharedState: SharedAppState) {
         self.analyticsService = analyticsService
+        self.sharedState = sharedState
     }
 
     func loadData() async {
