@@ -14,6 +14,12 @@ struct HomeView: View {
                     .font(Typography.callout)
                     .foregroundStyle(ColorTokens.textTertiary)
 
+                // Summary stats
+                HStack(spacing: Spacing.sm) {
+                    StatPill(value: Formatters.formatTimeSaved(viewModel.totalTimeSaved), label: "min saved")
+                    StatPill(value: Formatters.compactNumber(viewModel.totalWords), label: "words")
+                }
+
                 // Press Tab prompt
                 HStack(spacing: Spacing.sm) {
                     Text("Press")
@@ -157,6 +163,27 @@ struct HomeView: View {
         .onAppear { appeared = true }
     }
 
+}
+
+// MARK: - Stat Pill
+
+private struct StatPill: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        HStack(spacing: Spacing.xs) {
+            Text(value)
+                .font(Typography.headline)
+                .foregroundStyle(ColorTokens.textPrimary)
+            Text(label)
+                .font(Typography.callout)
+                .foregroundStyle(ColorTokens.textTertiary)
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.sm)
+        .glassCard()
+    }
 }
 
 // MARK: - Hover Brightness Modifier
