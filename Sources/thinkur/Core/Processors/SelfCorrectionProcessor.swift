@@ -121,12 +121,15 @@ struct SelfCorrectionProcessor: TextProcessor {
         let clauseStart: String.Index
         let beforeCorrection = text[text.startIndex..<originalStart]
 
-        if rule.confidence < 0.9 {
+        if rule.confidence >= 1.0 {
+            // Certain corrections (scratch that, delete that): delete to sentence boundary or start
+            clauseStart = findSentenceBoundary(in: beforeCorrection, fullText: text) ?? text.startIndex
+        } else if rule.confidence < 0.9 {
             // Medium/contextual: delete back to nearest structural boundary word
             clauseStart = findStructuralBoundary(in: beforeCorrection) ?? findSentenceBoundary(in: beforeCorrection, fullText: text) ?? text.startIndex
         } else {
-            // High confidence: delete back to sentence boundary
-            clauseStart = findSentenceBoundary(in: beforeCorrection, fullText: text) ?? text.startIndex
+            // High confidence (0.85-0.99): structural boundary, then sentence, then start
+            clauseStart = findStructuralBoundary(in: beforeCorrection) ?? findSentenceBoundary(in: beforeCorrection, fullText: text) ?? text.startIndex
         }
 
         // Build result: text before clause + text after correction phrase
@@ -135,7 +138,19 @@ struct SelfCorrectionProcessor: TextProcessor {
         let keepText = afterPhrase.drop(while: { $0 == " " || $0 == "," })
 
         let removedPortion = String(text[clauseStart..<originalEnd])
-        let newText = beforeClause + keepText
+
+        // De-duplicate: if the correction restates the full clause prefix, avoid doubling it
+        // e.g. "send it to John wait no send it to Sarah" → "send it to Sarah" not "send it to send it to Sarah"
+        let trimmedBefore = beforeClause.trimmingCharacters(in: .whitespaces)
+        let keepTextStr = String(keepText)
+        let newText: String
+        if !trimmedBefore.isEmpty &&
+           (keepTextStr.lowercased().hasPrefix(trimmedBefore.lowercased() + " ") ||
+            keepTextStr.lowercased() == trimmedBefore.lowercased()) {
+            newText = keepTextStr
+        } else {
+            newText = beforeClause + keepText
+        }
 
         let correction = CorrectionEntry(
             processorName: name,

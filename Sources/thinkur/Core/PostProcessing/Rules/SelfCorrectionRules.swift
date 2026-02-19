@@ -96,6 +96,11 @@ enum SelfCorrectionRules {
     static let waitKeepPatterns: [String] = [
         #"(?i)\bwait\s+(for|here|there|until|a\s+moment|a\s+minute|a\s+second|a\s+sec|up)\b"#,
         #"(?i)\b(can|could|please|just|have\s+to|need\s+to)\s+wait\b"#,
+        // Verb phrases ending in "wait" (not a correction signal)
+        #"(?i)\b(should|will|would|must|might|may|shall|going\s+to|want\s+to|used\s+to|can't|cannot|won't|will\s+not)\s+wait\b"#,
+        // "wait" as the last word after a verb/subject (predicate usage)
+        #"(?i)\bwe\s+should\s+wait\b"#,
+        #"(?i)\bwait\s*[.?!]"#,
     ]
 
     // MARK: - "no" disambiguation (non-correction uses)
@@ -122,6 +127,8 @@ enum SelfCorrectionRules {
         "very", "really", "so", "super", "ha", "haha",
         "bye", "knock", "go", "no", "tsk", "shh",
         "now", "there", "come", "well", "boo",
+        // Spoken punctuation patterns — "dot dot dot" → "..." should NOT be collapsed
+        "dot",
     ]
 
     // MARK: - Subject pronouns (for abandoned clause detection)
@@ -155,6 +162,12 @@ enum SelfCorrectionRules {
         "said", "says", "told", "asked", "mentioned", "reported",
         "and", "but", "or", "that", "which", "who", "when", "where",
         "because", "since", "after", "before", "while", "if", "although",
+        // Linking verbs: keep "the budget is" when correcting "seventy" → "75000"
+        "is", "was", "are", "were", "am", "been", "being",
+        "has", "have", "had",
+        // Prepositions: keep "meet me on" when correcting "tuesday" → "wednesday"
+        "on", "at", "in", "to", "for", "with", "from", "of", "about",
+        "into", "over", "under", "between", "through",
     ]
 
     static let maxCorrectionIterations = 10

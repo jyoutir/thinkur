@@ -13,9 +13,6 @@ struct IntegrationsView: View {
                 // Philips Hue Section
                 hueSection
 
-                // Apple HomeKit Section
-                homeKitSection
-
                 // Error display
                 if let error = viewModel.errorMessage {
                     Text(error)
@@ -41,43 +38,52 @@ struct IntegrationsView: View {
 
     @ViewBuilder
     private var hueSection: some View {
-        GroupedSettingsSection(title: "Philips Hue") {
-            VStack(spacing: 0) {
-                SettingsRowView(
-                    icon: "lightbulb.led.wide",
-                    title: "Philips Hue Bridge",
-                    subtitle: viewModel.isHueConnected ? "Connected" : "Direct LAN control"
-                ) {
-                    if viewModel.isHueConnected {
-                        Button("Disconnect") {
-                            viewModel.disconnectHue()
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            Text("Philips Hue")
+                .font(Typography.caption)
+                .foregroundStyle(ColorTokens.textSecondary)
+                .textCase(.uppercase)
+
+            // Bridge card
+            GroupedSettingsSection {
+                VStack(spacing: 0) {
+                    SettingsRowView(
+                        icon: "lightbulb.led.wide",
+                        title: "Hue Bridge",
+                        subtitle: viewModel.isHueConnected ? "Connected" : "Control via your local network"
+                    ) {
+                        if viewModel.isHueConnected {
+                            Button("Disconnect") {
+                                viewModel.disconnectHue()
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(ColorTokens.danger)
+                        } else {
+                            Button("Connect") {
+                                Task { await viewModel.connectHue() }
+                            }
+                            .disabled(viewModel.isConnectingHue)
                         }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(ColorTokens.danger)
-                    } else {
-                        Button("Connect") {
-                            Task { await viewModel.connectHue() }
-                        }
-                        .disabled(viewModel.isConnectingHue)
+                    }
+
+                    // Pairing flow (inline in bridge card only)
+                    if viewModel.isConnectingHue || viewModel.huePairingState != .idle && viewModel.huePairingState != .paired {
+                        Divider()
+                        HuePairingView(
+                            pairingState: viewModel.huePairingState,
+                            onConnect: { Task { await viewModel.connectHue() } },
+                            onCancel: { viewModel.disconnectHue() }
+                        )
                     }
                 }
+            }
 
-                // Pairing flow
-                if viewModel.isConnectingHue || viewModel.huePairingState != .idle && viewModel.huePairingState != .paired {
-                    Divider()
-                    HuePairingView(
-                        pairingState: viewModel.huePairingState,
-                        onConnect: { Task { await viewModel.connectHue() } },
-                        onCancel: { viewModel.disconnectHue() }
-                    )
-                }
-
-                Divider()
-
+            // Bluetooth card
+            GroupedSettingsSection {
                 SettingsRowView(
                     icon: "antenna.radiowaves.left.and.right",
-                    title: "Philips Hue Bluetooth",
-                    subtitle: viewModel.isHueBluetoothConnected ? "Connected" : "Direct to bulb, no bridge"
+                    title: "Hue Bluetooth",
+                    subtitle: hueBluetoothSubtitle
                 ) {
                     if viewModel.isHueBluetoothConnected {
                         Button("Disconnect") {
@@ -86,39 +92,27 @@ struct IntegrationsView: View {
                         .buttonStyle(.plain)
                         .foregroundStyle(ColorTokens.danger)
                     } else {
-                        Button("Connect") {
-                            Task { await viewModel.connectHueBluetooth() }
+                        if viewModel.isConnectingHueBluetooth {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Button("Connect") {
+                                Task { await viewModel.connectHueBluetooth() }
+                            }
                         }
-                        .disabled(viewModel.isConnectingHueBluetooth)
                     }
                 }
             }
         }
     }
 
-    // MARK: - HomeKit Section
-
-    @ViewBuilder
-    private var homeKitSection: some View {
-        GroupedSettingsSection(title: "Apple HomeKit") {
-            SettingsRowView(
-                icon: "house",
-                title: "Apple HomeKit",
-                subtitle: viewModel.isHomeKitConnected ? "Connected" : "Universal device control"
-            ) {
-                if viewModel.isHomeKitConnected {
-                    Button("Disconnect") {
-                        viewModel.disconnectHomeKit()
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(ColorTokens.danger)
-                } else {
-                    Button("Enable") {
-                        Task { await viewModel.connectHomeKit() }
-                    }
-                    .disabled(viewModel.isConnectingHomeKit)
-                }
-            }
+    private var hueBluetoothSubtitle: String {
+        if viewModel.isHueBluetoothConnected {
+            return "Connected"
+        } else if viewModel.isConnectingHueBluetooth {
+            return "Scanning for bulbs..."
+        } else {
+            return "Direct to bulb, no bridge needed"
         }
     }
 
@@ -153,7 +147,17 @@ struct IntegrationsView: View {
                 GroupedSettingsSection(title: group.room) {
                     VStack(spacing: 0) {
                         ForEach(group.lights) { light in
-                            SmartLightRowView(light: light)
+                            SmartLightRowView(
+                                light: light,
+                                onToggle: { on in
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        viewModel.toggleLight(id: light.id, on: on)
+                                    }
+                                },
+                                onBrightnessChange: { brightness in
+                                    viewModel.setBrightness(id: light.id, brightness: brightness)
+                                }
+                            )
                             if light.id != group.lights.last?.id {
                                 Divider()
                             }

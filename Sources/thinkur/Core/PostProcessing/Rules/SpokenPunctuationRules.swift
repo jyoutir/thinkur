@@ -100,6 +100,14 @@ enum SpokenPunctuationRules {
     static let periodKeepPatterns: [String] = [
         #"(?i)\b(a|an|the|this|that|each|every|some|long|short|brief|extended|trial|waiting|class|grace|cool|warm|cooling|warming|transition|recovery|probation)\s+period\b"#,
         #"(?i)\bperiod\s+(of|in|for|during|between|from|until|after|before)\b"#,
+        #"(?i)\b\w+an\s+period\b"#,
+    ]
+
+    static let dashKeepPatterns: [String] = [
+        #"(?i)\b(to|need\s+to|have\s+to|got\s+to|going\s+to|want\s+to|had\s+to)\s+dash\b"#,
+        #"(?i)\bdash\s+(to|for|off|out|away|through|across|around|back|home|inside|outside)\b"#,
+        #"(?i)\bmad\s+dash\b"#,
+        #"(?i)\b(a|the|quick|short|long|fifty|hundred)\s+yard\s+dash\b"#,
     ]
 
     static let colonKeepPatterns: [String] = [

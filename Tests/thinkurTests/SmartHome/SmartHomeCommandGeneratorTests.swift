@@ -66,4 +66,17 @@ struct SmartHomeCommandGeneratorTests {
             }
         }
     }
+
+    @Test("Commands use custom name when originalName differs")
+    func commandsUseCustomName() {
+        let lights = [
+            SmartLight(id: "1", name: "My Desk Light", originalName: "Lamp", roomName: nil, isOn: true, brightness: 80, isReachable: true, backend: .hue),
+        ]
+        let commands = SmartHomeCommandGenerator.generateCommands(from: lights)
+
+        let turnOn = commands.first { $0.action == .turnOn }
+        #expect(turnOn != nil)
+        #expect(turnOn!.triggerPhrases.contains("turn on my desk light"))
+        #expect(turnOn!.targetName == "My Desk Light")
+    }
 }

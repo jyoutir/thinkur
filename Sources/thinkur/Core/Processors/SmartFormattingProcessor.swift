@@ -540,6 +540,28 @@ struct SmartFormattingProcessor: TextProcessor {
     // MARK: - Time Parsing
 
     private func tryParseTime(words: [String], numberWords: [String], numberEndIndex: Int) -> (String, Int)? {
+        // Case 1: numberWords contain both hour and minutes as a compound
+        // e.g., ["six", "forty", "five"] → hour=6, minutes=45
+        if numberWords.count >= 2 {
+            let firstWordLower = numberWords[0].lowercased()
+            if let hour = SmartFormattingRules.ones[firstWordLower], hour >= 1, hour <= 12 {
+                let minuteWords = Array(numberWords.dropFirst())
+                let minutes = parseNumber(minuteWords)
+                if minutes >= 0 && minutes <= 59 && minutes > 0 {
+                    // Check for am/pm after
+                    if numberEndIndex < words.count {
+                        let ampm = words[numberEndIndex].lowercased()
+                        if ampm == "am" || ampm == "a.m." {
+                            return ("\(hour):\(String(format: "%02d", minutes)) AM", numberEndIndex + 1)
+                        } else if ampm == "pm" || ampm == "p.m." {
+                            return ("\(hour):\(String(format: "%02d", minutes)) PM", numberEndIndex + 1)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Case 2: numberWords are just the hour, minutes follow separately
         let hourValue = parseNumber(numberWords)
         guard hourValue >= 1 && hourValue <= 12 else { return nil }
 
@@ -567,11 +589,15 @@ struct SmartFormattingProcessor: TextProcessor {
         if endIdx < words.count {
             let ampm = words[endIdx].lowercased()
             if ampm == "am" || ampm == "a.m." {
-                let minStr = minutes.map { String(format: "%02d", $0) } ?? "00"
-                return ("\(hourValue):\(minStr) AM", endIdx + 1)
+                if let mins = minutes {
+                    return ("\(hourValue):\(String(format: "%02d", mins)) AM", endIdx + 1)
+                }
+                return ("\(hourValue) AM", endIdx + 1)
             } else if ampm == "pm" || ampm == "p.m." {
-                let minStr = minutes.map { String(format: "%02d", $0) } ?? "00"
-                return ("\(hourValue):\(minStr) PM", endIdx + 1)
+                if let mins = minutes {
+                    return ("\(hourValue):\(String(format: "%02d", mins)) PM", endIdx + 1)
+                }
+                return ("\(hourValue) PM", endIdx + 1)
             }
         }
 
@@ -739,7 +765,8 @@ struct SmartFormattingProcessor: TextProcessor {
     ]
 
     private static let smallNumberBeforeNounKeepPatterns: [String] = [
-        #"(?i)\b(two|three|four|five|six|seven|eight|nine)\s+(question|questions|concern|concerns|thing|things|people|person|way|ways|time|times|day|days|week|weeks|month|months|year|years|minute|minutes|hour|hours|option|options|choice|choices|reason|reasons|point|points|step|steps|item|items|issue|issues|idea|ideas|problem|problems|example|examples|type|types|kind|kinds|part|parts|piece|pieces|group|groups|set|sets|pair|pairs|team|teams|member|members|cat|cats|dog|dogs|kid|kids|child|children|friend|friends|night|nights|attempt|attempts|chance|chances|engineer|engineers|developer|developers|reps|rep)\b"#,
+        // Keep small numbers as words before common count nouns
+        #"(?i)\b(two|three|four|five|six|seven|eight|nine)\s+(question|questions|concern|concerns|thing|things|people|person|way|ways|option|options|choice|choices|reason|reasons|point|points|type|types|kind|kinds|part|parts|piece|pieces|pair|pairs|cat|cats|dog|dogs|kid|kids|child|children|team|teams|group|groups|step|steps|item|items|week|weeks|day|days|month|months|year|years)\b"#,
     ]
 
     private func shouldKeepNumberWord(_ word: String, words: [String], index: Int) -> Bool {

@@ -192,6 +192,7 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
     private var connectContinuation: CheckedContinuation<Void, Error>?
     private var servicesContinuation: CheckedContinuation<Void, Error>?
     private var characteristicsContinuation: CheckedContinuation<Void, Error>?
+    private var readValueContinuation: CheckedContinuation<Void, Error>?
 
     private var discoveredPeripherals: [CBPeripheral] = []
     private var isPoweredOn = false
@@ -242,6 +243,36 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
                 let peripherals = self.discoveredPeripherals
                 self.scanContinuation?.resume(returning: peripherals)
                 self.scanContinuation = nil
+            }
+        }
+    }
+
+    func readCharacteristicValue(peripheral: CBPeripheral, characteristic: CBCharacteristic) async throws {
+        for attempt in 1...3 {
+            do {
+                try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+                    readValueContinuation = cont
+                    peripheral.readValue(for: characteristic)
+
+                    Task {
+                        try? await Task.sleep(for: .seconds(10))
+                        self.readValueContinuation?.resume(throwing: HueBluetoothError.discoveryTimeout)
+                        self.readValueContinuation = nil
+                    }
+                }
+                return
+            } catch {
+                let nsError = error as NSError
+                let isEncryptionError = nsError.domain == CBATTErrorDomain
+                    && (nsError.code == CBATTError.insufficientEncryption.rawValue
+                        || nsError.code == CBATTError.insufficientAuthentication.rawValue)
+
+                if isEncryptionError && attempt < 3 {
+                    Logger.bluetooth.info("Encryption insufficient (attempt \(attempt)/3) — waiting for pairing…")
+                    try? await Task.sleep(for: .seconds(5))
+                    continue
+                }
+                throw error
             }
         }
     }
@@ -299,10 +330,10 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
         // Read initial values — macOS may prompt for Bluetooth pairing here
         Logger.bluetooth.info("Reading characteristics — macOS may prompt for Bluetooth pairing")
         if let power = lastDiscoveredCharacteristics.power {
-            peripheral.readValue(for: power)
+            try await readCharacteristicValue(peripheral: peripheral, characteristic: power)
         }
         if let brightness = lastDiscoveredCharacteristics.brightness {
-            peripheral.readValue(for: brightness)
+            try await readCharacteristicValue(peripheral: peripheral, characteristic: brightness)
         }
 
         return lastDiscoveredCharacteristics
@@ -404,6 +435,15 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
 
         characteristicsContinuation?.resume()
         characteristicsContinuation = nil
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        if let error {
+            readValueContinuation?.resume(throwing: error)
+        } else {
+            readValueContinuation?.resume()
+        }
+        readValueContinuation = nil
     }
 }
 

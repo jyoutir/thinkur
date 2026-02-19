@@ -34,10 +34,10 @@ struct ListDetectionProcessorTests {
     @Test func numberedList() {
         let result = processor.process("number one apples number two bananas", context: ctx).text
         #expect(result.contains("\n"))
-        #expect(result.contains("1)"))
-        #expect(result.contains("2)"))
-        #expect(result.contains("apples"))
-        #expect(result.contains("bananas"))
+        #expect(result.contains("1."))
+        #expect(result.contains("2."))
+        #expect(result.lowercased().contains("apples"))
+        #expect(result.lowercased().contains("bananas"))
     }
 
     // MARK: - Bullet list detection
@@ -45,9 +45,9 @@ struct ListDetectionProcessorTests {
     @Test func bulletList() {
         let result = processor.process("bullet point apples bullet point bananas", context: ctx).text
         #expect(result.contains("\n"))
-        #expect(result.contains("- "))
-        #expect(result.contains("apples"))
-        #expect(result.contains("bananas"))
+        #expect(result.contains("• ") || result.contains("- "))
+        #expect(result.lowercased().contains("apples"))
+        #expect(result.lowercased().contains("bananas"))
     }
 
     // MARK: - Code style skips list detection

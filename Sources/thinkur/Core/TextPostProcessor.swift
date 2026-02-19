@@ -32,13 +32,14 @@ final class TextPostProcessor {
     private func cleanDoublePunctuation(_ text: String) -> String {
         var result = text
         let patterns: [(String, String)] = [
-            (#"([.!?])\s*[.]"#, "$1"),      // sentence-ender absorbs following period
-            (#",\s*,"#, ","),                // collapse double commas
-            (#"\.{2}(?!\.)"#, "."),          // double period → single (but not ellipsis)
+            (#"(?<!\.)([.!?])\s*[.](?!\.)"#, "$1"),   // sentence-ender absorbs following period (not within "...")
+            (#",\s*,"#, ","),                            // collapse double commas
+            (#"(?<!\.)\.{2}(?!\.)"#, "."),              // double period → single (not within "...")
         ]
         for (pattern, replacement) in patterns {
-            let (newText, _) = TextMutator.replaceAll(in: result, pattern: pattern, replacement: replacement)
-            result = newText
+            guard let regex = RegexCache.shared.regex(for: pattern) else { continue }
+            let nsRange = NSRange(result.startIndex..., in: result)
+            result = regex.stringByReplacingMatches(in: result, range: nsRange, withTemplate: replacement)
         }
         return result
     }

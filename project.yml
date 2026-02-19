@@ -35,11 +35,24 @@ targets:
     entitlements:
       path: Sources/thinkur/Resources/thinkur.entitlements
 
+  thinkurTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/thinkurTests
+    dependencies:
+      - target: thinkur
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jyo.thinkurTests
+        GENERATE_INFOPLIST_FILE: true
+
 schemes:
   thinkur:
     build:
       targets:
         thinkur: all
+        thinkurTests: [test]
       postActions:
         - script: |
             # Kill running instance so copy doesn't fail on locked binary
@@ -50,3 +63,6 @@ schemes:
             cp -R "${BUILT_PRODUCTS_DIR}/thinkur.app" "/Applications/thinkur.app"
           name: "Copy thinkur.app to /Applications"
           settingsTarget: thinkur
+    test:
+      targets:
+        - thinkurTests

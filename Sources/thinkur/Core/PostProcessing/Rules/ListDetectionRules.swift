@@ -52,6 +52,8 @@ enum ListDetectionRules {
         #"(?i)\bone\s+more\b"#,
         #"(?i)\bone\s+another\b"#,
         #"(?i)\b(two|three|four|five|six|seven|eight|nine|ten)\s+(of|more|less|times|people|things|ways|days|weeks|months|years)\b"#,
+        // "one X and two Y" / "two X and three Y" — prose conjunction, not a list
+        #"(?i)\b(one|two|three|four)\s+\w+\s+and\s+(two|three|four|five)\b"#,
     ]
 
     // MARK: - Ordinal Disambiguation (narrative use — NOT a list)
@@ -60,7 +62,7 @@ enum ListDetectionRules {
         // Preceded by article or possessive
         #"(?i)\b(the|a|my|your|his|her|our|their)\s+(first|second|third)\b"#,
         // Compound noun uses
-        #"(?i)\b(first|second|third)\s+(thing|time|place|person|chance|thought|impression|attempt|step|day|week|month|year|half|quarter)\b"#,
+        #"(?i)\b(first|second|third)\s+(thing|time|place|person|chance|thought|impression|attempt|step|day|week|month|year|half|quarter|paragraph|section|chapter)\b"#,
         // Idioms
         #"(?i)\bat\s+first\b"#,
         #"(?i)\bfirst\s+of\s+all\b"#,

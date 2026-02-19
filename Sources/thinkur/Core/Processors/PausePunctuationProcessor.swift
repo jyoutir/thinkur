@@ -186,7 +186,15 @@ struct PausePunctuationProcessor: TextProcessor {
         // If already ends with ? or !, don't modify
         if let last = trimmed.last, "?!".contains(last) { return text }
 
-        let firstWord = trimmed.split(separator: " ").first?.lowercased() ?? ""
+        let words = trimmed.split(separator: " ")
+        var firstWord = words.first?.lowercased().trimmingCharacters(in: .punctuationCharacters) ?? ""
+
+        // Skip greeting words to find the real question opener
+        let greetings: Set<String> = ["hey", "hi", "hello", "ok", "okay"]
+        if greetings.contains(firstWord), words.count > 1 {
+            firstWord = String(words[1]).lowercased().trimmingCharacters(in: .punctuationCharacters)
+        }
+
         if PausePunctuationRules.questionStarters.contains(firstWord) {
             // Check that it doesn't contain internal sentence punctuation
             // (which would mean it's multi-sentence)
@@ -201,13 +209,22 @@ struct PausePunctuationProcessor: TextProcessor {
                 }
 
                 var result = trimmed
-                // Replace trailing period with ? if present
                 if result.hasSuffix(".") {
                     result = String(result.dropLast()) + "?"
                     corrections.append(CorrectionEntry(
                         processorName: name,
                         ruleName: "question_single",
                         originalFragment: ".",
+                        replacement: "?",
+                        confidence: PausePunctuationRules.questionConfidence
+                    ))
+                } else {
+                    // No terminal punctuation yet — add question mark
+                    result += "?"
+                    corrections.append(CorrectionEntry(
+                        processorName: name,
+                        ruleName: "question_single",
+                        originalFragment: "",
                         replacement: "?",
                         confidence: PausePunctuationRules.questionConfidence
                     ))
@@ -347,8 +364,9 @@ struct PausePunctuationProcessor: TextProcessor {
     private func cleanDoublePunctuation(_ text: String) -> String {
         var result = text
         for (pattern, replacement) in PausePunctuationRules.doublePunctuationPatterns {
-            let (newText, _) = TextMutator.replaceAll(in: result, pattern: pattern, replacement: replacement)
-            result = newText
+            guard let regex = RegexCache.shared.regex(for: pattern) else { continue }
+            let nsRange = NSRange(result.startIndex..., in: result)
+            result = regex.stringByReplacingMatches(in: result, range: nsRange, withTemplate: replacement)
         }
         return result
     }

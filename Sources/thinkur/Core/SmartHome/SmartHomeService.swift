@@ -12,11 +12,15 @@ final class SmartHomeService {
     var lastActionMessage: String?
 
     let hueBackend = HueBridgeBackend()
-    var homeKitBackend: HomeKitBackend?
     var hueBluetoothBackend: HueBluetoothBackend?
+    let lightNameStore: LightNameStore
 
     var hasAnyConnection: Bool {
         backends.contains { $0.isConnected }
+    }
+
+    init(lightNameStore: LightNameStore = LightNameStore()) {
+        self.lightNameStore = lightNameStore
     }
 
     // MARK: - Backend Management
@@ -56,21 +60,32 @@ final class SmartHomeService {
         removeLights(for: .hueBluetooth)
     }
 
-    func connectHomeKit() async throws {
-        let backend = HomeKitBackend()
-        homeKitBackend = backend
-        if !backends.contains(where: { $0.backendType == .homekit }) {
-            backends.append(backend)
+    // MARK: - Light State Control
+
+    /// Set light state through the appropriate backend
+    func setLightState(id: String, state: LightStateChange) async throws {
+        guard let backend = backendForLight(id: id) else {
+            throw SmartHomeServiceError.noBackendForLight
         }
-        try await backend.connect()
-        await refreshLights()
+        try await backend.setLightState(id: id, state: state)
     }
 
-    func disconnectHomeKit() {
-        homeKitBackend?.disconnect()
-        homeKitBackend = nil
-        backends.removeAll { $0.backendType == .homekit }
-        removeLights(for: .homekit)
+    /// Optimistically update local light state for instant UI feedback
+    func updateLightOptimistically(id: String, isOn: Bool? = nil, brightness: Int? = nil) {
+        guard let index = lights.firstIndex(where: { $0.id == id }) else { return }
+        if let isOn { lights[index].isOn = isOn }
+        if let brightness { lights[index].brightness = brightness }
+    }
+
+    // MARK: - Light Renaming
+
+    /// Rename a light with a custom display name
+    func renameLight(id: String, newName: String) {
+        lightNameStore.setCustomName(newName, for: id)
+        if let index = lights.firstIndex(where: { $0.id == id }) {
+            lights[index].name = newName
+        }
+        commands = SmartHomeCommandGenerator.generateCommands(from: lights)
     }
 
     // MARK: - Light Discovery
@@ -89,6 +104,7 @@ final class SmartHomeService {
             }
         }
 
+        lightNameStore.applyCustomNames(to: &allLights)
         lights = allLights
         commands = SmartHomeCommandGenerator.generateCommands(from: allLights)
         Logger.app.info("Discovered \(allLights.count) lights, generated \(self.commands.count) commands")
@@ -104,7 +120,19 @@ final class SmartHomeService {
     /// Check if text matches a smart home command and execute it.
     /// Returns true if a command was matched and executed (text should NOT be inserted).
     func tryExecuteCommand(text: String) async -> Bool {
-        guard hasAnyConnection, !commands.isEmpty else { return false }
+        guard hasAnyConnection else { return false }
+
+        // Check for rename command first
+        if let rename = SmartHomeRenameMatcher.matchRename(text: text) {
+            if let light = lights.first(where: { $0.normalizedName == rename.oldName || $0.normalizedOriginalName == rename.oldName }) {
+                renameLight(id: light.id, newName: rename.newName)
+                lastActionMessage = "Renamed \(light.originalName) to \(rename.newName)"
+                Logger.app.info("Smart home rename: \(self.lastActionMessage ?? "")")
+                return true
+            }
+        }
+
+        guard !commands.isEmpty else { return false }
 
         guard let result = SmartHomeCommandMatcher.match(text: text, commands: commands) else {
             return false

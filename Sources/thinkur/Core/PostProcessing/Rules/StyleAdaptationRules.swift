@@ -132,6 +132,7 @@ enum StyleAdaptationRules {
 
     static let pronounsWithContractions: Set<String> = [
         "he", "she", "it", "that", "there", "what", "who", "where", "when", "how",
+        "let",
     ]
 
     // MARK: - Expanded App Style Map

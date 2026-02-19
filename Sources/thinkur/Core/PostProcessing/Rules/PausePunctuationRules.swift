@@ -73,9 +73,9 @@ enum PausePunctuationRules {
     // MARK: - Double Punctuation Cleanup
 
     static let doublePunctuationPatterns: [(pattern: String, replacement: String)] = [
-        (#"([.!?])\s*[.,]"#,  "$1"),     // sentence-ender absorbs following comma/period
-        (#",\s*,"#,            ","),      // collapse double commas
-        (#"\s+([.!?,;:])"#,   "$1"),     // remove space before punctuation
+        (#"(?<!\.)([.!?])\s*[.,](?!\.)"#, "$1"),  // sentence-ender absorbs following comma/period (not within "...")
+        (#",\s*,"#,                         ","),   // collapse double commas
+        (#"\s+([.!?,;:])"#,                "$1"),  // remove space before punctuation
     ]
 
     // MARK: - Confidence Levels

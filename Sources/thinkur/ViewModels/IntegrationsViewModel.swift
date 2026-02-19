@@ -7,7 +7,6 @@ final class IntegrationsViewModel {
 
     var isConnectingHue = false
     var isConnectingHueBluetooth = false
-    var isConnectingHomeKit = false
     var errorMessage: String?
 
     var hueBackend: HueBridgeBackend { smartHomeService.hueBackend }
@@ -18,9 +17,11 @@ final class IntegrationsViewModel {
 
     var isHueConnected: Bool { hueBackend.isConnected }
     var isHueBluetoothConnected: Bool { smartHomeService.hueBluetoothBackend?.isConnected ?? false }
-    var isHomeKitConnected: Bool { smartHomeService.homeKitBackend?.isConnected ?? false }
 
     var huePairingState: HueBridgeBackend.PairingState { hueBackend.pairingState }
+
+    /// Active debounce tasks keyed by light ID
+    private var brightnessTasks: [String: Task<Void, Never>] = [:]
 
     init(smartHomeService: SmartHomeService) {
         self.smartHomeService = smartHomeService
@@ -56,23 +57,42 @@ final class IntegrationsViewModel {
         smartHomeService.disconnectHueBluetooth()
     }
 
-    func connectHomeKit() async {
-        isConnectingHomeKit = true
-        errorMessage = nil
-        do {
-            try await smartHomeService.connectHomeKit()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        isConnectingHomeKit = false
-    }
-
-    func disconnectHomeKit() {
-        smartHomeService.disconnectHomeKit()
-    }
-
     func refreshLights() async {
         await smartHomeService.refreshLights()
+    }
+
+    // MARK: - Light Controls
+
+    /// Toggle a light on/off with optimistic update
+    func toggleLight(id: String, on: Bool) {
+        smartHomeService.updateLightOptimistically(id: id, isOn: on)
+        Task {
+            do {
+                try await smartHomeService.setLightState(id: id, state: LightStateChange(on: on))
+            } catch {
+                errorMessage = error.localizedDescription
+                await smartHomeService.refreshLights()
+            }
+        }
+    }
+
+    /// Set brightness with optimistic update and debounced backend call
+    func setBrightness(id: String, brightness: Int) {
+        smartHomeService.updateLightOptimistically(id: id, brightness: brightness)
+
+        // Cancel previous debounce for this light
+        brightnessTasks[id]?.cancel()
+
+        brightnessTasks[id] = Task {
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            do {
+                try await smartHomeService.setLightState(id: id, state: LightStateChange(on: true, brightness: brightness))
+            } catch {
+                errorMessage = error.localizedDescription
+                await smartHomeService.refreshLights()
+            }
+        }
     }
 
     /// Grouped lights by room for display
