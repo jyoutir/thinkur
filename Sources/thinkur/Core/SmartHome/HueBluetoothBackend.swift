@@ -4,9 +4,13 @@ import os
 
 /// Philips Hue Bluetooth Low Energy backend — direct bulb control, no bridge needed.
 ///
-/// Uses the Hue BLE Light Control Service (reverse-engineered) to communicate
-/// with Hue bulbs via CoreBluetooth. Supports power, brightness, and color
-/// through TLV commands on characteristic 0007.
+/// Writes directly to individual GATT characteristics:
+/// - Power (0002): `[0x01]` on, `[0x00]` off
+/// - Brightness (0003): `[UInt8]` scaled 0-254
+///
+/// Requires BLE bonding (encryption). On first connect, the bulb must be in
+/// pairing mode (Hue app → Settings → Voice Assistants → Make Discoverable).
+/// Reading an encrypted characteristic triggers macOS's pairing dialog.
 ///
 /// Limits: ~10 bulbs max, ~30ft/10m range.
 @MainActor
@@ -20,27 +24,22 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
 
     /// Connected peripherals keyed by their identifier UUID string.
     private var peripherals: [String: CBPeripheral] = [:]
-    /// Control characteristic (0007) for each peripheral, keyed by peripheral identifier.
-    private var controlCharacteristics: [String: CBCharacteristic] = [:]
-    /// Power characteristic (0002) for reading on/off state.
+    /// Power characteristic (0002) for on/off control and state.
     private var powerCharacteristics: [String: CBCharacteristic] = [:]
-    /// Brightness characteristic (0003) for reading brightness.
+    /// Brightness characteristic (0003) for brightness control and state.
     private var brightnessCharacteristics: [String: CBCharacteristic] = [:]
 
     func connect() async throws {
         bleDelegate = HueBluetoothDelegate()
         let delegate = bleDelegate!
 
-        // Create the central manager — this triggers a state update callback
         let manager = CBCentralManager(delegate: delegate, queue: nil)
         centralManager = manager
 
-        // Wait for Bluetooth to power on
         Logger.bluetooth.info("Waiting for Bluetooth to power on…")
         try await delegate.waitForPoweredOn()
         Logger.bluetooth.info("Bluetooth powered on")
 
-        // Scan for Hue BLE bulbs (5s to allow for slow advertisement intervals)
         Logger.bluetooth.info("Starting scan for Hue BLE bulbs…")
         let discovered = try await delegate.scanForHueBulbs(manager: manager, timeout: 5.0)
 
@@ -51,7 +50,6 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
 
         Logger.bluetooth.info("Found \(discovered.count) Hue bulb(s), connecting…")
 
-        // Connect to each discovered peripheral and discover characteristics
         for peripheral in discovered {
             let key = peripheral.identifier.uuidString
             peripherals[key] = peripheral
@@ -62,16 +60,17 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
                 peripheral: peripheral
             )
 
-            if let control = characteristics.control {
-                controlCharacteristics[key] = control
-            }
             if let power = characteristics.power {
                 powerCharacteristics[key] = power
             }
             if let brightness = characteristics.brightness {
                 brightnessCharacteristics[key] = brightness
             }
-            Logger.bluetooth.info("Discovered characteristics for \(peripheral.name ?? "Unknown"): control=\(characteristics.control != nil), power=\(characteristics.power != nil), brightness=\(characteristics.brightness != nil)")
+            Logger.bluetooth.info("Discovered characteristics for \(peripheral.name ?? "Unknown"): power=\(characteristics.power != nil), brightness=\(characteristics.brightness != nil), paired=\(characteristics.isPaired)")
+
+            if !characteristics.isPaired {
+                Logger.bluetooth.warning("Bulb not paired — user must put bulb in pairing mode first")
+            }
         }
 
         isConnected = true
@@ -86,7 +85,6 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
             }
         }
         peripherals.removeAll()
-        controlCharacteristics.removeAll()
         powerCharacteristics.removeAll()
         brightnessCharacteristics.removeAll()
         centralManager = nil
@@ -112,46 +110,36 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
     }
 
     func setLightState(id: String, state: LightStateChange) async throws {
-        // Strip the "huebt-" prefix to get the peripheral key
         let key = String(id.dropFirst("huebt-".count))
 
-        guard let characteristic = controlCharacteristics[key] else {
-            throw HueBluetoothError.characteristicNotFound
-        }
         guard let peripheral = peripherals[key] else {
             throw HueBluetoothError.peripheralNotFound
         }
+        guard let delegate = bleDelegate else {
+            throw HueBluetoothError.connectionFailed
+        }
 
-        // Build TLV command and write
         if let on = state.on {
-            let data = on ? Self.buildTLVOn() : Self.buildTLVOff()
-            peripheral.writeValue(data, for: characteristic, type: .withResponse)
+            guard let power = powerCharacteristics[key] else {
+                throw HueBluetoothError.characteristicNotFound
+            }
+            let data = Data([on ? 0x01 : 0x00])
+            try await delegate.writeCharacteristicValue(
+                peripheral: peripheral, characteristic: power, data: data
+            )
         }
 
         if let brightness = state.brightness {
-            let data = Self.buildTLVBrightness(percent: brightness)
-            peripheral.writeValue(data, for: characteristic, type: .withResponse)
+            guard let bright = brightnessCharacteristics[key] else {
+                throw HueBluetoothError.characteristicNotFound
+            }
+            let clamped = max(0, min(100, brightness))
+            let scaled = UInt8(clamped * 254 / 100)
+            let data = Data([scaled])
+            try await delegate.writeCharacteristicValue(
+                peripheral: peripheral, characteristic: bright, data: data
+            )
         }
-    }
-
-    // MARK: - TLV Command Builders (static for testability)
-
-    /// TLV command to turn on: type=0x01, length=0x01, value=0x01
-    nonisolated static func buildTLVOn() -> Data {
-        Data([0x01, 0x01, 0x01])
-    }
-
-    /// TLV command to turn off: type=0x01, length=0x01, value=0x00
-    nonisolated static func buildTLVOff() -> Data {
-        Data([0x01, 0x01, 0x00])
-    }
-
-    /// TLV command to set brightness: type=0x02, length=0x01, value=scaled 0-254
-    /// - Parameter percent: Brightness 0-100
-    nonisolated static func buildTLVBrightness(percent: Int) -> Data {
-        let clamped = max(0, min(100, percent))
-        let scaled = UInt8(clamped * 254 / 100)
-        return Data([0x02, 0x01, scaled])
     }
 
     // MARK: - State Reading
@@ -167,7 +155,6 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
         guard let characteristic = brightnessCharacteristics[key],
               let value = characteristic.value,
               !value.isEmpty else { return 0 }
-        // Scale 0-254 back to 0-100
         return Int(value[0]) * 100 / 254
     }
 }
@@ -182,7 +169,6 @@ private let hueAdvertisementUUID = CBUUID(string: "FE0F")
 private let lightControlServiceUUID = CBUUID(string: "932c32bd-0000-47a2-835a-a8d455b859dd")
 private let powerCharacteristicUUID = CBUUID(string: "932c32bd-0002-47a2-835a-a8d455b859dd")
 private let brightnessCharacteristicUUID = CBUUID(string: "932c32bd-0003-47a2-835a-a8d455b859dd")
-private let controlCharacteristicUUID = CBUUID(string: "932c32bd-0007-47a2-835a-a8d455b859dd")
 
 // MARK: - Delegate (bridges CB callbacks → async/await)
 
@@ -193,14 +179,16 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
     private var servicesContinuation: CheckedContinuation<Void, Error>?
     private var characteristicsContinuation: CheckedContinuation<Void, Error>?
     private var readValueContinuation: CheckedContinuation<Void, Error>?
+    private var writeValueContinuation: CheckedContinuation<Void, Error>?
+    private var notifyContinuation: CheckedContinuation<Void, Error>?
 
     private var discoveredPeripherals: [CBPeripheral] = []
     private var isPoweredOn = false
 
     struct DiscoveredCharacteristics {
-        var control: CBCharacteristic?
         var power: CBCharacteristic?
         var brightness: CBCharacteristic?
+        var isPaired = false
     }
 
     private var lastDiscoveredCharacteristics = DiscoveredCharacteristics()
@@ -229,8 +217,6 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
         return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<[CBPeripheral], Error>) in
             scanContinuation = cont
 
-            // Scan with nil services — FE0F may appear in service data rather than
-            // advertised service UUIDs, so we filter in didDiscover instead.
             manager.scanForPeripherals(
                 withServices: nil,
                 options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
@@ -247,17 +233,41 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
         }
     }
 
-    func readCharacteristicValue(peripheral: CBPeripheral, characteristic: CBCharacteristic) async throws {
-        for attempt in 1...3 {
+    func readCharacteristicValue(
+        peripheral: CBPeripheral,
+        characteristic: CBCharacteristic,
+        timeout: Double = 10
+    ) async throws {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            readValueContinuation = cont
+            peripheral.readValue(for: characteristic)
+
+            Task {
+                try? await Task.sleep(for: .seconds(timeout))
+                self.readValueContinuation?.resume(throwing: HueBluetoothError.discoveryTimeout)
+                self.readValueContinuation = nil
+            }
+        }
+    }
+
+    /// Write with `.withResponse` and await the `didWriteValueFor` callback.
+    /// If we get an encryption error on the first attempt, wait for macOS pairing
+    /// dialog and retry once.
+    func writeCharacteristicValue(
+        peripheral: CBPeripheral,
+        characteristic: CBCharacteristic,
+        data: Data
+    ) async throws {
+        for attempt in 1...2 {
             do {
                 try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-                    readValueContinuation = cont
-                    peripheral.readValue(for: characteristic)
+                    self.writeValueContinuation = cont
+                    peripheral.writeValue(data, for: characteristic, type: .withResponse)
 
                     Task {
                         try? await Task.sleep(for: .seconds(10))
-                        self.readValueContinuation?.resume(throwing: HueBluetoothError.discoveryTimeout)
-                        self.readValueContinuation = nil
+                        self.writeValueContinuation?.resume(throwing: HueBluetoothError.discoveryTimeout)
+                        self.writeValueContinuation = nil
                     }
                 }
                 return
@@ -267,12 +277,31 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
                     && (nsError.code == CBATTError.insufficientEncryption.rawValue
                         || nsError.code == CBATTError.insufficientAuthentication.rawValue)
 
-                if isEncryptionError && attempt < 3 {
-                    Logger.bluetooth.info("Encryption insufficient (attempt \(attempt)/3) — waiting for pairing…")
-                    try? await Task.sleep(for: .seconds(5))
+                if isEncryptionError && attempt == 1 {
+                    Logger.bluetooth.info("Write needs encryption — waiting for macOS pairing dialog…")
+                    try? await Task.sleep(for: .seconds(8))
+                    Logger.bluetooth.info("Retrying write after pairing wait…")
                     continue
                 }
+
+                if isEncryptionError {
+                    throw HueBluetoothError.pairingRequired
+                }
                 throw error
+            }
+        }
+    }
+
+    /// Subscribe to notifications on a characteristic.
+    func subscribeToCharacteristic(peripheral: CBPeripheral, characteristic: CBCharacteristic) async throws {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            notifyContinuation = cont
+            peripheral.setNotifyValue(true, for: characteristic)
+
+            Task {
+                try? await Task.sleep(for: .seconds(10))
+                self.notifyContinuation?.resume(throwing: HueBluetoothError.discoveryTimeout)
+                self.notifyContinuation = nil
             }
         }
     }
@@ -316,7 +345,7 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             characteristicsContinuation = cont
             peripheral.discoverCharacteristics(
-                [powerCharacteristicUUID, brightnessCharacteristicUUID, controlCharacteristicUUID],
+                [powerCharacteristicUUID, brightnessCharacteristicUUID],
                 for: service
             )
 
@@ -327,13 +356,49 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
             }
         }
 
-        // Read initial values — macOS may prompt for Bluetooth pairing here
-        Logger.bluetooth.info("Reading characteristics — macOS may prompt for Bluetooth pairing")
+        // Trigger pairing — reading an encrypted characteristic forces macOS to
+        // show the Bluetooth pairing dialog if the bulb is accepting new bonds.
+        // We use a generous 20s timeout so the user has time to accept.
         if let power = lastDiscoveredCharacteristics.power {
-            try await readCharacteristicValue(peripheral: peripheral, characteristic: power)
+            Logger.bluetooth.info("Reading power characteristic to trigger pairing — if a macOS Bluetooth pairing dialog appears, please accept it…")
+            do {
+                try await readCharacteristicValue(
+                    peripheral: peripheral,
+                    characteristic: power,
+                    timeout: 20
+                )
+                Logger.bluetooth.info("Power state read succeeded — encryption established")
+                lastDiscoveredCharacteristics.isPaired = true
+
+                // Subscribe to notifications for real-time state updates
+                do {
+                    try await subscribeToCharacteristic(peripheral: peripheral, characteristic: power)
+                    Logger.bluetooth.info("Subscribed to power notifications")
+                } catch {
+                    Logger.bluetooth.warning("Power notification subscription failed: \(error.localizedDescription)")
+                }
+            } catch {
+                Logger.bluetooth.warning("Power read failed — bulb may not be in pairing mode: \(error.localizedDescription)")
+            }
         }
+
         if let brightness = lastDiscoveredCharacteristics.brightness {
-            try await readCharacteristicValue(peripheral: peripheral, characteristic: brightness)
+            do {
+                try await readCharacteristicValue(peripheral: peripheral, characteristic: brightness)
+                Logger.bluetooth.info("Brightness state read succeeded")
+
+                // Subscribe to brightness notifications too
+                if lastDiscoveredCharacteristics.isPaired {
+                    do {
+                        try await subscribeToCharacteristic(peripheral: peripheral, characteristic: brightness)
+                        Logger.bluetooth.info("Subscribed to brightness notifications")
+                    } catch {
+                        Logger.bluetooth.warning("Brightness notification subscription failed: \(error.localizedDescription)")
+                    }
+                }
+            } catch {
+                Logger.bluetooth.warning("Brightness read failed: \(error.localizedDescription)")
+            }
         }
 
         return lastDiscoveredCharacteristics
@@ -370,12 +435,10 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
 
     /// Check if advertisement data contains the Signify (Hue) UUID `0xFE0F`.
     private func isHueBulb(_ advertisementData: [String: Any]) -> Bool {
-        // Check service data (primary signal — Hue bulbs advertise FE0F here)
         if let serviceData = advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data],
            serviceData.keys.contains(hueAdvertisementUUID) {
             return true
         }
-        // Check advertised service UUIDs (secondary signal)
         if let serviceUUIDs = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID],
            serviceUUIDs.contains(hueAdvertisementUUID) {
             return true
@@ -422,8 +485,6 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
 
         for characteristic in service.characteristics ?? [] {
             switch characteristic.uuid {
-            case controlCharacteristicUUID:
-                lastDiscoveredCharacteristics.control = characteristic
             case powerCharacteristicUUID:
                 lastDiscoveredCharacteristics.power = characteristic
             case brightnessCharacteristicUUID:
@@ -445,6 +506,28 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
         }
         readValueContinuation = nil
     }
+
+    func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
+        if let error {
+            Logger.bluetooth.warning("Notify subscription failed for \(characteristic.uuid): \(error.localizedDescription)")
+            notifyContinuation?.resume(throwing: error)
+        } else {
+            Logger.bluetooth.info("Notify subscription succeeded for \(characteristic.uuid), isNotifying=\(characteristic.isNotifying)")
+            notifyContinuation?.resume()
+        }
+        notifyContinuation = nil
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+        if let error {
+            Logger.bluetooth.warning("Write failed for \(characteristic.uuid): \(error.localizedDescription)")
+            writeValueContinuation?.resume(throwing: error)
+        } else {
+            Logger.bluetooth.info("Write succeeded for \(characteristic.uuid)")
+            writeValueContinuation?.resume()
+        }
+        writeValueContinuation = nil
+    }
 }
 
 // MARK: - Errors
@@ -458,17 +541,19 @@ enum HueBluetoothError: LocalizedError {
     case serviceNotFound
     case characteristicNotFound
     case peripheralNotFound
+    case pairingRequired
 
     var errorDescription: String? {
         switch self {
         case .bluetoothNotAvailable: return "Bluetooth is not available or not authorized"
-        case .noBulbsFound: return "No Hue Bluetooth bulbs found nearby. Make sure the bulb is powered on and in pairing mode (factory reset or use the Hue app: Settings > Voice Assistants > Make visible)."
+        case .noBulbsFound: return "No Hue Bluetooth bulbs found nearby. Make sure the bulb is powered on and within range."
         case .connectionTimeout: return "Connection to bulb timed out"
         case .connectionFailed: return "Failed to connect to bulb"
         case .discoveryTimeout: return "Service discovery timed out"
         case .serviceNotFound: return "Hue light control service not found on bulb"
         case .characteristicNotFound: return "Control characteristic not found"
         case .peripheralNotFound: return "Bulb not found"
+        case .pairingRequired: return "Bulb requires pairing. Open the Hue app → Settings → Voice Assistants → Google Home → Make Discoverable, then reconnect."
         }
     }
 }

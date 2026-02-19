@@ -6,7 +6,7 @@ import SwiftUI
 final class FloatingIndicatorPanel: NSPanel {
     private let amplitudeProvider: AudioAmplitudeProvider
 
-    init(amplitudeProvider: AudioAmplitudeProvider) {
+    init(amplitudeProvider: AudioAmplitudeProvider, themeMode: ThemeMode = .dark) {
         self.amplitudeProvider = amplitudeProvider
 
         let panelWidth: CGFloat = 200
@@ -32,11 +32,16 @@ final class FloatingIndicatorPanel: NSPanel {
         hidesOnDeactivate = false  // Stay visible for LSUIElement apps
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = false
+        self.appearance = NSAppearance(named: themeMode == .dark ? .darkAqua : .aqua)
 
         let waveformView = FloatingWaveformView()
             .environment(amplitudeProvider)
 
         contentView = NSHostingView(rootView: waveformView)
+    }
+
+    func updateAppearance(for themeMode: ThemeMode) {
+        self.appearance = NSAppearance(named: themeMode == .dark ? .darkAqua : .aqua)
     }
 
     func show() {
