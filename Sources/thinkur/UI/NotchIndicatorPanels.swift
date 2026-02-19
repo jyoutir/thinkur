@@ -15,6 +15,8 @@ final class NotchIndicatorPanels {
     private static let cornerRadius: CGFloat = 8
     private static let notchOverlap: CGFloat = 10
 
+    var isAvailable: Bool { leftPanel != nil }
+
     init(amplitudeProvider: AudioAmplitudeProvider) {
         self.amplitudeProvider = amplitudeProvider
 
@@ -165,7 +167,11 @@ private struct NotchLeftWingView: View {
     let isListening: Bool
 
     var body: some View {
-        UnevenRoundedRectangle(bottomLeadingRadius: 8)
+        UnevenRoundedRectangle(
+                bottomLeadingRadius: 8,
+                bottomTrailingRadius: 8,
+                style: .continuous
+            )
             .fill(.black)
             .overlay {
                 Image(systemName: "waveform")
@@ -181,7 +187,11 @@ private struct NotchRightWingView: View {
     let amplitudeProvider: AudioAmplitudeProvider
 
     var body: some View {
-        UnevenRoundedRectangle(bottomTrailingRadius: 8)
+        UnevenRoundedRectangle(
+                bottomLeadingRadius: 8,
+                bottomTrailingRadius: 8,
+                style: .continuous
+            )
             .fill(.black)
             .overlay {
                 Group {

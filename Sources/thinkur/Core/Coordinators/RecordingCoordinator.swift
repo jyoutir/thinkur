@@ -72,7 +72,7 @@ final class RecordingCoordinator {
             }
             notchPanels?.setListening(true)
             notchPanels?.show()
-            if settings.floatingIndicator {
+            if settings.floatingIndicator || notchPanels?.isAvailable != true {
                 floatingPanel?.updateAppearance(for: settings.themeMode)
                 floatingPanel?.show()
             }
