@@ -71,10 +71,11 @@ final class SmartHomeService {
     }
 
     /// Optimistically update local light state for instant UI feedback
-    func updateLightOptimistically(id: String, isOn: Bool? = nil, brightness: Int? = nil) {
+    func updateLightOptimistically(id: String, isOn: Bool? = nil, brightness: Int? = nil, colorTemperature: Int? = nil) {
         guard let index = lights.firstIndex(where: { $0.id == id }) else { return }
         if let isOn { lights[index].isOn = isOn }
         if let brightness { lights[index].brightness = brightness }
+        if let colorTemperature { lights[index].colorTemperature = colorTemperature }
     }
 
     // MARK: - Light Renaming

@@ -132,6 +132,9 @@ final class HueBridgeBackend: SmartHomeBackend {
         if let brightness = state.brightness {
             body["dimming"] = ["brightness": brightness]
         }
+        if let colorTemp = state.colorTemperature {
+            body["color_temperature"] = ["mirek": colorTemp]
+        }
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (_, response) = try await session.data(for: request)
@@ -250,6 +253,13 @@ final class HueBridgeBackend: SmartHomeBackend {
                 brightness = 0
             }
 
+            let colorTemperature: Int?
+            if let ct = item["color_temperature"] as? [String: Any], let mirek = ct["mirek"] as? Int {
+                colorTemperature = mirek
+            } else {
+                colorTemperature = nil
+            }
+
             // Find room by checking which room contains this light's owner
             let owner = item["owner"] as? [String: Any]
             let ownerRid = owner?["rid"] as? String
@@ -261,6 +271,7 @@ final class HueBridgeBackend: SmartHomeBackend {
                 roomName: roomName,
                 isOn: isOn,
                 brightness: brightness,
+                colorTemperature: colorTemperature,
                 isReachable: true,
                 backend: .hue
             ))

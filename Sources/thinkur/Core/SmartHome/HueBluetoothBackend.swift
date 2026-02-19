@@ -28,6 +28,8 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
     private var powerCharacteristics: [String: CBCharacteristic] = [:]
     /// Brightness characteristic (0003) for brightness control and state.
     private var brightnessCharacteristics: [String: CBCharacteristic] = [:]
+    /// Color temperature characteristic (0004) in mirek (153-500).
+    private var colorTempCharacteristics: [String: CBCharacteristic] = [:]
 
     func connect() async throws {
         bleDelegate = HueBluetoothDelegate()
@@ -66,7 +68,10 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
             if let brightness = characteristics.brightness {
                 brightnessCharacteristics[key] = brightness
             }
-            Logger.bluetooth.info("Discovered characteristics for \(peripheral.name ?? "Unknown"): power=\(characteristics.power != nil), brightness=\(characteristics.brightness != nil), paired=\(characteristics.isPaired)")
+            if let colorTemp = characteristics.colorTemperature {
+                colorTempCharacteristics[key] = colorTemp
+            }
+            Logger.bluetooth.info("Discovered characteristics for \(peripheral.name ?? "Unknown"): power=\(characteristics.power != nil), brightness=\(characteristics.brightness != nil), colorTemp=\(characteristics.colorTemperature != nil), paired=\(characteristics.isPaired)")
 
             if !characteristics.isPaired {
                 Logger.bluetooth.warning("Bulb not paired — user must put bulb in pairing mode first")
@@ -87,6 +92,7 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
         peripherals.removeAll()
         powerCharacteristics.removeAll()
         brightnessCharacteristics.removeAll()
+        colorTempCharacteristics.removeAll()
         centralManager = nil
         bleDelegate = nil
         isConnected = false
@@ -96,6 +102,7 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
         peripherals.map { key, peripheral in
             let isOn = readPowerState(for: key)
             let brightness = readBrightness(for: key)
+            let colorTemp = readColorTemperature(for: key)
 
             return SmartLight(
                 id: "huebt-\(key)",
@@ -103,6 +110,7 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
                 roomName: nil,
                 isOn: isOn,
                 brightness: brightness,
+                colorTemperature: colorTemp,
                 isReachable: peripheral.state == .connected,
                 backend: .hueBluetooth
             )
@@ -140,6 +148,18 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
                 peripheral: peripheral, characteristic: bright, data: data
             )
         }
+
+        if let colorTemp = state.colorTemperature {
+            guard let ct = colorTempCharacteristics[key] else {
+                throw HueBluetoothError.characteristicNotFound
+            }
+            let clamped = UInt16(max(153, min(500, colorTemp)))
+            var value = clamped.littleEndian
+            let data = Data(bytes: &value, count: 2)
+            try await delegate.writeCharacteristicValue(
+                peripheral: peripheral, characteristic: ct, data: data
+            )
+        }
     }
 
     // MARK: - State Reading
@@ -157,6 +177,14 @@ final class HueBluetoothBackend: NSObject, SmartHomeBackend {
               !value.isEmpty else { return 0 }
         return Int(value[0]) * 100 / 254
     }
+
+    private func readColorTemperature(for key: String) -> Int? {
+        guard let characteristic = colorTempCharacteristics[key],
+              let value = characteristic.value,
+              value.count >= 2 else { return nil }
+        let mirek = UInt16(value[0]) | (UInt16(value[1]) << 8)  // little-endian
+        return Int(mirek)
+    }
 }
 
 // MARK: - BLE UUIDs
@@ -169,6 +197,7 @@ private let hueAdvertisementUUID = CBUUID(string: "FE0F")
 private let lightControlServiceUUID = CBUUID(string: "932c32bd-0000-47a2-835a-a8d455b859dd")
 private let powerCharacteristicUUID = CBUUID(string: "932c32bd-0002-47a2-835a-a8d455b859dd")
 private let brightnessCharacteristicUUID = CBUUID(string: "932c32bd-0003-47a2-835a-a8d455b859dd")
+private let colorTemperatureCharacteristicUUID = CBUUID(string: "932c32bd-0004-47a2-835a-a8d455b859dd")
 
 // MARK: - Delegate (bridges CB callbacks → async/await)
 
@@ -188,6 +217,7 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
     struct DiscoveredCharacteristics {
         var power: CBCharacteristic?
         var brightness: CBCharacteristic?
+        var colorTemperature: CBCharacteristic?
         var isPaired = false
     }
 
@@ -345,7 +375,7 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             characteristicsContinuation = cont
             peripheral.discoverCharacteristics(
-                [powerCharacteristicUUID, brightnessCharacteristicUUID],
+                [powerCharacteristicUUID, brightnessCharacteristicUUID, colorTemperatureCharacteristicUUID],
                 for: service
             )
 
@@ -398,6 +428,24 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
                 }
             } catch {
                 Logger.bluetooth.warning("Brightness read failed: \(error.localizedDescription)")
+            }
+        }
+
+        if let colorTemp = lastDiscoveredCharacteristics.colorTemperature {
+            do {
+                try await readCharacteristicValue(peripheral: peripheral, characteristic: colorTemp)
+                Logger.bluetooth.info("Color temperature state read succeeded")
+
+                if lastDiscoveredCharacteristics.isPaired {
+                    do {
+                        try await subscribeToCharacteristic(peripheral: peripheral, characteristic: colorTemp)
+                        Logger.bluetooth.info("Subscribed to color temperature notifications")
+                    } catch {
+                        Logger.bluetooth.warning("Color temperature notification subscription failed: \(error.localizedDescription)")
+                    }
+                }
+            } catch {
+                Logger.bluetooth.warning("Color temperature read failed: \(error.localizedDescription)")
             }
         }
 
@@ -489,6 +537,8 @@ private class HueBluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeriph
                 lastDiscoveredCharacteristics.power = characteristic
             case brightnessCharacteristicUUID:
                 lastDiscoveredCharacteristics.brightness = characteristic
+            case colorTemperatureCharacteristicUUID:
+                lastDiscoveredCharacteristics.colorTemperature = characteristic
             default:
                 break
             }

@@ -22,6 +22,7 @@ final class IntegrationsViewModel {
 
     /// Active debounce tasks keyed by light ID
     private var brightnessTasks: [String: Task<Void, Never>] = [:]
+    private var colorTempTasks: [String: Task<Void, Never>] = [:]
 
     init(smartHomeService: SmartHomeService) {
         self.smartHomeService = smartHomeService
@@ -88,6 +89,24 @@ final class IntegrationsViewModel {
             guard !Task.isCancelled else { return }
             do {
                 try await smartHomeService.setLightState(id: id, state: LightStateChange(on: true, brightness: brightness))
+            } catch {
+                errorMessage = error.localizedDescription
+                await smartHomeService.refreshLights()
+            }
+        }
+    }
+
+    /// Set color temperature with optimistic update and debounced backend call
+    func setColorTemperature(id: String, mirek: Int) {
+        smartHomeService.updateLightOptimistically(id: id, colorTemperature: mirek)
+
+        colorTempTasks[id]?.cancel()
+
+        colorTempTasks[id] = Task {
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            do {
+                try await smartHomeService.setLightState(id: id, state: LightStateChange(colorTemperature: mirek))
             } catch {
                 errorMessage = error.localizedDescription
                 await smartHomeService.refreshLights()

@@ -72,7 +72,7 @@ final class TranscriptionEngine: Transcribing {
             let results = try await whisperKit.transcribe(audioArray: audioSamples, decodeOptions: options)
 
             // Extract word timings
-            lastWordTimings = results.flatMap { result in
+            let allWordTimings = results.flatMap { result in
                 result.segments.flatMap { segment in
                     (segment.words ?? []).map { word in
                         WordTimingInfo(word: word.word, start: Float(word.start), end: Float(word.end))
@@ -80,13 +80,22 @@ final class TranscriptionEngine: Transcribing {
                 }
             }
 
-            let text = results
+            // Filter Whisper noise tokens from word timings
+            lastWordTimings = allWordTimings.filter { !WhisperArtifactFilter.isArtifact($0.word) }
+
+            let rawText = results
                 .compactMap { $0.text }
                 .joined(separator: " ")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
 
+            // Filter noise tokens from text; return nil if nothing remains
+            guard let text = WhisperArtifactFilter.strip(rawText), !text.isEmpty else {
+                Logger.transcription.info("Transcription suppressed — only noise tokens detected")
+                return nil
+            }
+
             Logger.transcription.info("Transcription result: \"\(text)\" (\(self.lastWordTimings.count) word timings)")
-            return text.isEmpty ? nil : text
+            return text
         } catch {
             Logger.transcription.error("Transcription failed: \(error)")
             return nil

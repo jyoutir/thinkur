@@ -4,9 +4,12 @@ struct SmartLightRowView: View {
     let light: SmartLight
     var onToggle: ((Bool) -> Void)?
     var onBrightnessChange: ((Int) -> Void)?
+    var onColorTemperatureChange: ((Int) -> Void)?
 
     @State private var sliderValue: Double = 50
     @State private var isDragging = false
+    @State private var colorTempValue: Double = 326
+    @State private var isColorTempDragging = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -61,19 +64,61 @@ struct SmartLightRowView: View {
                 .padding(.leading, 28) // align with name (icon width 20 + spacing)
                 .padding(.top, 4)
                 .transition(.opacity.combined(with: .move(edge: .top)))
+
+                // Color temperature slider (only when supported)
+                if light.colorTemperature != nil {
+                    HStack(spacing: Spacing.xs) {
+                        Image(systemName: "thermometer.snowflake")
+                            .font(.system(size: 10))
+                            .foregroundStyle(ColorTokens.textTertiary)
+
+                        Slider(value: $colorTempValue, in: 153...500, step: 1) { editing in
+                            isColorTempDragging = editing
+                        }
+                        .controlSize(.small)
+
+                        Image(systemName: "thermometer.sun")
+                            .font(.system(size: 10))
+                            .foregroundStyle(ColorTokens.textTertiary)
+
+                        Text(colorTempLabel)
+                            .font(Typography.caption)
+                            .foregroundStyle(ColorTokens.textTertiary)
+                            .frame(width: 36, alignment: .trailing)
+                    }
+                    .padding(.leading, 28)
+                    .padding(.top, 2)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
             }
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, 10)
         .opacity(light.isReachable ? 1 : 0.4)
         .disabled(!light.isReachable)
-        .onAppear { sliderValue = Double(light.brightness) }
+        .onAppear {
+            sliderValue = Double(light.brightness)
+            if let ct = light.colorTemperature { colorTempValue = Double(ct) }
+        }
         .onChange(of: light.brightness) { _, newValue in
             if !isDragging { sliderValue = Double(newValue) }
         }
         .onChange(of: sliderValue) { _, newValue in
             if isDragging { onBrightnessChange?(Int(newValue)) }
         }
+        .onChange(of: light.colorTemperature) { _, newValue in
+            if let newValue, !isColorTempDragging { colorTempValue = Double(newValue) }
+        }
+        .onChange(of: colorTempValue) { _, newValue in
+            if isColorTempDragging { onColorTemperatureChange?(Int(newValue)) }
+        }
+    }
+
+    private var colorTempLabel: String {
+        let mirek = Int(colorTempValue)
+        if mirek < 250 { return "Cool" }
+        if mirek > 400 { return "Warm" }
+        return "Mid"
     }
 
     private func backendLabel(_ type: SmartHomeBackendType) -> String {

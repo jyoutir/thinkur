@@ -7,6 +7,7 @@ struct LiveAudioWaveform: View {
     var height: Double = 48
     var showGlass: Bool = true
     var horizontalPadding: CGFloat = LiveAudioWaveform.defaultHorizontalPadding
+    var barColor: Color = .primary
 
     static let barWidth: CGFloat = 3.0
     static let barGap: CGFloat = 2.0
@@ -23,7 +24,7 @@ struct LiveAudioWaveform: View {
 
         let bars = HStack(spacing: Self.barGap) {
             ForEach(Array(sampled.enumerated()), id: \.offset) { _, amplitude in
-                WaveformBar(amplitude: amplitude)
+                WaveformBar(amplitude: amplitude, color: barColor)
             }
         }
         .padding(.horizontal, horizontalPadding)
@@ -51,6 +52,7 @@ struct LiveAudioWaveform: View {
 
 private struct WaveformBar: View {
     let amplitude: Double
+    var color: Color = .primary
 
     private static let baseHeight: CGFloat = 6.0
     private static let maxBoost: CGFloat = 18.0
@@ -60,8 +62,8 @@ private struct WaveformBar: View {
         let barHeight = Self.baseHeight + clamped * Self.maxBoost
 
         RoundedRectangle(cornerRadius: 1.5)
-            .fill(Color.primary)
+            .fill(color)
             .frame(width: LiveAudioWaveform.barWidth, height: barHeight)
-            .animation(.easeOut(duration: 0.1), value: barHeight)
+            .animation(Animations.waveformTick, value: barHeight)
     }
 }
