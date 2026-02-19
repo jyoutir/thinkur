@@ -75,14 +75,6 @@ final class SettingsManager {
         didSet { defaults.set(listFormatting, forKey: "listFormatting") }
     }
 
-    var codeContext: Bool {
-        didSet { defaults.set(codeContext, forKey: "codeContext") }
-    }
-
-    var learnFromCorrections: Bool {
-        didSet { defaults.set(learnFromCorrections, forKey: "learnFromCorrections") }
-    }
-
     // Smart Home
     var smartHomeEnabled: Bool {
         didSet { defaults.set(smartHomeEnabled, forKey: "smartHomeEnabled") }
@@ -148,8 +140,6 @@ final class SettingsManager {
         self.intentCorrection = defaults.object(forKey: "intentCorrection") != nil ? defaults.bool(forKey: "intentCorrection") : true
         self.smartFormatting = defaults.object(forKey: "smartFormatting") != nil ? defaults.bool(forKey: "smartFormatting") : true
         self.listFormatting = defaults.object(forKey: "listFormatting") != nil ? defaults.bool(forKey: "listFormatting") : true
-        self.codeContext = defaults.bool(forKey: "codeContext")
-        self.learnFromCorrections = defaults.bool(forKey: "learnFromCorrections")
 
         // Smart Home
         self.smartHomeEnabled = defaults.object(forKey: "smartHomeEnabled") != nil ? defaults.bool(forKey: "smartHomeEnabled") : true

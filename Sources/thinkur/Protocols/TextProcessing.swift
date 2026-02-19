@@ -58,4 +58,14 @@ enum AppStyle {
     case formal
     case code
     case standard
+
+    init?(from string: String) {
+        switch string.lowercased() {
+        case "casual":   self = .casual
+        case "formal":   self = .formal
+        case "code":     self = .code
+        case "standard": self = .standard
+        default:         return nil
+        }
+    }
 }
