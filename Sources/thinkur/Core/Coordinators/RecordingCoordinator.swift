@@ -51,7 +51,6 @@ final class RecordingCoordinator {
         if createFloatingPanel {
             self.floatingPanel = FloatingIndicatorPanel(amplitudeProvider: amplitudeProvider, themeMode: settings.themeMode)
             self.notchPanels = NotchIndicatorPanels(amplitudeProvider: amplitudeProvider)
-            self.notchPanels?.show()
         }
     }
 
@@ -72,6 +71,7 @@ final class RecordingCoordinator {
                 self?.audioCaptureManager.currentAudioLevel ?? 0
             }
             notchPanels?.setListening(true)
+            notchPanels?.show()
             if settings.floatingIndicator {
                 floatingPanel?.updateAppearance(for: settings.themeMode)
                 floatingPanel?.show()
@@ -95,7 +95,7 @@ final class RecordingCoordinator {
 
         amplitudeProvider.stopPolling()
         floatingPanel?.hideWithThinkingTransition()
-        notchPanels?.setListening(false)
+        notchPanels?.hide()
 
         let samples = audioCaptureManager.stopCapture()
         updateState(.processing)
