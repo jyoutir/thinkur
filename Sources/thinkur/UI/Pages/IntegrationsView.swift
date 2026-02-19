@@ -46,34 +46,34 @@ struct IntegrationsView: View {
 
             // Bridge card
             GroupedSettingsSection {
-                VStack(spacing: 0) {
-                    SettingsRowView(
-                        icon: "lightbulb.led.wide",
-                        title: "Hue Bridge",
-                        subtitle: viewModel.isHueConnected ? "Connected" : "Control via your local network"
-                    ) {
-                        if viewModel.isHueConnected {
-                            Button("Disconnect") {
-                                viewModel.disconnectHue()
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(ColorTokens.danger)
-                        } else {
-                            Button("Connect") {
-                                Task { await viewModel.connectHue() }
-                            }
-                            .disabled(viewModel.isConnectingHue)
+                SettingsRowView(
+                    icon: "lightbulb.led.wide",
+                    title: "Hue Bridge",
+                    subtitle: hueBridgeSubtitle
+                ) {
+                    if viewModel.isHueConnected {
+                        Button("Disconnect") {
+                            viewModel.disconnectHue()
                         }
-                    }
-
-                    // Pairing flow (inline in bridge card only)
-                    if viewModel.isConnectingHue || viewModel.huePairingState != .idle && viewModel.huePairingState != .paired {
-                        Divider()
-                        HuePairingView(
-                            pairingState: viewModel.huePairingState,
-                            onConnect: { Task { await viewModel.connectHue() } },
-                            onCancel: { viewModel.disconnectHue() }
-                        )
+                        .buttonStyle(.plain)
+                        .foregroundStyle(ColorTokens.danger)
+                    } else if viewModel.isConnectingHue {
+                        HStack(spacing: Spacing.xs) {
+                            ProgressView()
+                                .controlSize(.small)
+                            if case .waitingForButton = viewModel.huePairingState {
+                                Button("Cancel") {
+                                    viewModel.disconnectHue()
+                                }
+                                .buttonStyle(.plain)
+                                .font(Typography.caption)
+                                .foregroundStyle(ColorTokens.textTertiary)
+                            }
+                        }
+                    } else {
+                        Button("Connect") {
+                            Task { await viewModel.connectHue() }
+                        }
                     }
                 }
             }
@@ -111,12 +111,28 @@ struct IntegrationsView: View {
                         .foregroundStyle(ColorTokens.textTertiary)
                         .padding(.top, 1)
 
-                    Text("First time? Open the **Hue app** \u{2192} Settings \u{2192} Voice Assistants \u{2192} Google Home \u{2192} Make Discoverable. Then tap Connect — accept the macOS Bluetooth pairing dialog when it appears.")
+                    Text("Use when you don't have a Hue Bridge. First time? Open the **Hue app** \u{2192} Settings \u{2192} Voice Assistants \u{2192} Google Home \u{2192} Make Discoverable. Then tap Connect — accept the macOS Bluetooth pairing dialog when it appears.")
                         .font(Typography.caption)
                         .foregroundStyle(ColorTokens.textTertiary)
                 }
                 .padding(.horizontal, Spacing.xs)
             }
+        }
+    }
+
+    private var hueBridgeSubtitle: String {
+        if viewModel.isHueConnected {
+            return "Connected"
+        }
+        switch viewModel.huePairingState {
+        case .discovering:
+            return "Searching for bridge\u{2026}"
+        case .waitingForButton(let ip):
+            return "Press button on Hue Bridge (\(ip))"
+        case .failed(let msg):
+            return msg
+        default:
+            return "Control via your local network"
         }
     }
 
@@ -170,6 +186,9 @@ struct IntegrationsView: View {
                                 },
                                 onBrightnessChange: { brightness in
                                     viewModel.setBrightness(id: light.id, brightness: brightness)
+                                },
+                                onColorTemperatureChange: { mirek in
+                                    viewModel.setColorTemperature(id: light.id, mirek: mirek)
                                 }
                             )
                             if light.id != group.lights.last?.id {

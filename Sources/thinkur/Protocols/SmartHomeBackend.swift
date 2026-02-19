@@ -8,6 +8,7 @@ struct SmartLight: Identifiable, Codable, Equatable {
     let roomName: String?
     var isOn: Bool
     var brightness: Int  // 0-100
+    var colorTemperature: Int?  // mirek (153=cool ~6500K, 500=warm ~2000K), nil if not supported
     var isReachable: Bool
     let backend: SmartHomeBackendType
 
@@ -18,6 +19,7 @@ struct SmartLight: Identifiable, Codable, Equatable {
         roomName: String?,
         isOn: Bool,
         brightness: Int,
+        colorTemperature: Int? = nil,
         isReachable: Bool,
         backend: SmartHomeBackendType
     ) {
@@ -27,6 +29,7 @@ struct SmartLight: Identifiable, Codable, Equatable {
         self.roomName = roomName
         self.isOn = isOn
         self.brightness = brightness
+        self.colorTemperature = colorTemperature
         self.isReachable = isReachable
         self.backend = backend
     }
@@ -51,6 +54,7 @@ struct SmartLight: Identifiable, Codable, Equatable {
 struct LightStateChange {
     var on: Bool?
     var brightness: Int?  // 0-100
+    var colorTemperature: Int?  // mirek (153-500)
 }
 
 /// Which backend a light comes from
