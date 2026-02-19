@@ -117,10 +117,17 @@ struct SelfCorrectionProcessor: TextProcessor {
         let originalStart = text.index(text.startIndex, offsetBy: lowerOffset)
         let originalEnd = text.index(text.startIndex, offsetBy: lowerEndOffset)
 
-        // Find the clause boundary before the correction phrase
+        // Choose deletion scope based on confidence
+        let clauseStart: String.Index
         let beforeCorrection = text[text.startIndex..<originalStart]
-        let lastSentenceBreak = beforeCorrection.lastIndex(where: { $0 == "." || $0 == "!" || $0 == "?" || $0 == "\n" })
-        let clauseStart = lastSentenceBreak.map { text.index(after: $0) } ?? text.startIndex
+
+        if rule.confidence < 0.9 {
+            // Medium/contextual: delete back to nearest structural boundary word
+            clauseStart = findStructuralBoundary(in: beforeCorrection) ?? findSentenceBoundary(in: beforeCorrection, fullText: text) ?? text.startIndex
+        } else {
+            // High confidence: delete back to sentence boundary
+            clauseStart = findSentenceBoundary(in: beforeCorrection, fullText: text) ?? text.startIndex
+        }
 
         // Build result: text before clause + text after correction phrase
         let beforeClause = String(text[text.startIndex..<clauseStart])
@@ -237,6 +244,33 @@ struct SelfCorrectionProcessor: TextProcessor {
         default:
             return false
         }
+    }
+
+    /// Find the position just after the last structural boundary word.
+    /// Returns the index of the space after the boundary word's content ends.
+    private func findStructuralBoundary(in beforeCorrection: Substring) -> String.Index? {
+        let words = beforeCorrection.split(separator: " ", omittingEmptySubsequences: true)
+        guard words.count >= 2 else { return nil }
+
+        // Scan from right to left to find the nearest structural boundary word
+        for i in stride(from: words.count - 1, through: 0, by: -1) {
+            let word = words[i].lowercased().trimmingCharacters(in: .punctuationCharacters)
+            if SelfCorrectionRules.structuralBoundaryWords.contains(word) {
+                // Return the index just after this boundary word — keep the boundary word
+                // and delete from the word AFTER the boundary word
+                if i + 1 < words.count {
+                    return words[i + 1].startIndex
+                }
+                return nil
+            }
+        }
+        return nil
+    }
+
+    /// Find the position just after the last sentence boundary.
+    private func findSentenceBoundary(in beforeCorrection: Substring, fullText: String) -> String.Index? {
+        let lastSentenceBreak = beforeCorrection.lastIndex(where: { $0 == "." || $0 == "!" || $0 == "?" || $0 == "\n" })
+        return lastSentenceBreak.map { fullText.index(after: $0) }
     }
 
     private func isInQuotedSpeech(_ range: Range<String.Index>, in text: String) -> Bool {

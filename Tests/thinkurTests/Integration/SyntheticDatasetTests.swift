@@ -65,7 +65,7 @@ struct SyntheticDatasetTests {
         #expect(result == exp, "[\(id)] style=\(style)\n  raw: \(tc.raw)\n  got: \(result)\n  exp: \(exp)")
     }
 
-    // MARK: - Self-Correction (should pass)
+    // MARK: - Self-Correction
 
     @Test func SC001_casual() { run("SC-001", style: .casual) { $0.expected_casual } }
     @Test func SC001_formal() { run("SC-001", style: .formal) { $0.expected_formal } }
@@ -91,7 +91,7 @@ struct SyntheticDatasetTests {
     @Test func SC006_formal() { run("SC-006", style: .formal) { $0.expected_formal } }
     @Test func SC006_neutral() { run("SC-006", style: .standard) { $0.expected_neutral } }
 
-    // MARK: - Self-Correction False Positives (should pass)
+    // MARK: - Self-Correction False Positives
 
     @Test func SCFP001_casual() { run("SC-FP-001", style: .casual) { $0.expected_casual } }
     @Test func SCFP001_formal() { run("SC-FP-001", style: .formal) { $0.expected_formal } }
@@ -145,7 +145,7 @@ struct SyntheticDatasetTests {
     @Test func SCFP013_formal() { run("SC-FP-013", style: .formal) { $0.expected_formal } }
     @Test func SCFP013_neutral() { run("SC-FP-013", style: .standard) { $0.expected_neutral } }
 
-    // MARK: - Filler Removal (should pass)
+    // MARK: - Filler Removal
 
     @Test func FR001_casual() { run("FR-001", style: .casual) { $0.expected_casual } }
     @Test func FR001_formal() { run("FR-001", style: .formal) { $0.expected_formal } }
@@ -195,7 +195,7 @@ struct SyntheticDatasetTests {
     @Test func FR012_formal() { run("FR-012", style: .formal) { $0.expected_formal } }
     @Test func FR012_neutral() { run("FR-012", style: .standard) { $0.expected_neutral } }
 
-    // MARK: - Spoken Punctuation (should pass)
+    // MARK: - Spoken Punctuation
 
     @Test func SP001_casual() { run("SP-001", style: .casual) { $0.expected_casual } }
     @Test func SP001_formal() { run("SP-001", style: .formal) { $0.expected_formal } }
@@ -237,11 +237,15 @@ struct SyntheticDatasetTests {
     @Test func SP010_formal() { run("SP-010", style: .formal) { $0.expected_formal } }
     @Test func SP010_neutral() { run("SP-010", style: .standard) { $0.expected_neutral } }
 
-    // MARK: - Number Conversion (subset that should pass)
+    // MARK: - Number Conversion
 
     @Test func NC001_casual() { run("NC-001", style: .casual) { $0.expected_casual } }
     @Test func NC001_formal() { run("NC-001", style: .formal) { $0.expected_formal } }
     @Test func NC001_neutral() { run("NC-001", style: .standard) { $0.expected_neutral } }
+
+    @Test func NC002_casual() { run("NC-002", style: .casual) { $0.expected_casual } }
+    @Test func NC002_formal() { run("NC-002", style: .formal) { $0.expected_formal } }
+    @Test func NC002_neutral() { run("NC-002", style: .standard) { $0.expected_neutral } }
 
     @Test func NC003_casual() { run("NC-003", style: .casual) { $0.expected_casual } }
     @Test func NC003_formal() { run("NC-003", style: .formal) { $0.expected_formal } }
@@ -250,6 +254,30 @@ struct SyntheticDatasetTests {
     @Test func NC004_casual() { run("NC-004", style: .casual) { $0.expected_casual } }
     @Test func NC004_formal() { run("NC-004", style: .formal) { $0.expected_formal } }
     @Test func NC004_neutral() { run("NC-004", style: .standard) { $0.expected_neutral } }
+
+    @Test func NC005_casual() { run("NC-005", style: .casual) { $0.expected_casual } }
+    @Test func NC005_formal() { run("NC-005", style: .formal) { $0.expected_formal } }
+    @Test func NC005_neutral() { run("NC-005", style: .standard) { $0.expected_neutral } }
+
+    @Test func NC006_casual() { run("NC-006", style: .casual) { $0.expected_casual } }
+    @Test func NC006_formal() { run("NC-006", style: .formal) { $0.expected_formal } }
+    @Test func NC006_neutral() { run("NC-006", style: .standard) { $0.expected_neutral } }
+
+    @Test func NC007_casual() { run("NC-007", style: .casual) { $0.expected_casual } }
+    @Test func NC007_formal() { run("NC-007", style: .formal) { $0.expected_formal } }
+    @Test func NC007_neutral() { run("NC-007", style: .standard) { $0.expected_neutral } }
+
+    @Test func NC008_casual() { run("NC-008", style: .casual) { $0.expected_casual } }
+    @Test func NC008_formal() { run("NC-008", style: .formal) { $0.expected_formal } }
+    @Test func NC008_neutral() { run("NC-008", style: .standard) { $0.expected_neutral } }
+
+    @Test func NC009_casual() { run("NC-009", style: .casual) { $0.expected_casual } }
+    @Test func NC009_formal() { run("NC-009", style: .formal) { $0.expected_formal } }
+    @Test func NC009_neutral() { run("NC-009", style: .standard) { $0.expected_neutral } }
+
+    @Test func NC010_casual() { run("NC-010", style: .casual) { $0.expected_casual } }
+    @Test func NC010_formal() { run("NC-010", style: .formal) { $0.expected_formal } }
+    @Test func NC010_neutral() { run("NC-010", style: .standard) { $0.expected_neutral } }
 
     @Test func NC011_casual() { run("NC-011", style: .casual) { $0.expected_casual } }
     @Test func NC011_formal() { run("NC-011", style: .formal) { $0.expected_formal } }
@@ -263,11 +291,27 @@ struct SyntheticDatasetTests {
     @Test func NC013_formal() { run("NC-013", style: .formal) { $0.expected_formal } }
     @Test func NC013_neutral() { run("NC-013", style: .standard) { $0.expected_neutral } }
 
-    // TODO: implement — NC-002 (large currency with commas), NC-005/006 (dates),
-    // NC-007/008 (times), NC-009 (cents), NC-010 (bucks),
-    // NC-014/015 (phone numbers), NC-016 (measurements), NC-017 (small number preservation), NC-018 (military time)
+    @Test func NC014_casual() { run("NC-014", style: .casual) { $0.expected_casual } }
+    @Test func NC014_formal() { run("NC-014", style: .formal) { $0.expected_formal } }
+    @Test func NC014_neutral() { run("NC-014", style: .standard) { $0.expected_neutral } }
 
-    // MARK: - Capitalization (should pass)
+    @Test func NC015_casual() { run("NC-015", style: .casual) { $0.expected_casual } }
+    @Test func NC015_formal() { run("NC-015", style: .formal) { $0.expected_formal } }
+    @Test func NC015_neutral() { run("NC-015", style: .standard) { $0.expected_neutral } }
+
+    @Test func NC016_casual() { run("NC-016", style: .casual) { $0.expected_casual } }
+    @Test func NC016_formal() { run("NC-016", style: .formal) { $0.expected_formal } }
+    @Test func NC016_neutral() { run("NC-016", style: .standard) { $0.expected_neutral } }
+
+    @Test func NC017_casual() { run("NC-017", style: .casual) { $0.expected_casual } }
+    @Test func NC017_formal() { run("NC-017", style: .formal) { $0.expected_formal } }
+    @Test func NC017_neutral() { run("NC-017", style: .standard) { $0.expected_neutral } }
+
+    @Test func NC018_casual() { run("NC-018", style: .casual) { $0.expected_casual } }
+    @Test func NC018_formal() { run("NC-018", style: .formal) { $0.expected_formal } }
+    @Test func NC018_neutral() { run("NC-018", style: .standard) { $0.expected_neutral } }
+
+    // MARK: - Capitalization
 
     @Test func CAP001_casual() { run("CAP-001", style: .casual) { $0.expected_casual } }
     @Test func CAP001_formal() { run("CAP-001", style: .formal) { $0.expected_formal } }
@@ -293,7 +337,7 @@ struct SyntheticDatasetTests {
     @Test func CAP006_formal() { run("CAP-006", style: .formal) { $0.expected_formal } }
     @Test func CAP006_neutral() { run("CAP-006", style: .standard) { $0.expected_neutral } }
 
-    // MARK: - List Detection (should pass)
+    // MARK: - List Detection
 
     @Test func LIST001_casual() { run("LIST-001", style: .casual) { $0.expected_casual } }
     @Test func LIST001_formal() { run("LIST-001", style: .formal) { $0.expected_formal } }
@@ -315,7 +359,7 @@ struct SyntheticDatasetTests {
     @Test func LIST005_formal() { run("LIST-005", style: .formal) { $0.expected_formal } }
     @Test func LIST005_neutral() { run("LIST-005", style: .standard) { $0.expected_neutral } }
 
-    // MARK: - Style Adaptation (should pass)
+    // MARK: - Style Adaptation
 
     @Test func STYLEC001_casual() { run("STYLE-C-001", style: .casual) { $0.expected_casual } }
     @Test func STYLEC001_formal() { run("STYLE-C-001", style: .formal) { $0.expected_formal } }
@@ -341,7 +385,7 @@ struct SyntheticDatasetTests {
     @Test func STYLEF003_formal() { run("STYLE-F-003", style: .formal) { $0.expected_formal } }
     @Test func STYLEF003_neutral() { run("STYLE-F-003", style: .standard) { $0.expected_neutral } }
 
-    // MARK: - Edge Cases (should pass)
+    // MARK: - Edge Cases
 
     @Test func EDGE001_casual() { run("EDGE-001", style: .casual) { $0.expected_casual } }
     @Test func EDGE001_formal() { run("EDGE-001", style: .formal) { $0.expected_formal } }
@@ -367,10 +411,31 @@ struct SyntheticDatasetTests {
     @Test func EDGE006_formal() { run("EDGE-006", style: .formal) { $0.expected_formal } }
     @Test func EDGE006_neutral() { run("EDGE-006", style: .standard) { $0.expected_neutral } }
 
-    // TODO: implement — EDGE-007 (mixed numbers preserving "one of"), EDGE-008 (star disambiguation),
-    // EDGE-009 (hash disambiguation), EDGE-010 (double punctuation guard)
+    @Test func EDGE007_casual() { run("EDGE-007", style: .casual) { $0.expected_casual } }
+    @Test func EDGE007_formal() { run("EDGE-007", style: .formal) { $0.expected_formal } }
+    @Test func EDGE007_neutral() { run("EDGE-007", style: .standard) { $0.expected_neutral } }
 
-    // MARK: - Stress Tests (should pass)
+    @Test func EDGE008_casual() { run("EDGE-008", style: .casual) { $0.expected_casual } }
+    @Test func EDGE008_formal() { run("EDGE-008", style: .formal) { $0.expected_formal } }
+    @Test func EDGE008_neutral() { run("EDGE-008", style: .standard) { $0.expected_neutral } }
+
+    @Test func EDGE009_casual() { run("EDGE-009", style: .casual) { $0.expected_casual } }
+    @Test func EDGE009_formal() { run("EDGE-009", style: .formal) { $0.expected_formal } }
+    @Test func EDGE009_neutral() { run("EDGE-009", style: .standard) { $0.expected_neutral } }
+
+    @Test func EDGE010_casual() { run("EDGE-010", style: .casual) { $0.expected_casual } }
+    @Test func EDGE010_formal() { run("EDGE-010", style: .formal) { $0.expected_formal } }
+    @Test func EDGE010_neutral() { run("EDGE-010", style: .standard) { $0.expected_neutral } }
+
+    // MARK: - Stress Tests
+
+    @Test func STRESS001_casual() { run("STRESS-001", style: .casual) { $0.expected_casual } }
+    @Test func STRESS001_formal() { run("STRESS-001", style: .formal) { $0.expected_formal } }
+    @Test func STRESS001_neutral() { run("STRESS-001", style: .standard) { $0.expected_neutral } }
+
+    @Test func STRESS002_casual() { run("STRESS-002", style: .casual) { $0.expected_casual } }
+    @Test func STRESS002_formal() { run("STRESS-002", style: .formal) { $0.expected_formal } }
+    @Test func STRESS002_neutral() { run("STRESS-002", style: .standard) { $0.expected_neutral } }
 
     @Test func STRESS003_casual() { run("STRESS-003", style: .casual) { $0.expected_casual } }
     @Test func STRESS003_formal() { run("STRESS-003", style: .formal) { $0.expected_formal } }
@@ -380,24 +445,91 @@ struct SyntheticDatasetTests {
     @Test func STRESS004_formal() { run("STRESS-004", style: .formal) { $0.expected_formal } }
     @Test func STRESS004_neutral() { run("STRESS-004", style: .standard) { $0.expected_neutral } }
 
-    // TODO: implement — STRESS-001 (everything at once, needs dates/list format), STRESS-002 (false positive hell)
+    // MARK: - End-to-End
 
-    // MARK: - End-to-End (should pass)
+    @Test func E2E001_casual() { run("E2E-001", style: .casual) { $0.expected_casual } }
+    @Test func E2E001_formal() { run("E2E-001", style: .formal) { $0.expected_formal } }
+    @Test func E2E001_neutral() { run("E2E-001", style: .standard) { $0.expected_neutral } }
+
+    @Test func E2E002_casual() { run("E2E-002", style: .casual) { $0.expected_casual } }
+    @Test func E2E002_formal() { run("E2E-002", style: .formal) { $0.expected_formal } }
+    @Test func E2E002_neutral() { run("E2E-002", style: .standard) { $0.expected_neutral } }
+
+    @Test func E2E003_casual() { run("E2E-003", style: .casual) { $0.expected_casual } }
+    @Test func E2E003_formal() { run("E2E-003", style: .formal) { $0.expected_formal } }
+    @Test func E2E003_neutral() { run("E2E-003", style: .standard) { $0.expected_neutral } }
+
+    @Test func E2E004_casual() { run("E2E-004", style: .casual) { $0.expected_casual } }
+    @Test func E2E004_formal() { run("E2E-004", style: .formal) { $0.expected_formal } }
+    @Test func E2E004_neutral() { run("E2E-004", style: .standard) { $0.expected_neutral } }
+
+    @Test func E2E005_casual() { run("E2E-005", style: .casual) { $0.expected_casual } }
+    @Test func E2E005_formal() { run("E2E-005", style: .formal) { $0.expected_formal } }
+    @Test func E2E005_neutral() { run("E2E-005", style: .standard) { $0.expected_neutral } }
+
+    @Test func E2E006_casual() { run("E2E-006", style: .casual) { $0.expected_casual } }
+    @Test func E2E006_formal() { run("E2E-006", style: .formal) { $0.expected_formal } }
+    @Test func E2E006_neutral() { run("E2E-006", style: .standard) { $0.expected_neutral } }
+
+    @Test func E2E007_casual() { run("E2E-007", style: .casual) { $0.expected_casual } }
+    @Test func E2E007_formal() { run("E2E-007", style: .formal) { $0.expected_formal } }
+    @Test func E2E007_neutral() { run("E2E-007", style: .standard) { $0.expected_neutral } }
+
+    @Test func E2E008_casual() { run("E2E-008", style: .casual) { $0.expected_casual } }
+    @Test func E2E008_formal() { run("E2E-008", style: .formal) { $0.expected_formal } }
+    @Test func E2E008_neutral() { run("E2E-008", style: .standard) { $0.expected_neutral } }
+
+    @Test func E2E009_casual() { run("E2E-009", style: .casual) { $0.expected_casual } }
+    @Test func E2E009_formal() { run("E2E-009", style: .formal) { $0.expected_formal } }
+    @Test func E2E009_neutral() { run("E2E-009", style: .standard) { $0.expected_neutral } }
 
     @Test func E2E010_casual() { run("E2E-010", style: .casual) { $0.expected_casual } }
     @Test func E2E010_formal() { run("E2E-010", style: .formal) { $0.expected_formal } }
     @Test func E2E010_neutral() { run("E2E-010", style: .standard) { $0.expected_neutral } }
 
-    // TODO: implement — E2E-001 through E2E-009, E2E-011 through E2E-015
-    // Many require time conversion, date formatting, complex style adaptation,
-    // question detection, and other features not yet implemented.
+    @Test func E2E011_casual() { run("E2E-011", style: .casual) { $0.expected_casual } }
+    @Test func E2E011_formal() { run("E2E-011", style: .formal) { $0.expected_formal } }
+    @Test func E2E011_neutral() { run("E2E-011", style: .standard) { $0.expected_neutral } }
 
-    // MARK: - Real World (should pass)
+    @Test func E2E012_casual() { run("E2E-012", style: .casual) { $0.expected_casual } }
+    @Test func E2E012_formal() { run("E2E-012", style: .formal) { $0.expected_formal } }
+    @Test func E2E012_neutral() { run("E2E-012", style: .standard) { $0.expected_neutral } }
+
+    @Test func E2E013_casual() { run("E2E-013", style: .casual) { $0.expected_casual } }
+    @Test func E2E013_formal() { run("E2E-013", style: .formal) { $0.expected_formal } }
+    @Test func E2E013_neutral() { run("E2E-013", style: .standard) { $0.expected_neutral } }
+
+    @Test func E2E014_casual() { run("E2E-014", style: .casual) { $0.expected_casual } }
+    @Test func E2E014_formal() { run("E2E-014", style: .formal) { $0.expected_formal } }
+    @Test func E2E014_neutral() { run("E2E-014", style: .standard) { $0.expected_neutral } }
+
+    @Test func E2E015_casual() { run("E2E-015", style: .casual) { $0.expected_casual } }
+    @Test func E2E015_formal() { run("E2E-015", style: .formal) { $0.expected_formal } }
+    @Test func E2E015_neutral() { run("E2E-015", style: .standard) { $0.expected_neutral } }
+
+    // MARK: - Real World
+
+    @Test func REAL001_casual() { run("REAL-001", style: .casual) { $0.expected_casual } }
+    @Test func REAL001_formal() { run("REAL-001", style: .formal) { $0.expected_formal } }
+    @Test func REAL001_neutral() { run("REAL-001", style: .standard) { $0.expected_neutral } }
+
+    @Test func REAL002_casual() { run("REAL-002", style: .casual) { $0.expected_casual } }
+    @Test func REAL002_formal() { run("REAL-002", style: .formal) { $0.expected_formal } }
+    @Test func REAL002_neutral() { run("REAL-002", style: .standard) { $0.expected_neutral } }
 
     @Test func REAL003_casual() { run("REAL-003", style: .casual) { $0.expected_casual } }
     @Test func REAL003_formal() { run("REAL-003", style: .formal) { $0.expected_formal } }
     @Test func REAL003_neutral() { run("REAL-003", style: .standard) { $0.expected_neutral } }
 
-    // TODO: implement — REAL-001, REAL-002, REAL-004, REAL-005, REAL-006
-    // Require time formatting, date formatting, complex filler/style interactions
+    @Test func REAL004_casual() { run("REAL-004", style: .casual) { $0.expected_casual } }
+    @Test func REAL004_formal() { run("REAL-004", style: .formal) { $0.expected_formal } }
+    @Test func REAL004_neutral() { run("REAL-004", style: .standard) { $0.expected_neutral } }
+
+    @Test func REAL005_casual() { run("REAL-005", style: .casual) { $0.expected_casual } }
+    @Test func REAL005_formal() { run("REAL-005", style: .formal) { $0.expected_formal } }
+    @Test func REAL005_neutral() { run("REAL-005", style: .standard) { $0.expected_neutral } }
+
+    @Test func REAL006_casual() { run("REAL-006", style: .casual) { $0.expected_casual } }
+    @Test func REAL006_formal() { run("REAL-006", style: .formal) { $0.expected_formal } }
+    @Test func REAL006_neutral() { run("REAL-006", style: .standard) { $0.expected_neutral } }
 }

@@ -5,7 +5,11 @@ struct PausePunctuationProcessor: TextProcessor {
 
     func process(_ text: String, context: ProcessingContext) -> ProcessorResult {
         let timings = context.wordTimings
-        guard timings.count >= 2 else { return ProcessorResult(text: text) }
+
+        // If no timings available, use heuristic sentence splitting for standard/formal
+        if timings.count < 2 {
+            return processWithoutTimings(text, context: context)
+        }
 
         var words = text.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
         guard words.count >= 2 else { return ProcessorResult(text: text) }
@@ -85,6 +89,134 @@ struct PausePunctuationProcessor: TextProcessor {
         result = cleanDoublePunctuation(result)
 
         return ProcessorResult(text: result, corrections: corrections)
+    }
+
+    // MARK: - No-Timings Fallback
+
+    private func processWithoutTimings(_ text: String, context: ProcessingContext) -> ProcessorResult {
+        // Only apply sentence splitting for standard/formal
+        guard context.appStyle == .standard || context.appStyle == .formal else {
+            return ProcessorResult(text: text)
+        }
+
+        // Check if text already has sentence-ending punctuation (e.g., from spoken punctuation)
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        if trimmed.contains(". ") || trimmed.contains("? ") || trimmed.contains("! ") ||
+           trimmed.contains(".\n") || trimmed.contains("?\n") || trimmed.contains("!\n") {
+            // Already has internal punctuation, just do question detection
+            var corrections: [CorrectionEntry] = []
+            var result = detectFullTextQuestion(trimmed, corrections: &corrections)
+            result = cleanDoublePunctuation(result)
+            return ProcessorResult(text: result, corrections: corrections)
+        }
+
+        var corrections: [CorrectionEntry] = []
+        let boundaries = SentenceBoundaryMatcher.findBoundaries(in: text)
+
+        if boundaries.isEmpty {
+            // Single sentence — just check if it's a question
+            var result = detectFullTextQuestion(text, corrections: &corrections)
+            result = cleanDoublePunctuation(result)
+            return ProcessorResult(text: result, corrections: corrections)
+        }
+
+        // Split at boundaries, add periods and capitalize
+        var result = text
+        for boundary in boundaries.reversed() {
+            // Find the last non-space character before the boundary
+            var insertAt = boundary
+            while insertAt > result.startIndex {
+                let prev = result.index(before: insertAt)
+                if result[prev] == " " {
+                    insertAt = prev
+                } else {
+                    break
+                }
+            }
+
+            // Don't add period if already has punctuation
+            if insertAt > result.startIndex {
+                let charBefore = result[result.index(before: insertAt)]
+                if ".!?,;:".contains(charBefore) {
+                    // Already has punctuation, just capitalize the next word
+                    capitalizeAt(boundary, in: &result)
+                    continue
+                }
+            }
+
+            // Insert period before the space(s) and capitalize the next word
+            result.insert(".", at: insertAt)
+            // The boundary index shifted by 1 due to insertion
+            let newBoundary = result.index(after: boundary)
+            if newBoundary < result.endIndex {
+                capitalizeAt(newBoundary, in: &result)
+            }
+
+            corrections.append(CorrectionEntry(
+                processorName: name,
+                ruleName: "sentence_boundary",
+                originalFragment: "",
+                replacement: ".",
+                confidence: 0.75
+            ))
+        }
+
+        // Check individual sentences for questions
+        result = markQuestions(result, corrections: &corrections)
+        result = detectFullTextQuestion(result, corrections: &corrections)
+        result = cleanDoublePunctuation(result)
+
+        return ProcessorResult(text: result, corrections: corrections)
+    }
+
+    private func capitalizeAt(_ index: String.Index, in text: inout String) {
+        guard index < text.endIndex else { return }
+        let char = text[index]
+        if char.isLowercase {
+            text.replaceSubrange(index...index, with: String(char).uppercased())
+        }
+    }
+
+    // MARK: - Question Detection (full text, single sentence)
+
+    private func detectFullTextQuestion(_ text: String, corrections: inout [CorrectionEntry]) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return text }
+
+        // If already ends with ? or !, don't modify
+        if let last = trimmed.last, "?!".contains(last) { return text }
+
+        let firstWord = trimmed.split(separator: " ").first?.lowercased() ?? ""
+        if PausePunctuationRules.questionStarters.contains(firstWord) {
+            // Check that it doesn't contain internal sentence punctuation
+            // (which would mean it's multi-sentence)
+            let inner = trimmed.dropFirst().dropLast()
+            let hasInternalPeriods = inner.contains(". ") || inner.contains("? ") || inner.contains("! ")
+            if !hasInternalPeriods {
+                // Indirect questions: "I wonder if...", "I'm not sure whether..."
+                let lower = trimmed.lowercased()
+                if lower.hasPrefix("i wonder") || lower.hasPrefix("i'm not sure") ||
+                   lower.hasPrefix("i am not sure") {
+                    return text
+                }
+
+                var result = trimmed
+                // Replace trailing period with ? if present
+                if result.hasSuffix(".") {
+                    result = String(result.dropLast()) + "?"
+                    corrections.append(CorrectionEntry(
+                        processorName: name,
+                        ruleName: "question_single",
+                        originalFragment: ".",
+                        replacement: "?",
+                        confidence: PausePunctuationRules.questionConfidence
+                    ))
+                }
+                return result
+            }
+        }
+
+        return text
     }
 
     // MARK: - Question Detection

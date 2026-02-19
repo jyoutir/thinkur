@@ -208,6 +208,6 @@ struct SelfCorrectionProcessorTests {
         let input = "i talked to sarah and she said tuesday no actually wednesday"
         let result = processor.process(input, context: ctx)
         #expect(!result.corrections.isEmpty, "Expected corrections but got none. Text: \(result.text)")
-        #expect(result.text == "wednesday", "Expected 'wednesday' but got: '\(result.text)'")
+        #expect(result.text == "i talked to sarah and she said wednesday", "Expected structural boundary correction but got: '\(result.text)'")
     }
 }

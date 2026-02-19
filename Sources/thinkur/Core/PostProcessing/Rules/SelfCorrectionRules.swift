@@ -149,5 +149,13 @@ enum SelfCorrectionRules {
 
     static let quotedSpeechPattern = #"(?i)\b(said|says|wrote|typed|means|meaning|called|titled|named)\s+["']?"#
 
+    // MARK: - Structural Boundary Words (for medium-confidence corrections)
+
+    static let structuralBoundaryWords: Set<String> = [
+        "said", "says", "told", "asked", "mentioned", "reported",
+        "and", "but", "or", "that", "which", "who", "when", "where",
+        "because", "since", "after", "before", "while", "if", "although",
+    ]
+
     static let maxCorrectionIterations = 10
 }

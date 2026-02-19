@@ -23,6 +23,23 @@ final class TextPostProcessor {
                 Logger.postProcessing.debug("\(processor.name): \"\(before)\" → \"\(currentText)\"")
             }
         }
+        // Global cleanup: remove double punctuation after all processors
+        currentText = cleanDoublePunctuation(currentText)
+
         return ProcessorResult(text: currentText, corrections: allCorrections)
+    }
+
+    private func cleanDoublePunctuation(_ text: String) -> String {
+        var result = text
+        let patterns: [(String, String)] = [
+            (#"([.!?])\s*[.]"#, "$1"),      // sentence-ender absorbs following period
+            (#",\s*,"#, ","),                // collapse double commas
+            (#"\.{2}(?!\.)"#, "."),          // double period → single (but not ellipsis)
+        ]
+        for (pattern, replacement) in patterns {
+            let (newText, _) = TextMutator.replaceAll(in: result, pattern: pattern, replacement: replacement)
+            result = newText
+        }
+        return result
     }
 }
