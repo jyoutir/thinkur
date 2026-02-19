@@ -46,9 +46,9 @@ final class SmartHomeService {
     func connectHueBluetooth() async throws {
         let backend = HueBluetoothBackend()
         hueBluetoothBackend = backend
-        if !backends.contains(where: { $0.backendType == .hueBluetooth }) {
-            backends.append(backend)
-        }
+        // Always replace — previous instance may be stale/disconnected
+        backends.removeAll { $0.backendType == .hueBluetooth }
+        backends.append(backend)
         try await backend.connect()
         await refreshLights()
     }

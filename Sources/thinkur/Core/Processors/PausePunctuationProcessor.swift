@@ -39,6 +39,15 @@ struct PausePunctuationProcessor: TextProcessor {
                     continue
                 }
 
+                // Don't insert period after present participles/gerunds mid-flow
+                // e.g. "using", "including", "having" — these almost never end a sentence alone
+                if currentLower.hasSuffix("ing") && currentLower.count > 4 {
+                    if !PausePunctuationRules.noCommaAfter.contains(currentLower) {
+                        insertions.append((index: i, punctuation: ",", confidence: PausePunctuationRules.clauseConfidence))
+                    }
+                    continue
+                }
+
                 // Don't insert period before continuation words
                 if PausePunctuationRules.continuationWords.contains(nextLower) {
                     // Downgrade to comma instead

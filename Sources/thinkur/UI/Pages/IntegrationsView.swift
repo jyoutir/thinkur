@@ -103,6 +103,20 @@ struct IntegrationsView: View {
                     }
                 }
             }
+
+            if !viewModel.isHueBluetoothConnected {
+                HStack(alignment: .top, spacing: Spacing.sm) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 11))
+                        .foregroundStyle(ColorTokens.textTertiary)
+                        .padding(.top, 1)
+
+                    Text("First time? Open the **Hue app** \u{2192} Settings \u{2192} Voice Assistants \u{2192} Google Home \u{2192} Make Discoverable. Then tap Connect — accept the macOS Bluetooth pairing dialog when it appears.")
+                        .font(Typography.caption)
+                        .foregroundStyle(ColorTokens.textTertiary)
+                }
+                .padding(.horizontal, Spacing.xs)
+            }
         }
     }
 
