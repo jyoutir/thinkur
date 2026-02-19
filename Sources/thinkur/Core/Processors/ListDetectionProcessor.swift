@@ -25,6 +25,7 @@ struct ListDetectionProcessor: TextProcessor {
 
         // Determine list type from markers
         let category = markers.first?.category ?? "bullet"
+        let isFormalOrStandard = context.appStyle == .formal || context.appStyle == .standard
         var corrections: [CorrectionEntry] = []
 
         // Build list items by splitting text at marker positions
@@ -39,23 +40,44 @@ struct ListDetectionProcessor: TextProcessor {
         // Format as list
         var result: [String] = []
 
-        // Add any text before the first marker
+        // Add any text before the first marker (preamble)
         let beforeFirst = String(text[text.startIndex..<markers[0].range.lowerBound]).trimmingCharacters(in: .whitespaces)
         if !beforeFirst.isEmpty {
-            result.append(beforeFirst)
+            var preamble = beforeFirst
+            // Add colon after preamble for formal/standard styles
+            if isFormalOrStandard {
+                // Strip trailing period if present, replace with colon
+                if preamble.hasSuffix(".") {
+                    preamble = String(preamble.dropLast())
+                }
+                if !preamble.hasSuffix(":") {
+                    preamble += ":"
+                }
+            }
+            result.append(preamble)
         }
 
         for (i, item) in items.enumerated() {
             let prefix: String
             switch category {
-            case "numbered":
-                prefix = "\(i + 1)) "
-            case "ordinal":
-                prefix = "\(i + 1)) "
-            case "bare_number":
-                prefix = "\(i + 1)) "
+            case "numbered", "ordinal", "bare_number":
+                prefix = "\(i + 1). "
             default:
                 prefix = ListDetectionRules.defaultBulletCharacter
+            }
+
+            // Capitalize item content
+            var content = item.content
+            if let first = content.first, first.isLowercase {
+                content = first.uppercased() + content.dropFirst()
+            }
+
+            // Add trailing period for formal/standard styles
+            if isFormalOrStandard {
+                let trimmed = content.trimmingCharacters(in: .whitespaces)
+                if !trimmed.isEmpty, let last = trimmed.last, !".!?".contains(last) {
+                    content = trimmed + "."
+                }
             }
 
             corrections.append(CorrectionEntry(
@@ -66,7 +88,7 @@ struct ListDetectionProcessor: TextProcessor {
                 confidence: 0.85
             ))
 
-            result.append(prefix + item.content)
+            result.append(prefix + content)
         }
 
         return ProcessorResult(

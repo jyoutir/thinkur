@@ -79,7 +79,7 @@ enum ListDetectionRules {
 
     // MARK: - List Formatting
 
-    static let defaultBulletCharacter = "- "
+    static let defaultBulletCharacter = "\u{2022} "
     static let nestedIndent = "   "   // 3 spaces for nested items
     static let minItemsForList = 2
     static let maxWordsForAutoListItem = 10  // heuristic for newline-separated items

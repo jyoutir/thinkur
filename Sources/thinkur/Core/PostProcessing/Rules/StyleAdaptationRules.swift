@@ -118,6 +118,22 @@ enum StyleAdaptationRules {
         ("let's",     "let us"),
     ]
 
+    // MARK: - Past Participles (for "it's" → "it has" detection)
+
+    static let pastParticiples: Set<String> = [
+        "been", "gone", "done", "made", "taken", "given", "shown",
+        "grown", "become", "come", "seen", "known", "found",
+        "gotten", "broken", "chosen", "driven", "eaten", "fallen",
+        "forgotten", "frozen", "hidden", "proven", "risen",
+        "spoken", "stolen", "sworn", "thrown", "worn", "written",
+    ]
+
+    // MARK: - Pronouns with contractions (to distinguish from possessive 's)
+
+    static let pronounsWithContractions: Set<String> = [
+        "he", "she", "it", "that", "there", "what", "who", "where", "when", "how",
+    ]
+
     // MARK: - Expanded App Style Map
 
     static let appStyleMap: [String: AppStyle] = [
