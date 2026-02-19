@@ -110,7 +110,6 @@ enum SmartFormattingRules {
         "meter": "m", "meters": "m",
         "kilometer": "km", "kilometers": "km",
         "inch": "in", "inches": "in",
-        "foot": "ft", "feet": "ft",
         "yard": "yd", "yards": "yd",
         "mile": "mi", "miles": "mi",
         // Weight
@@ -167,11 +166,17 @@ enum SmartFormattingRules {
         // Idioms
         #"(?i)\bfirst\s+(of\s+all|and\s+foremost|things\s+first|come\s+first|off|up)\b"#,
         #"(?i)\bat\s+first\b"#,
+        // "first/second/third time" — natural phrasing
+        #"(?i)\b(first|second|third)\s+(time|place|best|worst|half|floor|base|round|quarter)\b"#,
         // "second" as time unit
         #"(?i)\b(wait|just)\s+a\s+second\b"#,
         // Compound noun uses
         #"(?i)\bsecond\s+(thought|thoughts|guess|nature|hand|chance|opinion)\b"#,
-        #"(?i)\bthird\s+(party|person|world|eye|wheel|base|degree|time)\b"#,
+        #"(?i)\bthird\s+(party|person|world|eye|wheel|degree)\b"#,
+        // "number one/two" — idiomatic
+        #"(?i)\bnumber\s+(one|two|three|four|five|six|seven|eight|nine|ten)\b"#,
+        // "first/second paragraph" — document structure, keep as words
+        #"(?i)\b(first|second|third|fourth|fifth|sixth)\s+paragraph\b"#,
     ]
 
     // MARK: - "may" Disambiguation

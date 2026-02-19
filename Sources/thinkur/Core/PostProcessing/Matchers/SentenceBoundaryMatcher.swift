@@ -16,8 +16,17 @@ struct SentenceBoundaryMatcher {
             let prevWord = String(words[i - 1]).lowercased().trimmingCharacters(in: .punctuationCharacters)
             let wordsBefore = i
 
-            // Rule 1: Subject pronoun after lowercase word (likely starts new sentence)
-            // "...word I/he/she/we/they ..." but NOT after conjunctions/prepositions
+            // Rule 1: Contraction restarters after sufficient prior content
+            // "I'm", "I've", "I'll", "it's", "that's", "let's" are strong sentence start signals
+            if SentenceBoundaryRules.contractionRestarters.contains(wordLower) && wordsBefore >= 3 {
+                if !SentenceBoundaryRules.joiningWords.contains(prevWord) &&
+                   !SentenceBoundaryRules.incompleteEnders.contains(prevWord) {
+                    boundaries.append(words[i].startIndex)
+                    continue
+                }
+            }
+
+            // Rule 2: Subject pronoun "I" after content that looks complete
             if SentenceBoundaryRules.subjectPronouns.contains(wordLower) && wordsBefore >= 3 {
                 if !SentenceBoundaryRules.joiningWords.contains(prevWord) &&
                    !SentenceBoundaryRules.incompleteEnders.contains(prevWord) {
@@ -26,8 +35,8 @@ struct SentenceBoundaryMatcher {
                 }
             }
 
-            // Rule 2: Question opener after statement content
-            if SentenceBoundaryRules.questionOpeners.contains(wordLower) && wordsBefore >= 3 {
+            // Rule 3: Greeting/sentiment starters ("thank you", "thanks", "please")
+            if SentenceBoundaryRules.greetingStarters.contains(wordLower) && wordsBefore >= 3 {
                 if !SentenceBoundaryRules.joiningWords.contains(prevWord) &&
                    !SentenceBoundaryRules.incompleteEnders.contains(prevWord) {
                     boundaries.append(words[i].startIndex)
@@ -35,16 +44,8 @@ struct SentenceBoundaryMatcher {
                 }
             }
 
-            // Rule 3: Discourse markers after sufficient prior content
+            // Rule 4: Very high-confidence discourse markers
             if SentenceBoundaryRules.discourseMarkers.contains(wordLower) && wordsBefore >= 4 {
-                if !SentenceBoundaryRules.joiningWords.contains(prevWord) {
-                    boundaries.append(words[i].startIndex)
-                    continue
-                }
-            }
-
-            // Rule 4: Contraction restarters after a complete-looking clause
-            if SentenceBoundaryRules.contractionRestarters.contains(wordLower) && wordsBefore >= 3 {
                 if !SentenceBoundaryRules.joiningWords.contains(prevWord) &&
                    !SentenceBoundaryRules.incompleteEnders.contains(prevWord) {
                     boundaries.append(words[i].startIndex)

@@ -30,11 +30,11 @@ enum FillerRemovalRules {
 
     static let discourseMarkers: [(word: String, disambiguate: Bool, confidence: Float)] = [
         ("well",        true,  0.8),
-        ("so",          true,  0.8),
-        ("like",        true,  0.7),
         ("okay",        true,  0.8),
         ("ok",          true,  0.8),
         ("right",       true,  0.7),
+        ("so",          true,  0.8),
+        ("like",        true,  0.7),
         ("anyway",      false, 0.9),
         ("anyways",     false, 0.9),
         ("basically",   false, 0.9),
@@ -50,6 +50,9 @@ enum FillerRemovalRules {
     // MARK: - Category 3: Multi-word fillers (sorted longest first)
 
     static let multiWordFillers: [ReplacementRule] = [
+        // Sentence-initial "interjection + so" patterns (remove "so", keep interjection)
+        ReplacementRule(pattern: #"(?i)(?:^|(?<=[.!?\n]\s*))hey\s+so[,]?\s+"#, replacement: "hey ", confidence: 0.85, isRegex: true, category: "multi_word"),
+        ReplacementRule(pattern: #"(?i)(?:^|(?<=[.!?\n]\s*))right\s+so[,]?\s+"#, replacement: "", confidence: 0.85, isRegex: true, category: "multi_word"),
         ReplacementRule(pattern: "you know what i mean",  replacement: "", confidence: 0.95, category: "multi_word"),
         ReplacementRule(pattern: "or something like that", replacement: "", confidence: 0.9, category: "multi_word"),
         ReplacementRule(pattern: "how should i put this", replacement: "", confidence: 0.95, category: "multi_word"),
@@ -132,11 +135,13 @@ enum FillerRemovalRules {
             #"(?i)\bif\s+so\b"#,
             #"(?i)\bor\s+so\b"#,
             #"(?i)\beven\s+so\b"#,
-            #"(?i)\b\w+\s+so\s+(i|we|he|she|they|it|you|that|the)\b"#,
+            // Only keep "so" as a conjunction after actual conjunction/result words, not generic words
+            #"(?i)\b(and|but|because|since|even|not|neither|nor)\s+so\s+(i|we|he|she|they|it|you|that|the)\b"#,
         ],
         removePatterns: [
             #"(?i)^so[,]?\s+"#,
             #"(?i)(?<=[.!?\n]\s*)so[,]?\s+"#,
+            #"(?i)^so$"#,
         ]
     )
 

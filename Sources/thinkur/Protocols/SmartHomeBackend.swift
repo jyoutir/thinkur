@@ -3,16 +3,42 @@ import Foundation
 /// A discovered smart light from any backend
 struct SmartLight: Identifiable, Codable, Equatable {
     let id: String
-    let name: String
+    var name: String
+    let originalName: String
     let roomName: String?
     var isOn: Bool
     var brightness: Int  // 0-100
     var isReachable: Bool
     let backend: SmartHomeBackendType
 
+    init(
+        id: String,
+        name: String,
+        originalName: String? = nil,
+        roomName: String?,
+        isOn: Bool,
+        brightness: Int,
+        isReachable: Bool,
+        backend: SmartHomeBackendType
+    ) {
+        self.id = id
+        self.name = name
+        self.originalName = originalName ?? name
+        self.roomName = roomName
+        self.isOn = isOn
+        self.brightness = brightness
+        self.isReachable = isReachable
+        self.backend = backend
+    }
+
     /// Normalized name for matching (lowercase, trimmed)
     var normalizedName: String {
         name.lowercased().trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Normalized original name for matching
+    var normalizedOriginalName: String {
+        originalName.lowercased().trimmingCharacters(in: .whitespaces)
     }
 
     /// Normalized room name for matching

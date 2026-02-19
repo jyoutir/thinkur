@@ -26,25 +26,42 @@ struct StyleAdaptationProcessor: TextProcessor {
 
         // Apply contractions: "I am" → "I'm", "do not" → "don't"
         for contraction in StyleAdaptationRules.casualContractions {
-            let pattern = #"(?i)\b"# + NSRegularExpression.escapedPattern(for: contraction.expanded) + #"\b"#
-            let (newText, mutations) = TextMutator.replaceAll(in: result, pattern: pattern, replacement: contraction.contracted)
-            if !mutations.isEmpty {
-                for mutation in mutations {
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "casual_contraction",
-                        originalFragment: mutation.original, replacement: contraction.contracted,
-                        confidence: 0.85
-                    ))
+            // Skip "have" contractions when followed by: digit, "to", or noun-phrase starters
+            // (articles, number words) — "i've a question" / "i've one question" is unnatural
+            if contraction.expanded.hasSuffix(" have") {
+                let pattern = #"(?i)\b"# + NSRegularExpression.escapedPattern(for: contraction.expanded) + #"\b(?!\s+(\d|to\b|a\b|an\b|the\b|one\b|two\b|three\b|four\b|five\b|some\b|any\b|no\b))"#
+                let (newText, mutations) = TextMutator.replaceAll(in: result, pattern: pattern, replacement: contraction.contracted)
+                if !mutations.isEmpty {
+                    for mutation in mutations {
+                        corrections.append(CorrectionEntry(
+                            processorName: name, ruleName: "casual_contraction",
+                            originalFragment: mutation.original, replacement: contraction.contracted,
+                            confidence: 0.85
+                        ))
+                    }
+                    result = newText
                 }
-                result = newText
+            } else {
+                let pattern = #"(?i)\b"# + NSRegularExpression.escapedPattern(for: contraction.expanded) + #"\b"#
+                let (newText, mutations) = TextMutator.replaceAll(in: result, pattern: pattern, replacement: contraction.contracted)
+                if !mutations.isEmpty {
+                    for mutation in mutations {
+                        corrections.append(CorrectionEntry(
+                            processorName: name, ruleName: "casual_contraction",
+                            originalFragment: mutation.original, replacement: contraction.contracted,
+                            confidence: 0.85
+                        ))
+                    }
+                    result = newText
+                }
             }
         }
 
         // Strip sign-offs in casual mode
         result = stripCasualSignOff(result, corrections: &corrections)
 
-        // Strip trailing period from single sentences
-        if !result.contains(". ") && result.hasSuffix(".") {
+        // Strip trailing period in casual mode
+        if result.hasSuffix(".") && !result.hasSuffix("...") {
             corrections.append(CorrectionEntry(
                 processorName: name, ruleName: "casual_strip_period",
                 originalFragment: ".", replacement: "", confidence: 0.8
@@ -52,27 +69,8 @@ struct StyleAdaptationProcessor: TextProcessor {
             result = String(result.dropLast())
         }
 
-        // Lowercase first character for casual feel
-        if let first = result.first, first.isUppercase && result.count > 1 {
-            let secondIndex = result.index(after: result.startIndex)
-            let second = result[secondIndex]
-
-            let firstStr = String(first)
-            let shouldKeepUpper =
-                (firstStr == "I" && (second == " " || second == "'" || secondIndex == result.endIndex)) ||
-                second.isUppercase ||
-                isSpecialCasedStart(result) ||
-                isProperNounStart(result)
-
-            if !shouldKeepUpper {
-                let original = firstStr
-                result = first.lowercased() + result.dropFirst()
-                corrections.append(CorrectionEntry(
-                    processorName: name, ruleName: "casual_lowercase",
-                    originalFragment: original, replacement: first.lowercased(), confidence: 0.7
-                ))
-            }
-        }
+        // Full casual lowercasing: lowercase everything except special casing and acronyms
+        result = applyCasualLowercasing(result, corrections: &corrections)
 
         return ProcessorResult(text: result, corrections: corrections)
     }
@@ -124,6 +122,12 @@ struct StyleAdaptationProcessor: TextProcessor {
                 }
             }
         }
+
+        // Re-capitalize sentence starts after contraction expansion
+        result = recapitalizeSentenceStarts(result)
+
+        // Insert commas after introductory phrases
+        result = insertIntroductoryCommas(result, corrections: &corrections)
 
         // Format sign-offs for formal style
         result = formatFormalSignOff(result, corrections: &corrections)
@@ -191,6 +195,9 @@ struct StyleAdaptationProcessor: TextProcessor {
     private func applyStandardStyle(_ text: String) -> ProcessorResult {
         var result = text.trimmingCharacters(in: .whitespaces)
         var corrections: [CorrectionEntry] = []
+
+        // Insert commas after introductory phrases
+        result = insertIntroductoryCommas(result, corrections: &corrections)
 
         // Add trailing period if text doesn't end with terminal punctuation
         if !result.isEmpty, let last = result.last, !".!?".contains(last) {
@@ -269,6 +276,167 @@ struct StyleAdaptationProcessor: TextProcessor {
             }
         }
         return text
+    }
+
+    // MARK: - Sentence Re-Capitalization
+
+    /// Re-capitalize sentence starts after contraction expansion may have lowercased them.
+    private func recapitalizeSentenceStarts(_ text: String) -> String {
+        var chars = Array(text)
+        var capitalizeNext = true
+        var i = 0
+        while i < chars.count {
+            if capitalizeNext {
+                if chars[i].isLetter {
+                    if chars[i].isLowercase {
+                        chars[i] = Character(chars[i].uppercased())
+                    }
+                    capitalizeNext = false
+                } else if chars[i].isNumber {
+                    // Skip entire numeric token (e.g., "1st") — don't capitalize letters inside it
+                    while i < chars.count && chars[i] != " " && chars[i] != "\n" {
+                        i += 1
+                    }
+                    capitalizeNext = false
+                    continue
+                }
+            } else if chars[i] == "!" || chars[i] == "?" || chars[i] == "\n" {
+                capitalizeNext = true
+            } else if chars[i] == "." {
+                let partOfEllipsis = (i > 0 && chars[i - 1] == ".") || (i + 1 < chars.count && chars[i + 1] == ".")
+                let inlineURL = !partOfEllipsis && (i + 1 < chars.count && chars[i + 1].isLetter)
+                if !partOfEllipsis && !inlineURL { capitalizeNext = true }
+            }
+            i += 1
+        }
+        return String(chars)
+    }
+
+    // MARK: - Introductory Comma Insertion
+
+    /// Common introductory phrases that should be followed by a comma in formal/standard style.
+    private static let introductoryPhrases: [(pattern: String, replacement: String)] = [
+        (#"(?i)^(I mean)\s+"#, "$1, "),
+        (#"(?i)^(On second thought)\s+"#, "$1, "),
+        (#"(?i)^(For example)\s+"#, "$1, "),
+        (#"(?i)^(In fact)\s+"#, "$1, "),
+        (#"(?i)^(So yeah)[,]?\s+"#, "$1, "),
+        (#"(?i)^(Well)\s+"#, "$1, "),
+        (#"(?i)^(Yeah)\s+"#, "$1, "),
+        (#"(?i)^(Hey)[,]?\s+"#, "$1, "),
+        (#"(?i)^(No)\s+"#, "$1, "),
+        (#"(?i)^(Sorry)\s+"#, "$1, "),
+        (#"(?i)^(Yes)\s+"#, "$1, "),
+    ]
+
+    /// Comma before trailing clauses.
+    private static let trailingCommaPhrases: [(pattern: String, replacement: String)] = [
+        (#"(?i)\s+(whichever\b)"#, ", $1"),
+        (#"(?i)\s+(whatever\b)"#, ", $1"),
+    ]
+
+    private func insertIntroductoryCommas(_ text: String, corrections: inout [CorrectionEntry]) -> String {
+        var result = text
+
+        // Split into sentences and process each
+        let sentences = result.components(separatedBy: ". ")
+        if sentences.count > 1 {
+            var rebuilt: [String] = []
+            for sentence in sentences {
+                var s = sentence
+                for (pattern, replacement) in Self.introductoryPhrases {
+                    if let regex = RegexCache.shared.regex(for: pattern) {
+                        let nsRange = NSRange(s.startIndex..., in: s)
+                        let newS = regex.stringByReplacingMatches(in: s, range: nsRange, withTemplate: replacement)
+                        if newS != s {
+                            corrections.append(CorrectionEntry(
+                                processorName: name, ruleName: "introductory_comma",
+                                originalFragment: "", replacement: ",", confidence: 0.75
+                            ))
+                            s = newS
+                        }
+                    }
+                }
+                rebuilt.append(s)
+            }
+            result = rebuilt.joined(separator: ". ")
+        } else {
+            // Single sentence
+            for (pattern, replacement) in Self.introductoryPhrases {
+                if let regex = RegexCache.shared.regex(for: pattern) {
+                    let nsRange = NSRange(result.startIndex..., in: result)
+                    let newResult = regex.stringByReplacingMatches(in: result, range: nsRange, withTemplate: replacement)
+                    if newResult != result {
+                        corrections.append(CorrectionEntry(
+                            processorName: name, ruleName: "introductory_comma",
+                            originalFragment: "", replacement: ",", confidence: 0.75
+                        ))
+                        result = newResult
+                    }
+                }
+            }
+        }
+
+        // Trailing comma phrases
+        for (pattern, replacement) in Self.trailingCommaPhrases {
+            if let regex = RegexCache.shared.regex(for: pattern) {
+                let nsRange = NSRange(result.startIndex..., in: result)
+                let newResult = regex.stringByReplacingMatches(in: result, range: nsRange, withTemplate: replacement)
+                if newResult != result {
+                    corrections.append(CorrectionEntry(
+                        processorName: name, ruleName: "trailing_comma",
+                        originalFragment: "", replacement: ",", confidence: 0.75
+                    ))
+                    result = newResult
+                }
+            }
+        }
+
+        return result
+    }
+
+    // MARK: - Casual Full Lowercasing
+
+    /// Lowercase everything in casual mode except special casing and acronyms.
+    private func applyCasualLowercasing(_ text: String, corrections: inout [CorrectionEntry]) -> String {
+        let words = text.split(separator: " ", omittingEmptySubsequences: true)
+        var resultWords: [String] = []
+
+        for word in words {
+            let wordStr = String(word)
+            let clean = word.lowercased().trimmingCharacters(in: .punctuationCharacters)
+
+            // Keep special casing (iPhone, macOS, SwiftUI, etc.)
+            if CapitalizationRules.specialCasing[clean] != nil {
+                resultWords.append(wordStr)
+                continue
+            }
+
+            // Keep acronyms (API, URL, etc.)
+            if CapitalizationRules.safeAcronyms.contains(clean) {
+                resultWords.append(wordStr)
+                continue
+            }
+
+            // Keep standalone "I" pronoun (always uppercase, even in casual mode)
+            if clean == "i" {
+                let preserved = "I" + wordStr.dropFirst()
+                resultWords.append(preserved)
+                continue
+            }
+
+            // Lowercase everything else
+            let lowered = wordStr.lowercased()
+            if lowered != wordStr {
+                corrections.append(CorrectionEntry(
+                    processorName: name, ruleName: "casual_lowercase",
+                    originalFragment: wordStr, replacement: lowered, confidence: 0.7
+                ))
+            }
+            resultWords.append(lowered)
+        }
+
+        return resultWords.joined(separator: " ")
     }
 
     // MARK: - Helpers

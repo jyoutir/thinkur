@@ -49,24 +49,43 @@ struct CapitalizationProcessor: TextProcessor {
         var chars = Array(text)
         var corrections: [CorrectionEntry] = []
         var capitalizeNext = true
+        var i = 0
 
-        for i in 0..<chars.count {
-            if capitalizeNext && chars[i].isLetter {
-                if chars[i].isLowercase {
-                    let original = String(chars[i])
-                    chars[i] = Character(chars[i].uppercased())
-                    corrections.append(CorrectionEntry(
-                        processorName: name,
-                        ruleName: "sentence_start",
-                        originalFragment: original,
-                        replacement: String(chars[i]),
-                        confidence: 0.95
-                    ))
+        while i < chars.count {
+            if capitalizeNext {
+                if chars[i].isLetter {
+                    if chars[i].isLowercase {
+                        let original = String(chars[i])
+                        chars[i] = Character(chars[i].uppercased())
+                        corrections.append(CorrectionEntry(
+                            processorName: name,
+                            ruleName: "sentence_start",
+                            originalFragment: original,
+                            replacement: String(chars[i]),
+                            confidence: 0.95
+                        ))
+                    }
+                    capitalizeNext = false
+                } else if chars[i].isNumber {
+                    // Skip entire numeric token (e.g., "50") — don't capitalize letters after digits
+                    while i < chars.count && chars[i] != " " && chars[i] != "\n" {
+                        i += 1
+                    }
+                    capitalizeNext = false
+                    continue
                 }
-                capitalizeNext = false
-            } else if chars[i] == "." || chars[i] == "!" || chars[i] == "?" || chars[i] == "\n" {
+            } else if chars[i] == "!" || chars[i] == "?" || chars[i] == "\n" {
                 capitalizeNext = true
+            } else if chars[i] == "." {
+                // Don't capitalize after "..." (ellipsis = continuation, not sentence end)
+                let partOfEllipsis = (i > 0 && chars[i - 1] == ".") || (i + 1 < chars.count && chars[i + 1] == ".")
+                // Don't capitalize after inline URL/email dots (no space before next letter)
+                let inlineURL = !partOfEllipsis && (i + 1 < chars.count && chars[i + 1].isLetter)
+                if !partOfEllipsis && !inlineURL {
+                    capitalizeNext = true
+                }
             }
+            i += 1
         }
 
         return (String(chars), corrections)

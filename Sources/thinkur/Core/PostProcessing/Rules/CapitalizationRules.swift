@@ -25,6 +25,14 @@ enum CapitalizationRules {
         "july", "august", "september", "october", "november", "december",
         // Other
         "siri", "alexa", "cortana", "copilot", "chatgpt",
+        // Common first names (NLTagger often misses these in short sentences)
+        "john", "james", "sarah", "emily", "david", "michael", "jessica",
+        "robert", "lisa", "mary", "william", "jennifer", "richard", "patricia",
+        "alice", "bob", "charlie", "carol", "dan", "eve", "frank", "grace",
+        "henry", "iris", "jack", "kate", "liam", "mia", "noah", "olivia",
+        "paul", "quinn", "rachel", "sam", "tom", "uma", "victor", "wendy",
+        // Historical/cultural proper adjectives
+        "victorian", "elizabethan", "shakespearean", "roman", "greek", "biblical",
     ]
 
     // MARK: - Safe Acronyms (always uppercase — not common English words)
@@ -43,6 +51,7 @@ enum CapitalizationRules {
         "seo", "sem", "roi", "kpi", "mvp",
         "jwt", "oauth", "smtp", "imap", "pop",
         "yaml", "toml", "rgba", "cmyk",
+        "pr", "qa", "ux", "ui",
     ]
 
     // MARK: - Context-Dependent Acronyms
