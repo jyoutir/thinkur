@@ -10,38 +10,57 @@ final class NotchIndicatorPanels {
     private var rightPanel: NSPanel?
     private let amplitudeProvider: AudioAmplitudeProvider
 
-    private static let wingHeight: CGFloat = 34
     private static let leftWingWidth: CGFloat = 34
     private static let rightWingWidth: CGFloat = 64
     private static let cornerRadius: CGFloat = 8
-    private static let notchHalfWidth: CGFloat = 97
+    private static let notchOverlap: CGFloat = 10
 
     init(amplitudeProvider: AudioAmplitudeProvider) {
         self.amplitudeProvider = amplitudeProvider
 
-        let (leftRect, rightRect) = Self.calculateFrames()
+        guard let hidden = Self.calculateHiddenFrames() else { return }
 
         leftPanel = Self.makePanel(
-            contentRect: leftRect,
+            contentRect: hidden.left,
             rootView: NotchLeftWingView(isListening: false)
         )
         rightPanel = Self.makePanel(
-            contentRect: rightRect,
+            contentRect: hidden.right,
             rootView: NotchRightWingView(isListening: false, amplitudeProvider: amplitudeProvider)
         )
     }
 
     func show() {
-        let (leftRect, rightRect) = Self.calculateFrames()
-        leftPanel?.setFrame(leftRect, display: true)
-        rightPanel?.setFrame(rightRect, display: true)
+        guard let shown = Self.calculateShownFrames(),
+              let hidden = Self.calculateHiddenFrames() else { return }
+
+        leftPanel?.setFrame(hidden.left, display: false)
+        rightPanel?.setFrame(hidden.right, display: false)
         leftPanel?.orderFrontRegardless()
         rightPanel?.orderFrontRegardless()
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            leftPanel?.animator().setFrame(shown.left, display: true)
+            rightPanel?.animator().setFrame(shown.right, display: true)
+        }
     }
 
     func hide() {
-        leftPanel?.orderOut(nil)
-        rightPanel?.orderOut(nil)
+        guard let hidden = Self.calculateHiddenFrames() else { return }
+
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            leftPanel?.animator().setFrame(hidden.left, display: true)
+            rightPanel?.animator().setFrame(hidden.right, display: true)
+        }, completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                self?.leftPanel?.orderOut(nil)
+                self?.rightPanel?.orderOut(nil)
+            }
+        })
     }
 
     func setListening(_ listening: Bool) {
@@ -59,22 +78,58 @@ final class NotchIndicatorPanels {
 
     // MARK: - Geometry
 
-    private static func calculateFrames() -> (left: NSRect, right: NSRect) {
-        guard let screen = NSScreen.main else {
-            return (.zero, .zero)
+    private static func calculateShownFrames() -> (left: NSRect, right: NSRect)? {
+        guard let screen = NSScreen.main,
+              let leftArea = screen.auxiliaryTopLeftArea,
+              let rightArea = screen.auxiliaryTopRightArea else {
+            return nil
         }
 
-        let screenFrame = screen.frame
-        let centerX = screenFrame.midX
+        let wingHeight = screen.safeAreaInsets.top
+        let notchLeftEdge = screen.frame.origin.x + leftArea.width
+        let notchRightEdge = screen.frame.maxX - rightArea.width
+        let topY = screen.frame.maxY - wingHeight
 
-        // Top edge flush with screen top; wing hangs down from top
-        let topY = screenFrame.maxY - wingHeight
+        let leftRect = NSRect(
+            x: notchLeftEdge - leftWingWidth + notchOverlap,
+            y: topY,
+            width: leftWingWidth,
+            height: wingHeight
+        )
+        let rightRect = NSRect(
+            x: notchRightEdge - notchOverlap,
+            y: topY,
+            width: rightWingWidth,
+            height: wingHeight
+        )
 
-        let leftX = centerX - notchHalfWidth - leftWingWidth
-        let rightX = centerX + notchHalfWidth
+        return (leftRect, rightRect)
+    }
 
-        let leftRect = NSRect(x: leftX, y: topY, width: leftWingWidth, height: wingHeight)
-        let rightRect = NSRect(x: rightX, y: topY, width: rightWingWidth, height: wingHeight)
+    private static func calculateHiddenFrames() -> (left: NSRect, right: NSRect)? {
+        guard let screen = NSScreen.main,
+              let leftArea = screen.auxiliaryTopLeftArea,
+              let rightArea = screen.auxiliaryTopRightArea else {
+            return nil
+        }
+
+        let wingHeight = screen.safeAreaInsets.top
+        let notchLeftEdge = screen.frame.origin.x + leftArea.width
+        let notchRightEdge = screen.frame.maxX - rightArea.width
+        let topY = screen.frame.maxY - wingHeight
+
+        let leftRect = NSRect(
+            x: notchLeftEdge,
+            y: topY,
+            width: leftWingWidth,
+            height: wingHeight
+        )
+        let rightRect = NSRect(
+            x: notchRightEdge - rightWingWidth,
+            y: topY,
+            width: rightWingWidth,
+            height: wingHeight
+        )
 
         return (leftRect, rightRect)
     }
@@ -91,13 +146,13 @@ final class NotchIndicatorPanels {
             backing: .buffered,
             defer: false
         )
-        panel.level = .statusBar
+        panel.level = .screenSaver
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
         panel.ignoresMouseEvents = true
         panel.hidesOnDeactivate = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         panel.appearance = NSAppearance(named: .darkAqua)
         panel.contentView = NSHostingView(rootView: rootView)
         return panel
@@ -137,7 +192,8 @@ private struct NotchRightWingView: View {
                             height: 18,
                             showGlass: false,
                             horizontalPadding: 4,
-                            barColor: .white
+                            barColor: .white,
+                            amplitudeExponent: 0.55
                         )
                     } else {
                         IdleNotchBars()
