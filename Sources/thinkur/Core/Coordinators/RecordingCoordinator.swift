@@ -15,6 +15,7 @@ final class RecordingCoordinator {
     private let shortcutService: any ShortcutLookup
     private let smartHomeService: SmartHomeService?
     private let amplitudeProvider: AudioAmplitudeProvider
+    private let stylePreferenceService: StylePreferenceService
     private let settings: SettingsManager
     private let sharedState: SharedAppState
     private var floatingPanel: FloatingIndicatorPanel?
@@ -30,6 +31,7 @@ final class RecordingCoordinator {
         settings: SettingsManager,
         sharedState: SharedAppState,
         shortcutService: any ShortcutLookup,
+        stylePreferenceService: StylePreferenceService,
         smartHomeService: SmartHomeService? = nil,
         createFloatingPanel: Bool = true
     ) {
@@ -44,6 +46,7 @@ final class RecordingCoordinator {
         self.amplitudeProvider = amplitudeProvider
         self.settings = settings
         self.sharedState = sharedState
+        self.stylePreferenceService = stylePreferenceService
         if createFloatingPanel {
             self.floatingPanel = FloatingIndicatorPanel(amplitudeProvider: amplitudeProvider)
         }
@@ -106,11 +109,15 @@ final class RecordingCoordinator {
         }
 
         if let rawText = await transcriptionEngine.transcribe(audioSamples: samples) {
+            let bundleID = frontmostAppDetector.bundleID
+            let userStyleString = await stylePreferenceService.getStyle(for: bundleID)
+            let resolvedStyle = userStyleString.flatMap { AppStyle(from: $0) }
+                             ?? AppStyleMap.style(for: bundleID)
             let context = ProcessingContext(
-                frontmostAppBundleID: frontmostAppDetector.bundleID,
+                frontmostAppBundleID: bundleID,
                 frontmostAppName: frontmostAppDetector.appName,
                 wordTimings: transcriptionEngine.lastWordTimings,
-                appStyle: AppStyleMap.style(for: frontmostAppDetector.bundleID)
+                appStyle: resolvedStyle
             )
             let text: String
             let correctionCount: Int
@@ -119,9 +126,8 @@ final class RecordingCoordinator {
                 if !settings.removeFillerWords { disabled.insert("FillerRemoval") }
                 if !settings.autoPunctuation { disabled.insert("SpokenPunctuation"); disabled.insert("PausePunctuation") }
                 if !settings.intentCorrection { disabled.insert("SelfCorrection") }
-                if !settings.smartFormatting { disabled.insert("SmartFormatting"); disabled.insert("Capitalization"); disabled.insert("StyleAdaptation") }
+                if !settings.smartFormatting { disabled.insert("SmartFormatting") }
                 if !settings.listFormatting { disabled.insert("ListDetection") }
-                if !settings.codeContext { disabled.insert("CodeContext") }
                 let result = textPostProcessor.process(rawText, context: context, disabledProcessors: disabled)
                 text = result.text
                 correctionCount = result.corrections.count

@@ -47,6 +47,7 @@ struct RecordingViewModelTests {
             settings: settings,
             sharedState: sharedState,
             shortcutService: shortcuts,
+            stylePreferenceService: StylePreferenceService(container: SwiftDataContainerFactory.createInMemory(schema: Schema([AppStylePreference.self]))),
             createFloatingPanel: false
         )
 

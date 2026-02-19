@@ -49,23 +49,6 @@ struct DictationSettingsView: View {
                             isOn: $s.smartFormatting
                         )
 
-                        Divider()
-
-                        ToggleRow(
-                            icon: "chevron.left.forwardslash.chevron.right",
-                            title: "Code Context",
-                            subtitle: "Preserves code-specific formatting when dictating in editors",
-                            isOn: $s.codeContext
-                        )
-
-                        Divider()
-
-                        ToggleRow(
-                            icon: "brain",
-                            title: "Learn from Corrections",
-                            subtitle: "Improves accuracy based on your editing patterns",
-                            isOn: $s.learnFromCorrections
-                        )
                     }
                 }
             }
