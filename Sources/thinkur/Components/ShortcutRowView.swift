@@ -21,15 +21,12 @@ struct ShortcutRowView: View {
 
             Spacer()
 
-            if isHovering {
-                Button(action: onDelete) {
-                    Image(systemName: "trash")
-                        .font(.caption)
-                        .foregroundStyle(ColorTokens.danger)
-                }
-                .buttonStyle(.plain)
-                .transition(.opacity)
+            Button(action: onDelete) {
+                Image(systemName: "trash")
+                    .font(.caption)
+                    .foregroundStyle(isHovering ? ColorTokens.danger : ColorTokens.textTertiary)
             }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.sm)
