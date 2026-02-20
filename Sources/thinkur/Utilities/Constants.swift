@@ -10,9 +10,8 @@ enum Constants {
     static let whisperModel: String = {
         let ramGB = ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024)
         switch ramGB {
-        case ..<12:  return "small.en"   // 8GB Macs — fast, reliable
-        case ..<24:  return "medium.en"  // 16GB Macs — better accuracy
-        default:     return "large-v3"   // 24GB+ — best accuracy
+        case ..<12:  return "small.en"   // 8GB Macs
+        default:     return "medium.en"  // 16GB+
         }
     }()
     static let appSupportDirectory: URL = {
