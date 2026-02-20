@@ -35,6 +35,10 @@ final class SettingsManager {
         didSet { defaults.set(soundEffects, forKey: "soundEffects") }
     }
 
+    var soundStyle: String {
+        didSet { defaults.set(soundStyle, forKey: "soundStyle") }
+    }
+
     var pauseMusicWhileRecording: Bool {
         didSet { defaults.set(pauseMusicWhileRecording, forKey: "pauseMusicWhileRecording") }
     }
@@ -116,6 +120,7 @@ final class SettingsManager {
 
         // System - with sensible defaults
         self.soundEffects = defaults.object(forKey: "soundEffects") != nil ? defaults.bool(forKey: "soundEffects") : true
+        self.soundStyle = defaults.string(forKey: "soundStyle") ?? "chime"
         self.pauseMusicWhileRecording = defaults.bool(forKey: "pauseMusicWhileRecording")
         self.floatingIndicator = defaults.object(forKey: "floatingIndicator") != nil ? defaults.bool(forKey: "floatingIndicator") : true
         self.launchAtLogin = defaults.bool(forKey: "launchAtLogin")

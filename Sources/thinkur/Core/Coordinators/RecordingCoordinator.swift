@@ -79,7 +79,8 @@ final class RecordingCoordinator {
             updateState(.listening)
 
             if settings.soundEffects {
-                NSSound(named: "Tink")?.play()
+                let style = SoundStyle(rawValue: settings.soundStyle) ?? .chime
+                ToneGenerator.shared.playStartTone(style: style)
             }
             if settings.pauseMusicWhileRecording {
                 MediaControlService.pausePlayback()
@@ -103,7 +104,8 @@ final class RecordingCoordinator {
         guard state == .listening else { return }
 
         if settings.soundEffects {
-            NSSound(named: "Pop")?.play()
+            let style = SoundStyle(rawValue: settings.soundStyle) ?? .chime
+            ToneGenerator.shared.playStopTone(style: style)
         }
         if settings.pauseMusicWhileRecording {
             MediaControlService.resumePlayback()

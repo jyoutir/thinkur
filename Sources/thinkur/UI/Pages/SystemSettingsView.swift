@@ -24,6 +24,12 @@ struct SystemSettingsView: View {
                             isOn: $s.soundEffects
                         )
 
+                        if settings.soundEffects {
+                            Divider()
+
+                            SoundStylePicker(selectedStyle: $s.soundStyle)
+                        }
+
                         Divider()
 
                         ToggleRow(
@@ -97,5 +103,58 @@ struct SystemSettingsView: View {
         }
         .navigationTitle("System")
         .onAppear { appeared = true }
+    }
+}
+
+private struct SoundStylePicker: View {
+    @Binding var selectedStyle: String
+
+    var body: some View {
+        HStack(spacing: Spacing.sm) {
+            Image(systemName: "music.note")
+                .font(.system(size: 14))
+                .foregroundStyle(.primary)
+                .frame(width: 20)
+
+            Text("Sound Style")
+                .font(Typography.body)
+                .foregroundStyle(ColorTokens.textPrimary)
+
+            Spacer()
+
+            HStack(spacing: Spacing.xs) {
+                ForEach(SoundStyle.allCases) { style in
+                    let isSelected = selectedStyle == style.rawValue
+                    Button {
+                        selectedStyle = style.rawValue
+                        ToneGenerator.shared.preview(style: style)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: style.icon)
+                                .font(.system(size: 10))
+                            Text(style.displayName)
+                                .font(Typography.caption)
+                        }
+                        .padding(.horizontal, Spacing.xs)
+                        .padding(.vertical, Spacing.xxs)
+                        .background(
+                            isSelected ? Color.accentColor.opacity(0.2) : Color.clear,
+                            in: .capsule
+                        )
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(
+                                    isSelected ? Color.accentColor : ColorTokens.border,
+                                    lineWidth: 1
+                                )
+                        )
+                        .foregroundStyle(isSelected ? Color.accentColor : ColorTokens.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, 14)
     }
 }
