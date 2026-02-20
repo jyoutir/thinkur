@@ -12,6 +12,10 @@ struct WhisperArtifactFilterTests {
         #expect(WhisperArtifactFilter.strip("[Music]") == nil)
     }
 
+    @Test func silenceStripped() {
+        #expect(WhisperArtifactFilter.strip("[Silence]") == nil)
+    }
+
     @Test func mixedTextPreservesRealWords() {
         let result = WhisperArtifactFilter.strip("hello [BLANK_AUDIO] world")
         #expect(result == "hello world")

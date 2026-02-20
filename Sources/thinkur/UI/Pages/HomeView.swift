@@ -34,26 +34,30 @@ struct HomeView: View {
 
                 // Collapsible calendar
                 VStack(alignment: .leading, spacing: Spacing.sm) {
-                    Button {
-                        withAnimation(Animations.glassMorph) {
-                            calendarExpanded.toggle()
-                        }
-                    } label: {
-                        HStack(spacing: Spacing.xs) {
+                    HStack(spacing: Spacing.xs) {
+                        // Arrow button - triggers expand/collapse
+                        Button {
+                            withAnimation(Animations.glassMorph) {
+                                calendarExpanded.toggle()
+                            }
+                        } label: {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundStyle(ColorTokens.textTertiary)
                                 .rotationEffect(calendarExpanded ? .degrees(90) : .zero)
                                 .animation(Animations.glassMorph, value: calendarExpanded)
-                            Image(systemName: "calendar")
-                                .font(Typography.headline)
-                            Text("Calendar")
-                                .font(Typography.headline)
-                            Spacer()
                         }
-                        .foregroundStyle(ColorTokens.textPrimary)
+                        .buttonStyle(.plain)
+
+                        // Header - non-interactive
+                        Image(systemName: "calendar")
+                            .font(Typography.headline)
+                            .foregroundStyle(ColorTokens.textPrimary)
+                        Text("Calendar")
+                            .font(Typography.headline)
+                            .foregroundStyle(ColorTokens.textPrimary)
+                        Spacer()
                     }
-                    .buttonStyle(.plain)
 
                     if calendarExpanded {
                         MiniCalendarView(
@@ -104,27 +108,30 @@ struct HomeView: View {
 
                         VStack(alignment: .leading, spacing: Spacing.sm) {
                             // Collapsible day header
-                            Button {
-                                withAnimation(Animations.glassMorph) {
-                                    viewModel.toggleGroup(group.id)
-                                }
-                            } label: {
-                                HStack(spacing: Spacing.xs) {
+                            HStack(spacing: Spacing.xs) {
+                                // Arrow button - triggers expand/collapse
+                                Button {
+                                    withAnimation(Animations.glassMorph) {
+                                        viewModel.toggleGroup(group.id)
+                                    }
+                                } label: {
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 9, weight: .bold))
                                         .foregroundStyle(ColorTokens.textTertiary)
                                         .rotationEffect(isExpanded ? .degrees(90) : .zero)
                                         .animation(Animations.glassMorph, value: isExpanded)
-                                    Text(group.title)
-                                        .font(Typography.headline)
-                                    Text("\(group.records.count)")
-                                        .font(Typography.caption)
-                                        .foregroundStyle(ColorTokens.textTertiary)
-                                    Spacer()
                                 }
-                                .foregroundStyle(ColorTokens.textPrimary)
+                                .buttonStyle(.plain)
+
+                                // Header text - non-interactive
+                                Text(group.title)
+                                    .font(Typography.headline)
+                                    .foregroundStyle(ColorTokens.textPrimary)
+                                Text("\(group.records.count)")
+                                    .font(Typography.caption)
+                                    .foregroundStyle(ColorTokens.textTertiary)
+                                Spacer()
                             }
-                            .buttonStyle(.plain)
 
                             if isExpanded {
                                 ForEach(group.records, id: \.timestamp) { record in

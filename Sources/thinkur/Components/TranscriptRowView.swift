@@ -35,7 +35,7 @@ struct TranscriptRowView: View {
                         if correctionCount > 0 {
                             Text("\(correctionCount)")
                                 .font(Typography.caption2)
-                                .foregroundStyle(.purple)
+                                .foregroundStyle(ColorTokens.textTertiary)
                             Text("·")
                                 .font(Typography.caption)
                                 .foregroundStyle(ColorTokens.textTertiary)
@@ -52,7 +52,6 @@ struct TranscriptRowView: View {
                         Text(preview)
                             .font(Typography.caption)
                             .foregroundStyle(ColorTokens.textSecondary)
-                            .lineLimit(1)
                     }
                 }
             }
