@@ -2,18 +2,21 @@ import Cocoa
 import SwiftUI
 
 /// Two NSPanels that visually extend from the notch as black wings with rounded bottom corners.
-/// Left wing: app logo. Right wing: waveform (listening) or static bars (idle).
-/// Always visible once shown — `setListening(_:)` toggles between active/idle appearance.
+/// Left wing: always-visible app logo (clickable to toggle listening).
+/// Right wing: waveform (listening) or static bars (idle), slides in/out.
 @MainActor
 final class NotchIndicatorPanels {
     private var leftPanel: NSPanel?
     private var rightPanel: NSPanel?
     private let amplitudeProvider: AudioAmplitudeProvider
+    var onLeftWingTapped: (() -> Void)?
 
     private static let leftWingWidth: CGFloat = 34
     private static let rightWingWidth: CGFloat = 64
     private static let cornerRadius: CGFloat = 8
     private static let notchOverlap: CGFloat = 10
+
+    private var isListening = false
 
     var isAvailable: Bool { leftPanel != nil }
 
@@ -24,7 +27,8 @@ final class NotchIndicatorPanels {
 
         leftPanel = Self.makePanel(
             contentRect: hidden.left,
-            rootView: NotchLeftWingView(isListening: false)
+            rootView: NotchLeftWingView(isListening: false, onTap: { }),
+            ignoresMouseEvents: false
         )
         rightPanel = Self.makePanel(
             contentRect: hidden.right,
@@ -32,19 +36,34 @@ final class NotchIndicatorPanels {
         )
     }
 
-    func show() {
+    /// Show the left wing permanently. Call once at app startup.
+    func showLeftWing() {
         guard let shown = Self.calculateShownFrames(),
               let hidden = Self.calculateHiddenFrames() else { return }
 
         leftPanel?.setFrame(hidden.left, display: false)
-        rightPanel?.setFrame(hidden.right, display: false)
         leftPanel?.orderFrontRegardless()
-        rightPanel?.orderFrontRegardless()
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.3
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             leftPanel?.animator().setFrame(shown.left, display: true)
+        }
+    }
+
+    func show() {
+        guard let shown = Self.calculateShownFrames(),
+              let hidden = Self.calculateHiddenFrames() else { return }
+
+        // Left wing is already visible — just ensure it's ordered front
+        leftPanel?.orderFrontRegardless()
+
+        rightPanel?.setFrame(hidden.right, display: false)
+        rightPanel?.orderFrontRegardless()
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             rightPanel?.animator().setFrame(shown.right, display: true)
         }
     }
@@ -52,22 +71,23 @@ final class NotchIndicatorPanels {
     func hide() {
         guard let hidden = Self.calculateHiddenFrames() else { return }
 
+        // Only hide the right wing — left wing stays visible
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.2
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            leftPanel?.animator().setFrame(hidden.left, display: true)
             rightPanel?.animator().setFrame(hidden.right, display: true)
         }, completionHandler: { [weak self] in
             MainActor.assumeIsolated {
-                self?.leftPanel?.orderOut(nil)
                 self?.rightPanel?.orderOut(nil)
             }
         })
     }
 
     func setListening(_ listening: Bool) {
+        isListening = listening
+        let tapAction: () -> Void = { [weak self] in self?.onLeftWingTapped?() }
         leftPanel?.contentView = NSHostingView(
-            rootView: NotchLeftWingView(isListening: listening)
+            rootView: NotchLeftWingView(isListening: listening, onTap: tapAction)
         )
         rightPanel?.contentView = NSHostingView(
             rootView: NotchRightWingView(isListening: listening, amplitudeProvider: amplitudeProvider)
@@ -140,7 +160,8 @@ final class NotchIndicatorPanels {
 
     private static func makePanel<V: View>(
         contentRect: NSRect,
-        rootView: V
+        rootView: V,
+        ignoresMouseEvents: Bool = true
     ) -> NSPanel {
         let panel = NSPanel(
             contentRect: contentRect,
@@ -152,7 +173,7 @@ final class NotchIndicatorPanels {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
-        panel.ignoresMouseEvents = true
+        panel.ignoresMouseEvents = ignoresMouseEvents
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         panel.appearance = NSAppearance(named: .darkAqua)
@@ -165,6 +186,11 @@ final class NotchIndicatorPanels {
 
 private struct NotchLeftWingView: View {
     let isListening: Bool
+    let onTap: () -> Void
+
+    private var spinnerColor: Color {
+        isListening ? Color(red: 0.96, green: 0.65, blue: 0.28) : .white
+    }
 
     var body: some View {
         UnevenRoundedRectangle(
@@ -176,13 +202,15 @@ private struct NotchLeftWingView: View {
             .overlay {
                 ClaudePixelSpinner(
                     state: isListening ? .listening : .idle,
-                    color: .white,
+                    color: spinnerColor,
                     pixelSize: 3,
                     spacing: 1,
                     glowIntensity: 0.6
                 )
                 .offset(y: 4)
             }
+            .contentShape(Rectangle())
+            .onTapGesture { onTap() }
     }
 }
 
@@ -207,7 +235,7 @@ private struct NotchRightWingView: View {
                             showGlass: false,
                             horizontalPadding: 4,
                             barColor: .white,
-                            amplitudeExponent: 0.55
+                            amplitudeExponent: 0.4
                         )
                     } else {
                         IdleNotchBars()

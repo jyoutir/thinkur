@@ -123,12 +123,20 @@ struct ClaudePixelSpinner: View {
             }
             return breath
 
-        // Radial pulse from center outward, like focused attention.
+        // Equalizer columns — each column oscillates at a different frequency/phase
+        // like vertical waveform bars. Bottom row stays bright as the "base".
         case .listening:
-            let dr = Double(row) - 1.0
-            let dc = Double(col) - 1.0
-            let dist = sqrt(dr * dr + dc * dc) / 1.42
-            return 0.5 + 0.5 * sin((phase - dist * 0.4) * 2 * .pi)
+            let colPhaseOffset = [0.0, 0.33, 0.15][col]
+            let wave = sin((phase + colPhaseOffset) * 2 * .pi)
+            // Row 2 (bottom) = base, always fairly bright
+            // Row 1 (mid) = follows wave
+            // Row 0 (top) = only lights up at peaks
+            let rowThreshold: Double = switch row {
+            case 2:  0.35 + 0.15 * wave  // base: always visible
+            case 1:  max(0.08, 0.5 + 0.5 * wave)  // mid: follows amplitude
+            default: max(0.06, wave)  // top: only at peaks
+            }
+            return rowThreshold
 
         // Classic left-to-right sine with vertical stagger.
         case .thinking:
