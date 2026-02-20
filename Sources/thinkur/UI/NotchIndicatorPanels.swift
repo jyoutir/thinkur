@@ -160,7 +160,7 @@ private struct NotchLeftWingView: View {
                     spacing: 1,
                     glowIntensity: 0.6
                 )
-                .offset(x: -6, y: 0)
+                .offset(x: -3, y: 0)
             }
             .contentShape(Rectangle())
             .onTapGesture { onTap() }
