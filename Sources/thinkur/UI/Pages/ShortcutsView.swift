@@ -9,22 +9,22 @@ struct ShortcutsView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
-                Text("Create text shortcuts that expand when you dictate them.")
+                Text("Say a phrase, and thinkur types something else.")
                     .font(Typography.callout)
                     .foregroundStyle(ColorTokens.textTertiary)
 
                 // Add shortcut form
-                GroupedSettingsSection(title: "New Shortcut") {
+                GroupedSettingsSection(title: "Add Shortcut") {
                     VStack(spacing: Spacing.sm) {
                         HStack(spacing: Spacing.sm) {
-                            TextField("Trigger (e.g. //sig)", text: $vm.newTrigger)
+                            TextField("When I say…", text: $vm.newTrigger)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 160)
 
                             Image(systemName: "arrow.right")
                                 .foregroundStyle(ColorTokens.textTertiary)
 
-                            TextField("Expansion (e.g. Best regards, ...)", text: $vm.newExpansion)
+                            TextField("thinkur types…", text: $vm.newExpansion)
                                 .textFieldStyle(.roundedBorder)
 
                             Button("Add") {

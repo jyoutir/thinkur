@@ -29,10 +29,10 @@ final class ShortcutService: ShortcutLookup {
     func add(trigger: String, expansion: String) async throws {
         let context = container.mainContext
         let trimmedTrigger = trigger.trimmingCharacters(in: .whitespaces)
-        let predicate = #Predicate<Shortcut> { $0.trigger == trimmedTrigger }
-        let descriptor = FetchDescriptor<Shortcut>(predicate: predicate)
+        let descriptor = FetchDescriptor<Shortcut>()
+        let existing = (try? context.fetch(descriptor)) ?? []
 
-        if let _ = try? context.fetch(descriptor).first {
+        if existing.contains(where: { $0.trigger.caseInsensitiveCompare(trimmedTrigger) == .orderedSame }) {
             throw ShortcutError.duplicateTrigger
         }
 
@@ -47,11 +47,31 @@ final class ShortcutService: ShortcutLookup {
         try context.save()
     }
 
-    func findExpansion(for text: String) async -> String? {
+    func applyShortcuts(to text: String) async -> String {
         let context = container.mainContext
-        let predicate = #Predicate<Shortcut> { $0.trigger == text }
-        let descriptor = FetchDescriptor<Shortcut>(predicate: predicate)
-        return try? context.fetch(descriptor).first?.expansion
+        let descriptor = FetchDescriptor<Shortcut>()
+        guard let shortcuts = try? context.fetch(descriptor), !shortcuts.isEmpty else { return text }
+
+        // Process longest triggers first to prevent partial matches
+        let sorted = shortcuts.sorted { $0.trigger.count > $1.trigger.count }
+
+        var result = text
+        for shortcut in sorted {
+            let escaped = NSRegularExpression.escapedPattern(for: shortcut.trigger)
+            guard let regex = try? NSRegularExpression(
+                pattern: "\\b\(escaped)\\b",
+                options: .caseInsensitive
+            ) else { continue }
+
+            let template = NSRegularExpression.escapedTemplate(for: shortcut.expansion)
+            result = regex.stringByReplacingMatches(
+                in: result,
+                range: NSRange(result.startIndex..., in: result),
+                withTemplate: template
+            )
+        }
+
+        return result
     }
 }
 
