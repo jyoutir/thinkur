@@ -78,7 +78,8 @@ final class AnalyticsService: AnalyticsRecording {
 
     func fetchTotalTimeSaved() async -> TimeInterval {
         let context = container.mainContext
-        let descriptor = FetchDescriptor<DailyAnalytics>()
+        var descriptor = FetchDescriptor<DailyAnalytics>()
+        descriptor.fetchLimit = 365
         guard let records = try? context.fetch(descriptor) else { return 0 }
         let totalDuration = records.reduce(0.0) { $0 + $1.totalDuration }
         return totalDuration * 2.3 // typing multiplier
@@ -86,14 +87,16 @@ final class AnalyticsService: AnalyticsRecording {
 
     func fetchTotalWords() async -> Int {
         let context = container.mainContext
-        let descriptor = FetchDescriptor<DailyAnalytics>()
+        var descriptor = FetchDescriptor<DailyAnalytics>()
+        descriptor.fetchLimit = 365
         guard let records = try? context.fetch(descriptor) else { return 0 }
         return records.reduce(0) { $0 + $1.totalWords }
     }
 
     func fetchTotalSessions() async -> Int {
         let context = container.mainContext
-        let descriptor = FetchDescriptor<DailyAnalytics>()
+        var descriptor = FetchDescriptor<DailyAnalytics>()
+        descriptor.fetchLimit = 365
         guard let records = try? context.fetch(descriptor) else { return 0 }
         return records.reduce(0) { $0 + $1.transcriptionCount }
     }

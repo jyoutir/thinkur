@@ -6,8 +6,11 @@ import Foundation
 @MainActor
 @Observable
 final class AudioAmplitudeProvider {
-    var amplitudes: [Double]
-    var amplitudesStartIndex: Int = 0
+    /// Amplitude data — @ObservationIgnored because TimelineView already drives
+    /// per-frame reads at 30fps during listening. Redundant observation notifications
+    /// from 12.5/sec timer updates would only add overhead.
+    @ObservationIgnored var amplitudes: [Double]
+    @ObservationIgnored var amplitudesStartIndex: Int = 0
 
     private let bufferSize: Int
     private let smoothingFactor: Double
@@ -24,7 +27,7 @@ final class AudioAmplitudeProvider {
     }
 
     // Note: Timer cleanup via deinit is not possible due to @MainActor isolation.
-    // However, no memory leak exists because timer uses [weak self] capture (line 30).
+    // However, no memory leak exists because timer uses [weak self] capture (line 33).
     // Proper cleanup is handled via stopPolling() which should be called before deallocation.
 
     func startPolling(source: @escaping () -> Float) {
@@ -56,11 +59,9 @@ final class AudioAmplitudeProvider {
         let smoothed = previous * (1.0 - smoothingFactor) + raw * smoothingFactor
 
         ringBuffer[writeIndex] = smoothed
+        // Mutate in-place instead of replacing the whole array
+        amplitudes[writeIndex] = smoothed
         writeIndex = (writeIndex + 1) % bufferSize
-
-        // Optimized: just expose the ring buffer directly, consumers handle circular indexing
-        // This eliminates 12.5 array allocations/sec during recording
-        amplitudes = ringBuffer
         amplitudesStartIndex = writeIndex
     }
 }

@@ -13,8 +13,8 @@ final class FloatingIndicatorPanel: NSPanel {
         let panelWidth: CGFloat = 160
         let panelHeight: CGFloat = 40
 
-        // Position at bottom center of main screen
-        let screenFrame = NSScreen.main?.visibleFrame ?? .zero
+        // Position at bottom center of built-in screen (prefer notch screen over main)
+        let screenFrame = (NSScreen.screens.first { $0.auxiliaryTopLeftArea != nil } ?? NSScreen.main)?.visibleFrame ?? .zero
         let originX = screenFrame.midX - panelWidth / 2
         let originY = screenFrame.minY + 40  // 40pt from bottom
 
@@ -56,7 +56,7 @@ final class FloatingIndicatorPanel: NSPanel {
     }
 
     private func recenter() {
-        let screenFrame = NSScreen.main?.visibleFrame ?? .zero
+        let screenFrame = (NSScreen.screens.first { $0.auxiliaryTopLeftArea != nil } ?? NSScreen.main)?.visibleFrame ?? .zero
         let panelWidth = frame.width
         let originX = screenFrame.midX - panelWidth / 2
         let originY = screenFrame.minY + 40
