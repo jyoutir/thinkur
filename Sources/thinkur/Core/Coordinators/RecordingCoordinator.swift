@@ -50,7 +50,23 @@ final class RecordingCoordinator {
         self.stylePreferenceService = stylePreferenceService
         if createFloatingPanel {
             self.floatingPanel = FloatingIndicatorPanel(amplitudeProvider: amplitudeProvider, themeMode: settings.themeMode)
-            self.notchPanels = NotchIndicatorPanels(amplitudeProvider: amplitudeProvider)
+            let notch = NotchIndicatorPanels(amplitudeProvider: amplitudeProvider)
+            notch.onLeftWingTapped = { [weak self] in
+                self?.toggleListening()
+            }
+            self.notchPanels = notch
+            notch.showLeftWing()
+        }
+    }
+
+    func toggleListening() {
+        switch state {
+        case .listening:
+            Task { await stopAndTranscribe() }
+        case .idle:
+            startRecording()
+        default:
+            break
         }
     }
 
@@ -95,6 +111,7 @@ final class RecordingCoordinator {
 
         amplitudeProvider.stopPolling()
         floatingPanel?.hideWithThinkingTransition()
+        notchPanels?.setListening(false)
         notchPanels?.hide()
 
         let samples = audioCaptureManager.stopCapture()
