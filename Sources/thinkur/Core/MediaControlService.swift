@@ -1,122 +1,81 @@
-import Foundation
+import CoreAudio
 import os
 
 enum MediaControlService {
-    private static var savedMusicVolume: Int = -1
-    private static var savedSpotifyVolume: Int = -1
+    private static var savedVolume: Float = -1
     private static var didDim = false
 
-    /// Dims music volume to 40% of its current level in common media apps (Music, Spotify).
+    /// Dims system volume to 40% of its current level.
     static func dimPlayback() {
-        let script = """
-        set result to ""
-        tell application "System Events"
-            set musicRunning to (exists process "Music")
-            set spotifyRunning to (exists process "Spotify")
-        end tell
-
-        if musicRunning then
-            tell application "Music"
-                if player state is playing then
-                    set vol to sound volume
-                    set result to "music:" & vol
-                    set sound volume to (vol * 40 / 100)
-                end if
-            end tell
-        end if
-
-        if spotifyRunning then
-            tell application "Spotify"
-                if player state is playing then
-                    set vol to sound volume
-                    if result is not "" then
-                        set result to result & ","
-                    end if
-                    set result to result & "spotify:" & vol
-                    set sound volume to (vol * 40 / 100)
-                end if
-            end tell
-        end if
-
-        return result
-        """
-        runAppleScriptReturningString(script) { result in
-            guard let result, !result.isEmpty else { return }
-            // Parse "music:80" or "spotify:65" or "music:80,spotify:65"
-            for component in result.split(separator: ",") {
-                let parts = component.split(separator: ":")
-                guard parts.count == 2, let vol = Int(parts[1]) else { continue }
-                if parts[0] == "music" {
-                    savedMusicVolume = vol
-                } else if parts[0] == "spotify" {
-                    savedSpotifyVolume = vol
-                }
-            }
-            didDim = true
-        }
+        guard let volume = getSystemVolume(), volume > 0 else { return }
+        savedVolume = volume
+        setSystemVolume(volume * 0.4)
+        didDim = true
     }
 
-    /// Restores music volume to saved levels if we dimmed it.
+    /// Restores system volume to saved level if we dimmed it.
     static func restorePlayback() {
         guard didDim else { return }
         didDim = false
-        let musicVol = savedMusicVolume
-        let spotifyVol = savedSpotifyVolume
-        savedMusicVolume = -1
-        savedSpotifyVolume = -1
-
-        var scriptParts: [String] = []
-        scriptParts.append("""
-        tell application "System Events"
-            set musicRunning to (exists process "Music")
-            set spotifyRunning to (exists process "Spotify")
-        end tell
-        """)
-
-        if musicVol >= 0 {
-            scriptParts.append("""
-            if musicRunning then
-                tell application "Music"
-                    set sound volume to \(musicVol)
-                end tell
-            end if
-            """)
-        }
-        if spotifyVol >= 0 {
-            scriptParts.append("""
-            if spotifyRunning then
-                tell application "Spotify"
-                    set sound volume to \(spotifyVol)
-                end tell
-            end if
-            """)
-        }
-
-        guard scriptParts.count > 1 else { return }
-        runAppleScript(scriptParts.joined(separator: "\n"))
+        let volume = savedVolume
+        savedVolume = -1
+        guard volume >= 0 else { return }
+        setSystemVolume(volume)
     }
 
-    private static func runAppleScript(_ source: String) {
-        Task.detached {
-            let appleScript = NSAppleScript(source: source)
-            var error: NSDictionary?
-            appleScript?.executeAndReturnError(&error)
-            if let error {
-                Logger.app.debug("AppleScript error: \(error)")
-            }
-        }
+    // MARK: - CoreAudio Helpers
+
+    private static func getDefaultOutputDevice() -> AudioDeviceID? {
+        var deviceID = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceID
+        )
+        guard status == noErr, deviceID != kAudioObjectUnknown else { return nil }
+        return deviceID
     }
 
-    private static func runAppleScriptReturningString(_ source: String, completion: @MainActor @escaping (String?) -> Void) {
-        Task.detached {
-            let appleScript = NSAppleScript(source: source)
-            var error: NSDictionary?
-            let descriptor = appleScript?.executeAndReturnError(&error)
-            if let error {
-                Logger.app.debug("AppleScript error: \(error)")
-            }
-            let result = descriptor?.stringValue
-            await completion(result)
+    private static func getSystemVolume() -> Float? {
+        guard let deviceID = getDefaultOutputDevice() else { return nil }
+        var volume = Float32(0)
+        var size = UInt32(MemoryLayout<Float32>.size)
+
+        // Try master channel first, then fall back to channel 1
+        for channel: UInt32 in [kAudioObjectPropertyElementMain, 1] {
+            var address = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyVolumeScalar,
+                mScope: kAudioDevicePropertyScopeOutput,
+                mElement: channel
+            )
+            let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &volume)
+            if status == noErr { return volume }
+        }
+        return nil
+    }
+
+    private static func setSystemVolume(_ volume: Float) {
+        guard let deviceID = getDefaultOutputDevice() else { return }
+        var vol = max(0, min(1, volume))
+        let size = UInt32(MemoryLayout<Float32>.size)
+
+        // Try master channel first
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyVolumeScalar,
+            mScope: kAudioDevicePropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectSetPropertyData(deviceID, &address, 0, nil, size, &vol)
+        if status == noErr { return }
+
+        // Fall back to setting each channel individually
+        for channel: UInt32 in [1, 2] {
+            address.mElement = channel
+            AudioObjectSetPropertyData(deviceID, &address, 0, nil, size, &vol)
         }
     }
 }

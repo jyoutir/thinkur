@@ -104,10 +104,14 @@ private struct FloatingIndicatorView: View {
 
     var body: some View {
         ZStack {
-            // Liquid glass background with blur
-            Rectangle()
-                .fill(.black.opacity(0.6))
-                .background(.ultraThinMaterial)
+            // Dark liquid glass container - rich black with subtle glass effect
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.black.opacity(0.92))
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(.regularMaterial.opacity(0.4))
+                )
+                .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 4)
 
             ClaudePixelSpinner(
                 state: stateHolder.currentState,
@@ -125,15 +129,15 @@ private struct FloatingIndicatorView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
         )
     }
 
     private var spinnerColor: Color {
         switch stateHolder.currentState {
         case .listening:
-            // Brighter electric green: (0.40, 0.90, 0.55) → (0.30, 1.0, 0.50)
-            return Color(red: 0.30, green: 1.0, blue: 0.50)
+            // Ultra-vivid electric neon green
+            return Color(red: 0.15, green: 1.0, blue: 0.35)
         default:
             return .white
         }
