@@ -113,9 +113,15 @@ private struct FloatingWaveformView: View {
 private struct FloatingThinkingView: View {
     var body: some View {
         GlassEffectContainer {
-            ThinkingDotsView(dotSize: 8, color: .primary, spacing: 6)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .glassCapsule()
+            ClaudePixelSpinner(
+                state: .thinking,
+                color: .primary,
+                pixelSize: 6,
+                spacing: 3,
+                glowIntensity: 1.2
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .glassCapsule()
         }
     }
 }
