@@ -13,27 +13,35 @@ final class NotchIndicatorPanels {
     private static let expandedWingWidth: CGFloat = 42
     private static let notchOverlap: CGFloat = 10
 
-    private var currentState: SpinnerState = .idle
+    private let stateHolder = StateHolder()
     private var amplitudeProvider: AudioAmplitudeProvider?
 
     var isAvailable: Bool { leftPanel != nil }
 
     init(amplitudeProvider: AudioAmplitudeProvider? = nil) {
         self.amplitudeProvider = amplitudeProvider
+        stateHolder.currentState = .idle
+
         guard let frame = Self.calculateFrame(width: Self.idleWingWidth) else { return }
 
-        let initialView = NotchLeftWingView(state: .idle, onTap: { })
-        let rootView = if let provider = amplitudeProvider {
-            AnyView(initialView.environment(provider))
-        } else {
-            AnyView(initialView)
-        }
+        // Capture weak self for tap — onLeftWingTapped is set after init
+        let tapAction: () -> Void = { [weak self] in self?.onLeftWingTapped?() }
 
-        leftPanel = Self.makePanel(
-            contentRect: frame,
-            rootView: rootView,
-            ignoresMouseEvents: false
-        )
+        // Create NSHostingView ONCE — state updates flow through StateHolder
+        if let provider = amplitudeProvider {
+            leftPanel = Self.makePanel(
+                contentRect: frame,
+                rootView: NotchLeftWingView(stateHolder: stateHolder, onTap: tapAction)
+                    .environment(provider),
+                ignoresMouseEvents: false
+            )
+        } else {
+            leftPanel = Self.makePanel(
+                contentRect: frame,
+                rootView: NotchLeftWingView(stateHolder: stateHolder, onTap: tapAction),
+                ignoresMouseEvents: false
+            )
+        }
     }
 
     /// Show the left wing permanently. Call once at app startup.
@@ -52,22 +60,8 @@ final class NotchIndicatorPanels {
     }
 
     func setState(_ state: SpinnerState) {
-        currentState = state
-
-        // Update SwiftUI content
-        // NSPanel automatically manages view lifecycle when setting contentView
-        let tapAction: () -> Void = { [weak self] in self?.onLeftWingTapped?() }
-
-        if let provider = amplitudeProvider {
-            leftPanel?.contentView = NSHostingView(
-                rootView: NotchLeftWingView(state: state, onTap: tapAction)
-                    .environment(provider)
-            )
-        } else {
-            leftPanel?.contentView = NSHostingView(
-                rootView: NotchLeftWingView(state: state, onTap: tapAction)
-            )
-        }
+        // Update state through StateHolder — no NSHostingView recreation
+        stateHolder.currentState = state
 
         // Animate wing width
         let targetWidth: CGFloat = switch state {
@@ -91,8 +85,13 @@ final class NotchIndicatorPanels {
 
     // MARK: - Geometry
 
+    /// Returns the screen with a notch (built-in display), regardless of which screen is "main".
+    private static func notchScreen() -> NSScreen? {
+        NSScreen.screens.first { $0.auxiliaryTopLeftArea != nil }
+    }
+
     private static func calculateFrame(width: CGFloat) -> NSRect? {
-        guard let screen = NSScreen.main,
+        guard let screen = notchScreen(),
               let leftArea = screen.auxiliaryTopLeftArea else { return nil }
 
         let wingHeight = screen.safeAreaInsets.top
@@ -108,7 +107,7 @@ final class NotchIndicatorPanels {
     }
 
     private static func calculateHiddenFrame(width: CGFloat) -> NSRect? {
-        guard let screen = NSScreen.main,
+        guard let screen = notchScreen(),
               let leftArea = screen.auxiliaryTopLeftArea else { return nil }
 
         let wingHeight = screen.safeAreaInsets.top
@@ -152,13 +151,13 @@ final class NotchIndicatorPanels {
 // MARK: - SwiftUI Views
 
 private struct NotchLeftWingView: View {
-    let state: SpinnerState
+    @ObservedObject var stateHolder: StateHolder
     let onTap: () -> Void
 
     @Environment(AudioAmplitudeProvider.self) private var amplitudeProvider: AudioAmplitudeProvider?
 
     private var spinnerColor: Color {
-        switch state {
+        switch stateHolder.currentState {
         case .listening: return Color(red: 0.40, green: 0.90, blue: 0.55)
         default:         return .white
         }
@@ -173,7 +172,7 @@ private struct NotchLeftWingView: View {
             .fill(.black)
             .overlay {
                 ClaudePixelSpinner(
-                    state: state,
+                    state: stateHolder.currentState,
                     color: spinnerColor,
                     pixelSize: 3,
                     spacing: 1,

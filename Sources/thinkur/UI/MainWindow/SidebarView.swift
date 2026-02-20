@@ -38,7 +38,16 @@ struct SidebarView: View {
             .padding(.horizontal, Spacing.md)
             .padding(.top, Spacing.md)
             .padding(.bottom, Spacing.md)
-            .onAppear { startPhraseRotation() }
+            .task {
+                guard phrases.count > 1 else { return }
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(10))
+                    guard !Task.isCancelled else { break }
+                    withAnimation {
+                        currentPhraseIndex = (currentPhraseIndex + 1) % phrases.count
+                    }
+                }
+            }
 
             // Main pages
             List(selection: $selectedPage) {
@@ -82,19 +91,6 @@ struct SidebarView: View {
             if newPage.section == .settings && !settingsExpanded {
                 withAnimation(Animations.glassMorph) {
                     settingsExpanded = true
-                }
-            }
-        }
-    }
-
-    // MARK: - Rolling Greeting
-
-    private func startPhraseRotation() {
-        guard phrases.count > 1 else { return }
-        Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { _ in
-            Task { @MainActor in
-                withAnimation {
-                    currentPhraseIndex = (currentPhraseIndex + 1) % phrases.count
                 }
             }
         }

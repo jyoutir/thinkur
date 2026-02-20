@@ -26,5 +26,6 @@ struct ThinkingDotsView: View {
             }
         }
         .onAppear { isAnimating = true }
+        .onDisappear { isAnimating = false }
     }
 }

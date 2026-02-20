@@ -138,6 +138,10 @@ struct ClaudePixelSpinner: View {
         TimelineView(.periodic(from: .now, by: updateInterval)) { timeline in
             let elapsed = timeline.date.timeIntervalSince(epochDate)
             let phase = fmod(elapsed / state.cycleDuration, 1.0)
+            // Compute once per frame instead of per-pixel
+            let perimOrder = perimeterOrder()
+            let interiorSet = interiorIndices()
+            let shadowsEnabled = state != .listening
 
             VStack(spacing: spacing) {
                 ForEach(0..<rows, id: \.self) { row in
@@ -147,9 +151,10 @@ struct ClaudePixelSpinner: View {
                             let visible = isPixelVisible(col, row)
                             PixelDot(
                                 color: pixelColor(for: state),
-                                brightness: visible ? brightness(row: row, col: col, index: index, phase: phase) : 0,
+                                brightness: visible ? brightness(row: row, col: col, index: index, phase: phase, perimeterOrder: perimOrder, interiorIndices: interiorSet) : 0,
                                 size: pixelSize,
-                                glowIntensity: visible ? effectiveGlow(for: state, index: index) : 0
+                                glowIntensity: visible ? effectiveGlow(for: state, index: index, interiorIndices: interiorSet) : 0,
+                                shadowsEnabled: shadowsEnabled
                             )
                             .frame(width: visible ? pixelSize : 0)
                             .opacity(visible ? 1 : 0)
@@ -158,6 +163,7 @@ struct ClaudePixelSpinner: View {
                     }
                 }
             }
+            .drawingGroup()
             .animation(.spring(duration: 0.3, bounce: 0.15), value: state)
         }
         .onAppear {
@@ -180,7 +186,7 @@ struct ClaudePixelSpinner: View {
 
     // MARK: - Brightness Per State
 
-    private func brightness(row: Int, col: Int, index: Int, phase: Double) -> Double {
+    private func brightness(row: Int, col: Int, index: Int, phase: Double, perimeterOrder: [Int], interiorIndices: Set<Int>) -> Double {
         switch state {
 
         // Playful breathing + faster firefly twinkle (3×3 compact)
@@ -290,26 +296,22 @@ struct ClaudePixelSpinner: View {
 
         // Clockwise spiral around perimeter, center dim
         case .connecting:
-            let perimOrder = perimeterOrder()
-            let interiorIndices = interiorIndices()
             if interiorIndices.contains(index) {
                 return 0.08 + 0.04 * sin(phase * 2 * .pi)
             }
-            guard let pi = perimOrder.firstIndex(of: index) else { return 0 }
-            let pixelPhase = Double(pi) / Double(perimOrder.count)
+            guard let pi = perimeterOrder.firstIndex(of: index) else { return 0 }
+            let pixelPhase = Double(pi) / Double(perimeterOrder.count)
             let diff = fmod(phase - pixelPhase + 1.0, 1.0)
             let spread = 0.15
             return exp(-pow(min(diff, 1.0 - diff) / spread, 2))
 
         // Fast clockwise perimeter loop (expanded 3×6)
         case .processing:
-            let perimOrder = perimeterOrder()
-            let interiorIndices = interiorIndices()
             if interiorIndices.contains(index) {
                 return 0.06
             }
-            guard let pi = perimOrder.firstIndex(of: index) else { return 0 }
-            let pixelPhase = Double(pi) / Double(perimOrder.count)
+            guard let pi = perimeterOrder.firstIndex(of: index) else { return 0 }
+            let pixelPhase = Double(pi) / Double(perimeterOrder.count)
             let diff = fmod(phase - pixelPhase + 1.0, 1.0)
             let spread = 0.10
             return exp(-pow(min(diff, 1.0 - diff) / spread, 2))
@@ -358,15 +360,14 @@ struct ClaudePixelSpinner: View {
 
     // MARK: - Per-State Glow
 
-    private func effectiveGlow(for state: SpinnerState, index: Int) -> Double {
-        let interiorSet = interiorIndices()
+    private func effectiveGlow(for state: SpinnerState, index: Int, interiorIndices: Set<Int>) -> Double {
         switch state {
         case .idle:
             return index == blinkPixel ? glowIntensity * 1.5 : glowIntensity * 0.3
         case .success:    return glowIntensity * 1.8
         case .error:      return glowIntensity * 1.4
-        case .connecting: return interiorSet.contains(index) ? glowIntensity * 0.2 : glowIntensity * 1.2
-        case .processing: return interiorSet.contains(index) ? glowIntensity * 0.2 : glowIntensity * 1.3
+        case .connecting: return interiorIndices.contains(index) ? glowIntensity * 0.2 : glowIntensity * 1.2
+        case .processing: return interiorIndices.contains(index) ? glowIntensity * 0.2 : glowIntensity * 1.3
         default:          return glowIntensity
         }
     }
@@ -415,15 +416,21 @@ private struct PixelDot: View {
     let brightness: Double
     let size: CGFloat
     let glowIntensity: Double
+    var shadowsEnabled: Bool = true
 
     var body: some View {
-        RoundedRectangle(cornerRadius: size * 0.15)
+        let dot = RoundedRectangle(cornerRadius: size * 0.15)
             .fill(color)
             .frame(width: size, height: size)
             .opacity(brightness)
-            // Reduced from 5 shadows to 2 for 60% performance improvement
-            .shadow(color: color.opacity(0.4 * glowIntensity * brightness), radius: 2 * glowIntensity)
-            .shadow(color: color.opacity(0.15 * glowIntensity * brightness), radius: 6 * glowIntensity)
+
+        if shadowsEnabled && glowIntensity > 0.01 {
+            dot
+                .shadow(color: color.opacity(0.4 * glowIntensity * brightness), radius: 2 * glowIntensity)
+                .shadow(color: color.opacity(0.15 * glowIntensity * brightness), radius: 6 * glowIntensity)
+        } else {
+            dot
+        }
     }
 }
 
