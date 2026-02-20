@@ -135,7 +135,7 @@ final class NotchIndicatorPanels {
             backing: .buffered,
             defer: false
         )
-        panel.level = .screenSaver
+        panel.level = NSWindow.Level(rawValue: 102)  // Just above popUpMenu (101), helps App Nap
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false

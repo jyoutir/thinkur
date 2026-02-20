@@ -135,10 +135,64 @@ struct ClaudePixelSpinner: View {
     }
 
     var body: some View {
+        Group {
+            if state == .idle {
+                idleContent
+            } else {
+                activeContent
+            }
+        }
+        .animation(.spring(duration: 0.3, bounce: 0.15), value: state)
+        .onAppear {
+            if state == .idle { startBlinkTimer() }
+        }
+        .onDisappear {
+            blinkTimer?.invalidate()
+        }
+        .onChange(of: state) { _, newState in
+            epochDate = Date()
+            if newState == .idle {
+                startBlinkTimer()
+            } else {
+                blinkTimer?.invalidate()
+                blinkTimer = nil
+                blinkPixel = -1
+            }
+        }
+    }
+
+    // MARK: - Idle Content (Static — no TimelineView, no display link wakes)
+
+    private var idleContent: some View {
+        VStack(spacing: spacing) {
+            ForEach(0..<rows, id: \.self) { row in
+                HStack(spacing: spacing) {
+                    ForEach(0..<cols, id: \.self) { col in
+                        let index = row * cols + col
+                        let visible = isPixelVisible(col, row)
+                        let isBlinking = index == blinkPixel
+                        PixelDot(
+                            color: pixelColor(for: .idle),
+                            brightness: visible ? (isBlinking ? 0.15 + blinkBrightness : 0.15) : 0,
+                            size: pixelSize,
+                            glowIntensity: visible ? (isBlinking ? glowIntensity * 1.5 : glowIntensity * 0.3) : 0,
+                            shadowsEnabled: true
+                        )
+                        .frame(width: visible ? pixelSize : 0)
+                        .opacity(visible ? 1 : 0)
+                        .clipped()
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Active Content (TimelineView — animated states only)
+
+    private var activeContent: some View {
         TimelineView(.periodic(from: .now, by: updateInterval)) { timeline in
             let elapsed = timeline.date.timeIntervalSince(epochDate)
             let phase = fmod(elapsed / state.cycleDuration, 1.0)
-            // Compute once per frame instead of per-pixel
             let perimOrder = perimeterOrder()
             let interiorSet = interiorIndices()
             let shadowsEnabled = state != .listening
@@ -162,24 +216,6 @@ struct ClaudePixelSpinner: View {
                         }
                     }
                 }
-            }
-            .drawingGroup()
-            .animation(.spring(duration: 0.3, bounce: 0.15), value: state)
-        }
-        .onAppear {
-            if state == .idle { startBlinkTimer() }
-        }
-        .onDisappear {
-            blinkTimer?.invalidate()
-        }
-        .onChange(of: state) { _, newState in
-            epochDate = Date()
-            if newState == .idle {
-                startBlinkTimer()
-            } else {
-                blinkTimer?.invalidate()
-                blinkTimer = nil
-                blinkPixel = -1
             }
         }
     }
