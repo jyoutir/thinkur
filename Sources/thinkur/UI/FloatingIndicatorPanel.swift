@@ -9,8 +9,8 @@ final class FloatingIndicatorPanel: NSPanel {
     init(amplitudeProvider: AudioAmplitudeProvider, themeMode: ThemeMode = .dark) {
         self.amplitudeProvider = amplitudeProvider
 
-        let panelWidth: CGFloat = 200
-        let panelHeight: CGFloat = 60
+        let panelWidth: CGFloat = 160
+        let panelHeight: CGFloat = 40
 
         // Position at bottom center of main screen
         let screenFrame = NSScreen.main?.visibleFrame ?? .zero
@@ -96,32 +96,43 @@ private struct FloatingWaveformView: View {
     @Environment(AudioAmplitudeProvider.self) private var amplitudeProvider
 
     var body: some View {
-        GlassEffectContainer {
-            GeometryReader { geo in
-                let bars = LiveAudioWaveform.calculateMaxBars(availableWidth: geo.size.width)
-                LiveAudioWaveform(
-                    amplitudes: amplitudeProvider.amplitudes,
-                    barCount: bars,
-                    height: geo.size.height
-                )
-            }
+        ZStack {
+            Rectangle()
+                .fill(Color.black)
+
+            ClaudePixelSpinner(
+                state: .listening,
+                color: Color(red: 0.40, green: 0.90, blue: 0.55),  // Green
+                pixelSize: 3,
+                spacing: 1,
+                glowIntensity: 0.6,
+                cols: 34,
+                rows: 5,
+                symmetricWaveform: true,
+                audioAmplitudes: amplitudeProvider.amplitudes
+            )
         }
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
-/// Shows thinking dots in a glass capsule style matching the waveform.
+/// Shows thinking dots in a pixelated style matching the waveform.
 private struct FloatingThinkingView: View {
     var body: some View {
-        GlassEffectContainer {
+        ZStack {
+            Rectangle()
+                .fill(Color.black)
+
             ClaudePixelSpinner(
                 state: .processing,
-                color: .primary,
-                pixelSize: 6,
-                spacing: 3,
-                glowIntensity: 1.2
+                color: .white,
+                pixelSize: 3,
+                spacing: 1,
+                glowIntensity: 0.8,
+                cols: 34,
+                rows: 5
             )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .glassCapsule()
         }
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }

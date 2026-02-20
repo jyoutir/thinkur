@@ -16,7 +16,7 @@ struct HomeView: View {
 
                 // Summary stats + Press Tab prompt
                 HStack(spacing: Spacing.sm) {
-                    StatPill(value: Formatters.formatTimeSaved(viewModel.totalTimeSaved), label: "min saved")
+                    StatPill(value: Formatters.formatTimeSaved(viewModel.totalTimeSaved), label: "saved")
                     StatPill(value: Formatters.compactNumber(viewModel.totalWords), label: "words")
 
                     Spacer()

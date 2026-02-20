@@ -65,6 +65,8 @@ struct ClaudePixelSpinner: View {
     var spacing: CGFloat = 4
     var glowIntensity: Double = 1.0
     var cols: Int = 6
+    var rows: Int = 3
+    var symmetricWaveform: Bool = false
     var audioAmplitudes: [Double]? = nil
 
     @State private var epochDate = Date()
@@ -94,7 +96,7 @@ struct ClaudePixelSpinner: View {
             let phase = fmod(elapsed / state.cycleDuration, 1.0)
 
             VStack(spacing: spacing) {
-                ForEach(0..<3, id: \.self) { row in
+                ForEach(0..<rows, id: \.self) { row in
                     HStack(spacing: spacing) {
                         ForEach(0..<cols, id: \.self) { col in
                             let index = row * cols + col
@@ -156,17 +158,36 @@ struct ClaudePixelSpinner: View {
                 // Apply exponential curve for better visual dynamic range
                 let curved = pow(amplitude, 0.6)
 
-                // Row-based threshold: bottom row (2) easiest to light, top row (0) hardest
-                // This creates a "growing bar" effect where higher amplitude lights more rows
-                let rowThreshold: Double = switch row {
-                case 2:  0.08  // Bottom row - always on with slight activity
-                case 1:  0.25  // Middle row - lights up with moderate input
-                default: 0.50  // Top row - only lights up with strong input
-                }
+                // Symmetric waveform mode: center row is anchor, grows up/down symmetrically
+                if symmetricWaveform && rows == 5 {
+                    let centerRow = 2
 
-                // Pixel brightness based on whether amplitude exceeds row threshold
-                let brightness = curved > rowThreshold ? (curved - rowThreshold) / (1.0 - rowThreshold) : 0.1
-                return max(0.06, brightness)
+                    if row == centerRow {
+                        // Center row is always on (the flatline anchor)
+                        return 0.3
+                    }
+
+                    // Distance from center (1=adjacent, 2=edge)
+                    let distance = abs(row - centerRow)
+
+                    // Threshold based on distance from center
+                    let threshold: Double = distance == 1 ? 0.20 : 0.45
+
+                    // Light up if amplitude exceeds threshold
+                    return curved > threshold ? max(0.3, curved) : 0.1
+                } else {
+                    // Original notch behavior: bottom row (2) easiest to light, top row (0) hardest
+                    // This creates a "growing bar" effect where higher amplitude lights more rows
+                    let rowThreshold: Double = switch row {
+                    case 2:  0.08  // Bottom row - always on with slight activity
+                    case 1:  0.25  // Middle row - lights up with moderate input
+                    default: 0.50  // Top row - only lights up with strong input
+                    }
+
+                    // Pixel brightness based on whether amplitude exceeds row threshold
+                    let brightness = curved > rowThreshold ? (curved - rowThreshold) / (1.0 - rowThreshold) : 0.1
+                    return max(0.06, brightness)
+                }
             } else {
                 // Fallback: original sine wave animation when no audio data
                 let colPhaseOffset = Double(col) * 0.15
@@ -242,25 +263,29 @@ struct ClaudePixelSpinner: View {
 
     // MARK: - Dynamic Perimeter & Interior
 
-    /// Computes clockwise perimeter indices for a 3×cols grid
+    /// Computes clockwise perimeter indices for a rows×cols grid
     private func perimeterOrder() -> [Int] {
         var order: [Int] = []
         // Top row left to right
         for c in 0..<cols { order.append(c) }
         // Right column top+1 to bottom
-        for r in 1..<3 { order.append(r * cols + (cols - 1)) }
+        for r in 1..<rows { order.append(r * cols + (cols - 1)) }
         // Bottom row right-1 to left
-        for c in stride(from: cols - 2, through: 0, by: -1) { order.append(2 * cols + c) }
-        // Left column: only row 1 for a 3-row grid
-        order.append(1 * cols)
+        for c in stride(from: cols - 2, through: 0, by: -1) { order.append((rows - 1) * cols + c) }
+        // Left column: middle rows from bottom-1 to row 1
+        for r in stride(from: rows - 2, through: 1, by: -1) {
+            order.append(r * cols)
+        }
         return order
     }
 
-    /// Interior indices (row 1, cols 1..<cols-1) for a 3×cols grid
+    /// Interior indices (all middle rows and middle cols) for a rows×cols grid
     private func interiorIndices() -> Set<Int> {
         var interior = Set<Int>()
-        for c in 1..<(cols - 1) {
-            interior.insert(1 * cols + c)
+        for r in 1..<(rows - 1) {
+            for c in 1..<(cols - 1) {
+                interior.insert(r * cols + c)
+            }
         }
         return interior
     }
@@ -307,7 +332,7 @@ struct ClaudePixelSpinner: View {
 
     private func triggerBlink() {
         // Pick from visible column range only
-        let visibleIndices = (0..<3).flatMap { row in
+        let visibleIndices = (0..<rows).flatMap { row in
             (colStart..<colEnd).map { col in row * cols + col }
         }
         guard !visibleIndices.isEmpty else { return }
