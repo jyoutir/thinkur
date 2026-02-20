@@ -31,7 +31,10 @@ final class StylePreferenceService {
         let predicate = #Predicate<AppStylePreference> { $0.bundleID == bundleID }
         let descriptor = FetchDescriptor<AppStylePreference>(predicate: predicate)
 
-        if let existing = try? context.fetch(descriptor).first {
+        // Properly handle fetch errors instead of silently swallowing with try?
+        let existing = try context.fetch(descriptor).first
+
+        if let existing {
             existing.style = style
         } else {
             let pref = AppStylePreference(bundleID: bundleID, appName: appName, style: style)
@@ -51,7 +54,9 @@ final class StylePreferenceService {
         let context = container.mainContext
         let predicate = #Predicate<AppStylePreference> { $0.bundleID == bundleID }
         let descriptor = FetchDescriptor<AppStylePreference>(predicate: predicate)
-        if let existing = try? context.fetch(descriptor).first {
+
+        // Properly handle fetch errors instead of silently swallowing with try?
+        if let existing = try context.fetch(descriptor).first {
             context.delete(existing)
             try context.save()
         }

@@ -1,5 +1,6 @@
 import Foundation
 import Cocoa
+import os
 
 struct StyleAppEntry: Identifiable {
     let id: String // bundleID
@@ -13,6 +14,7 @@ struct StyleAppEntry: Identifiable {
 @Observable
 final class StyleViewModel {
     var stylePreferences: [StyleAppEntry] = []
+    var errorMessage: String?
 
     private let stylePreferenceService: StylePreferenceService
     private let analyticsService: any AnalyticsRecording
@@ -79,18 +81,36 @@ final class StyleViewModel {
 
     func updateStyle(for bundleID: String, style: String) async {
         guard let entry = stylePreferences.first(where: { $0.id == bundleID }) else { return }
-        try? await stylePreferenceService.setStyle(for: bundleID, appName: entry.appName, style: style)
-        await loadData()
+        do {
+            try await stylePreferenceService.setStyle(for: bundleID, appName: entry.appName, style: style)
+            errorMessage = nil
+            await loadData()
+        } catch {
+            errorMessage = "Failed to update style: \(error.localizedDescription)"
+            Logger.app.error("Failed to update style for \(bundleID): \(error)")
+        }
     }
 
     func removeApp(bundleID: String) async {
-        try? await stylePreferenceService.removeStyle(for: bundleID)
-        await loadData()
+        do {
+            try await stylePreferenceService.removeStyle(for: bundleID)
+            errorMessage = nil
+            await loadData()
+        } catch {
+            errorMessage = "Failed to remove app: \(error.localizedDescription)"
+            Logger.app.error("Failed to remove style for \(bundleID): \(error)")
+        }
     }
 
     func addApp(bundleID: String, appName: String) async {
-        try? await stylePreferenceService.setStyle(for: bundleID, appName: appName, style: "Standard")
-        await loadData()
+        do {
+            try await stylePreferenceService.setStyle(for: bundleID, appName: appName, style: "Standard")
+            errorMessage = nil
+            await loadData()
+        } catch {
+            errorMessage = "Failed to add app: \(error.localizedDescription)"
+            Logger.app.error("Failed to add app \(bundleID): \(error)")
+        }
     }
 
     /// Returns running regular apps not already in the style list

@@ -66,5 +66,12 @@ struct StyleView: View {
         .navigationTitle("Style")
         .task { await viewModel.loadData() }
         .onAppear { appeared = true }
+        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
+            Button("OK") { viewModel.errorMessage = nil }
+        } message: {
+            if let error = viewModel.errorMessage {
+                Text(error)
+            }
+        }
     }
 }

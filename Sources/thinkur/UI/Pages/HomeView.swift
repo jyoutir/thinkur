@@ -14,25 +14,23 @@ struct HomeView: View {
                     .font(Typography.callout)
                     .foregroundStyle(ColorTokens.textTertiary)
 
-                // Summary stats
+                // Summary stats + Press Tab prompt
                 HStack(spacing: Spacing.sm) {
                     StatPill(value: Formatters.formatTimeSaved(viewModel.totalTimeSaved), label: "min saved")
                     StatPill(value: Formatters.compactNumber(viewModel.totalWords), label: "words")
-                }
 
-                // Press Tab prompt
-                HStack(spacing: Spacing.sm) {
-                    Text("Press")
-                        .font(Typography.body)
-                        .foregroundStyle(ColorTokens.textSecondary)
-                    KeyboardShortcutBadge(key: "Tab")
-                    Text("to start voice typing")
-                        .font(Typography.body)
-                        .foregroundStyle(ColorTokens.textSecondary)
+                    Spacer()
+
+                    HStack(spacing: Spacing.xs) {
+                        Text("Press")
+                            .font(Typography.callout)
+                            .foregroundStyle(ColorTokens.textTertiary)
+                        KeyboardShortcutBadge(key: "Tab")
+                        Text("to start")
+                            .font(Typography.callout)
+                            .foregroundStyle(ColorTokens.textTertiary)
+                    }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(Spacing.md)
-                .glassCard()
 
                 // Collapsible calendar
                 VStack(alignment: .leading, spacing: Spacing.sm) {
