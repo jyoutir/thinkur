@@ -58,8 +58,10 @@ final class ShortcutService: ShortcutLookup {
         var result = text
         for shortcut in sorted {
             let escaped = NSRegularExpression.escapedPattern(for: shortcut.trigger)
+            // Consume trailing sentence punctuation (.!?) only at end of text —
+            // that's always auto-added by post-processing, not spoken.
             guard let regex = try? NSRegularExpression(
-                pattern: "\\b\(escaped)\\b",
+                pattern: "\\b\(escaped)\\b(?:[.!?]+(?=\\s*$))?",
                 options: .caseInsensitive
             ) else { continue }
 
