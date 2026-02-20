@@ -9,6 +9,7 @@ final class HotkeyManager: HotkeyListening {
     var onKeyDown: (() -> Void)?
     var onKeyUp: (() -> Void)?
     var targetKeyCode: UInt16 = Constants.tabKeyCode
+    var targetModifiers: CGEventFlags = []
 
     private(set) var isRunning = false
 
@@ -79,10 +80,10 @@ final class HotkeyManager: HotkeyListening {
             return Unmanaged.passRetained(event)
         }
 
-        // Ignore if any modifier keys are held (allow Cmd+Tab, Option+Tab, etc.)
-        let flags = event.flags
-        if flags.contains(.maskCommand) || flags.contains(.maskAlternate) ||
-           flags.contains(.maskControl) || flags.contains(.maskShift) {
+        // Only trigger when held modifiers match the configured combo exactly
+        let standardFlags: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
+        let currentModifiers = event.flags.intersection(standardFlags)
+        guard currentModifiers == targetModifiers else {
             return Unmanaged.passRetained(event)
         }
 
