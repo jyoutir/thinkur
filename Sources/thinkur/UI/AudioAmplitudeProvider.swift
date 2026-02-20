@@ -7,6 +7,7 @@ import Foundation
 @Observable
 final class AudioAmplitudeProvider {
     var amplitudes: [Double]
+    var amplitudesStartIndex: Int = 0
 
     private let bufferSize: Int
     private let smoothingFactor: Double
@@ -15,7 +16,7 @@ final class AudioAmplitudeProvider {
     private var timer: Timer?
     private var levelSource: (() -> Float)?
 
-    init(bufferSize: Int = 30, smoothingFactor: Double = 0.7) {
+    init(bufferSize: Int = 40, smoothingFactor: Double = 0.7) {
         self.bufferSize = bufferSize
         self.smoothingFactor = smoothingFactor
         self.ringBuffer = Array(repeating: 0.0, count: bufferSize)
@@ -57,11 +58,9 @@ final class AudioAmplitudeProvider {
         ringBuffer[writeIndex] = smoothed
         writeIndex = (writeIndex + 1) % bufferSize
 
-        // Publish ordered snapshot from ring buffer
-        if writeIndex == 0 {
-            amplitudes = ringBuffer
-        } else {
-            amplitudes = Array(ringBuffer[writeIndex...]) + Array(ringBuffer[..<writeIndex])
-        }
+        // Optimized: just expose the ring buffer directly, consumers handle circular indexing
+        // This eliminates 12.5 array allocations/sec during recording
+        amplitudes = ringBuffer
+        amplitudesStartIndex = writeIndex
     }
 }

@@ -82,8 +82,8 @@ final class RecordingCoordinator {
                 let style = SoundStyle(rawValue: settings.soundStyle) ?? .chime
                 ToneGenerator.shared.playStartTone(style: style)
             }
-            if settings.pauseMusicWhileRecording {
-                MediaControlService.pausePlayback()
+            if settings.dimMusicWhileRecording {
+                MediaControlService.dimPlayback()
             }
 
             amplitudeProvider.startPolling { [weak self] in
@@ -107,8 +107,8 @@ final class RecordingCoordinator {
             let style = SoundStyle(rawValue: settings.soundStyle) ?? .chime
             ToneGenerator.shared.playStopTone(style: style)
         }
-        if settings.pauseMusicWhileRecording {
-            MediaControlService.resumePlayback()
+        if settings.dimMusicWhileRecording {
+            MediaControlService.restorePlayback()
         }
 
         amplitudeProvider.stopPolling()
@@ -203,6 +203,8 @@ final class RecordingCoordinator {
     private func updateState(_ newState: AppState) {
         state = newState
         sharedState.appState = newState
-        notchPanels?.setState(SpinnerState(from: newState))
+        let spinnerState = SpinnerState(from: newState)
+        notchPanels?.setState(spinnerState)
+        floatingPanel?.setState(spinnerState)
     }
 }

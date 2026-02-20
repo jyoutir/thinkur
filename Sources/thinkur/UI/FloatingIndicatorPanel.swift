@@ -5,6 +5,7 @@ import SwiftUI
 /// Uses .nonactivatingPanel so it never steals focus from the app the user is typing in.
 final class FloatingIndicatorPanel: NSPanel {
     private let amplitudeProvider: AudioAmplitudeProvider
+    private let stateHolder = StateHolder()
 
     init(amplitudeProvider: AudioAmplitudeProvider, themeMode: ThemeMode = .dark) {
         self.amplitudeProvider = amplitudeProvider
@@ -34,14 +35,19 @@ final class FloatingIndicatorPanel: NSPanel {
         isMovableByWindowBackground = false
         self.appearance = NSAppearance(named: themeMode == .dark ? .darkAqua : .aqua)
 
-        let waveformView = FloatingWaveformView()
+        // Create unified view that handles all states
+        let indicatorView = FloatingIndicatorView(stateHolder: stateHolder)
             .environment(amplitudeProvider)
 
-        contentView = NSHostingView(rootView: waveformView)
+        contentView = NSHostingView(rootView: indicatorView)
     }
 
     func updateAppearance(for themeMode: ThemeMode) {
         self.appearance = NSAppearance(named: themeMode == .dark ? .darkAqua : .aqua)
+    }
+
+    func setState(_ state: SpinnerState) {
+        stateHolder.currentState = state
     }
 
     func show() {
@@ -57,19 +63,12 @@ final class FloatingIndicatorPanel: NSPanel {
         setFrameOrigin(NSPoint(x: originX, y: originY))
     }
 
-    /// Transition to thinking dots, then fade out after a brief delay.
+    /// Transition to processing (white spinning), then fade out after a brief delay.
     func hideWithThinkingTransition() {
-        guard let hostingView = contentView as? NSHostingView<FloatingWaveformView> else {
-            hide()
-            return
-        }
+        // Set processing state (white spinning)
+        setState(.processing)
 
-        let thinkingView = FloatingThinkingView()
-        let thinkingHosting = NSHostingView(rootView: thinkingView)
-        thinkingHosting.frame = hostingView.frame
-        contentView = thinkingHosting
-
-        // Fade out after a short delay to give the thinking dots a moment on screen
+        // Fade out after a short delay to give the processing animation a moment on screen
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.2
@@ -77,12 +76,8 @@ final class FloatingIndicatorPanel: NSPanel {
             } completionHandler: { [weak self] in
                 self?.orderOut(nil)
                 self?.alphaValue = 1
-                // Restore the waveform view for next show()
-                if let self = self {
-                    let waveformView = FloatingWaveformView()
-                        .environment(self.amplitudeProvider)
-                    self.contentView = NSHostingView(rootView: waveformView)
-                }
+                // Reset to listening state for next show()
+                self?.setState(.listening)
             }
         }
     }
@@ -92,47 +87,66 @@ final class FloatingIndicatorPanel: NSPanel {
     }
 }
 
-private struct FloatingWaveformView: View {
-    @Environment(AudioAmplitudeProvider.self) private var amplitudeProvider
+// MARK: - State Holder
 
-    var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(Color.black)
-
-            ClaudePixelSpinner(
-                state: .listening,
-                color: Color(red: 0.40, green: 0.90, blue: 0.55),  // Green
-                pixelSize: 3,
-                spacing: 1,
-                glowIntensity: 0.6,
-                cols: 34,
-                rows: 5,
-                symmetricWaveform: true,
-                audioAmplitudes: amplitudeProvider.amplitudes
-            )
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
+@MainActor
+final class StateHolder: ObservableObject {
+    @Published var currentState: SpinnerState = .listening
 }
 
-/// Shows thinking dots in a pixelated style matching the waveform.
-private struct FloatingThinkingView: View {
+// MARK: - Unified Indicator View
+
+/// Unified view that displays both listening (green waveform) and processing (white spinner) states
+/// Eliminates NSHostingView recreation for better performance
+private struct FloatingIndicatorView: View {
+    @Environment(AudioAmplitudeProvider.self) private var amplitudeProvider
+    @ObservedObject var stateHolder: StateHolder
+
     var body: some View {
         ZStack {
+            // Liquid glass background with blur
             Rectangle()
-                .fill(Color.black)
+                .fill(.black.opacity(0.6))
+                .background(.ultraThinMaterial)
 
             ClaudePixelSpinner(
-                state: .processing,
-                color: .white,
+                state: stateHolder.currentState,
+                color: spinnerColor,
                 pixelSize: 3,
                 spacing: 1,
-                glowIntensity: 0.8,
+                glowIntensity: glowIntensity,
                 cols: 34,
-                rows: 5
+                rows: 5,
+                symmetricWaveform: stateHolder.currentState == .listening,
+                audioAmplitudes: stateHolder.currentState == .listening ? amplitudeProvider.amplitudes : nil,
+                amplitudesStartIndex: amplitudeProvider.amplitudesStartIndex
             )
         }
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+        )
+    }
+
+    private var spinnerColor: Color {
+        switch stateHolder.currentState {
+        case .listening:
+            // Brighter electric green: (0.40, 0.90, 0.55) → (0.30, 1.0, 0.50)
+            return Color(red: 0.30, green: 1.0, blue: 0.50)
+        default:
+            return .white
+        }
+    }
+
+    private var glowIntensity: Double {
+        switch stateHolder.currentState {
+        case .listening:
+            return 1.5  // Increased from 0.6 for much brighter glow
+        case .processing:
+            return 1.2  // Increased from 0.8 for brighter white glow
+        default:
+            return 0.8
+        }
     }
 }
