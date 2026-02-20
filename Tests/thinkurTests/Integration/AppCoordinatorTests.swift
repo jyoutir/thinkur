@@ -26,8 +26,7 @@ struct AppCoordinatorTests {
         let engine = TranscriptionEngine()
         let coordinator = ModelLoadCoordinator(
             transcriptionEngine: engine,
-            sharedState: sharedState,
-            settings: .shared
+            sharedState: sharedState
         )
         // Just verify it doesn't crash — actual model loading would require resources
         #expect(sharedState.appState == .loading)

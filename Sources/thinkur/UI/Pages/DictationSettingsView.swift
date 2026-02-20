@@ -16,39 +16,51 @@ struct DictationSettingsView: View {
                 GroupedSettingsSection(title: "Text Processing") {
                     VStack(spacing: 0) {
                         ToggleRow(
-                            icon: "text.badge.minus",
-                            title: "Remove Filler Words",
-                            subtitle: "Removes um, uh, like, you know",
-                            isOn: $s.removeFillerWords
+                            icon: "wand.and.stars.inverse",
+                            title: "Text Processing",
+                            subtitle: "Apply corrections and formatting to transcriptions",
+                            isOn: $s.postProcessingEnabled
                         )
 
                         Divider()
 
-                        ToggleRow(
-                            icon: "textformat.abc",
-                            title: "Auto Punctuation",
-                            subtitle: "Automatically adds periods, commas, and question marks",
-                            isOn: $s.autoPunctuation
-                        )
+                        Group {
+                            ToggleRow(
+                                icon: "text.badge.minus",
+                                title: "Remove Filler Words",
+                                subtitle: "Removes um, uh, like, you know",
+                                isOn: $s.removeFillerWords
+                            )
 
-                        Divider()
+                            Divider()
 
-                        ToggleRow(
-                            icon: "wand.and.stars",
-                            title: "Intent Correction",
-                            subtitle: "Fixes self-corrections like 'I went to the sto... restaurant'",
-                            isOn: $s.intentCorrection
-                        )
+                            ToggleRow(
+                                icon: "textformat.abc",
+                                title: "Auto Punctuation",
+                                subtitle: "Automatically adds periods, commas, and question marks",
+                                isOn: $s.autoPunctuation
+                            )
 
-                        Divider()
+                            Divider()
 
-                        ToggleRow(
-                            icon: "number",
-                            title: "Smart Formatting",
-                            subtitle: "Formats numbers, dates, and common patterns",
-                            isOn: $s.smartFormatting
-                        )
+                            ToggleRow(
+                                icon: "wand.and.stars",
+                                title: "Intent Correction",
+                                subtitle: "Fixes self-corrections like 'I went to the sto... restaurant'",
+                                isOn: $s.intentCorrection
+                            )
 
+                            Divider()
+
+                            ToggleRow(
+                                icon: "number",
+                                title: "Smart Formatting",
+                                subtitle: "Formats numbers, dates, and common patterns",
+                                isOn: $s.smartFormatting
+                            )
+                        }
+                        .disabled(!settings.postProcessingEnabled)
+                        .opacity(settings.postProcessingEnabled ? 1 : 0.5)
                     }
                 }
             }

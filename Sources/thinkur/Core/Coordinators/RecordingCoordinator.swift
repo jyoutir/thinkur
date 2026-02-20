@@ -50,7 +50,7 @@ final class RecordingCoordinator {
         self.stylePreferenceService = stylePreferenceService
         if createFloatingPanel {
             self.floatingPanel = FloatingIndicatorPanel(amplitudeProvider: amplitudeProvider, themeMode: settings.themeMode)
-            let notch = NotchIndicatorPanels(amplitudeProvider: amplitudeProvider)
+            let notch = NotchIndicatorPanels()
             notch.onLeftWingTapped = { [weak self] in
                 self?.toggleListening()
             }
@@ -86,8 +86,6 @@ final class RecordingCoordinator {
             amplitudeProvider.startPolling { [weak self] in
                 self?.audioCaptureManager.currentAudioLevel ?? 0
             }
-            notchPanels?.setListening(true)
-            notchPanels?.show()
             if settings.floatingIndicator || notchPanels?.isAvailable != true {
                 floatingPanel?.updateAppearance(for: settings.themeMode)
                 floatingPanel?.show()
@@ -111,9 +109,6 @@ final class RecordingCoordinator {
 
         amplitudeProvider.stopPolling()
         floatingPanel?.hideWithThinkingTransition()
-        notchPanels?.setListening(false)
-        notchPanels?.hide()
-
         let samples = audioCaptureManager.stopCapture()
         updateState(.processing)
 
@@ -206,5 +201,6 @@ final class RecordingCoordinator {
     private func updateState(_ newState: AppState) {
         state = newState
         sharedState.appState = newState
+        notchPanels?.setState(SpinnerState(from: newState))
     }
 }

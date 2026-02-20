@@ -3,6 +3,7 @@ import SwiftUI
 struct StyleView: View {
     @Environment(StyleViewModel.self) private var viewModel
     @State private var appeared = false
+    @State private var showingAddMenu = false
 
     var body: some View {
         ScrollView {
@@ -13,15 +14,46 @@ struct StyleView: View {
 
                 GroupedSettingsSection(title: "Per-App Styles") {
                     VStack(spacing: 0) {
-                        ForEach(viewModel.stylePreferences) { entry in
-                            StyleAppRow(entry: entry) { newStyle in
-                                Task { await viewModel.updateStyle(for: entry.id, style: newStyle) }
-                            }
-                            if entry.id != viewModel.stylePreferences.last?.id {
-                                Divider()
+                        if viewModel.stylePreferences.isEmpty {
+                            Text("No apps yet. Start dictating to see apps here.")
+                                .font(Typography.caption)
+                                .foregroundStyle(ColorTokens.textTertiary)
+                                .frame(maxWidth: .infinity)
+                                .padding(Spacing.md)
+                        } else {
+                            ForEach(viewModel.stylePreferences) { entry in
+                                StyleAppRow(entry: entry) { newStyle in
+                                    Task { await viewModel.updateStyle(for: entry.id, style: newStyle) }
+                                }
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        Task { await viewModel.removeApp(bundleID: entry.id) }
+                                    } label: {
+                                        Label("Remove", systemImage: "trash")
+                                    }
+                                }
+                                if entry.id != viewModel.stylePreferences.last?.id {
+                                    Divider()
+                                }
                             }
                         }
                     }
+                }
+
+                Menu {
+                    let apps = viewModel.availableApps
+                    if apps.isEmpty {
+                        Text("No additional apps running")
+                    } else {
+                        ForEach(apps, id: \.bundleID) { app in
+                            Button(app.appName) {
+                                Task { await viewModel.addApp(bundleID: app.bundleID, appName: app.appName) }
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Add App", systemImage: "plus")
+                        .font(Typography.body)
                 }
             }
             .padding(.horizontal, Spacing.lg)

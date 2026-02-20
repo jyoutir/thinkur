@@ -34,7 +34,7 @@ final class ViewModelFactory {
         )
         self.homeViewModel = HomeViewModel(analyticsService: services.analyticsService, sharedState: services.sharedState)
         self.shortcutsViewModel = ShortcutsViewModel(shortcutService: services.shortcutService)
-        self.styleViewModel = StyleViewModel(stylePreferenceService: services.stylePreferenceService)
+        self.styleViewModel = StyleViewModel(stylePreferenceService: services.stylePreferenceService, analyticsService: services.analyticsService)
         self.insightsViewModel = InsightsViewModel(analyticsService: services.analyticsService)
         self.onboardingViewModel = OnboardingViewModel(permissionManager: services.permissionManager, settings: services.settings)
         self.integrationsViewModel = IntegrationsViewModel(smartHomeService: services.smartHomeService)

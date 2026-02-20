@@ -29,8 +29,7 @@ final class AppCoordinator {
         self.viewModels = ViewModelFactory(services: services)
         self.modelLoadCoordinator = ModelLoadCoordinator(
             transcriptionEngine: services.transcriptionEngine,
-            sharedState: services.sharedState,
-            settings: services.settings
+            sharedState: services.sharedState
         )
 
         Task { [weak self] in
@@ -60,8 +59,8 @@ final class AppCoordinator {
         await modelLoadCoordinator.loadModel()
     }
 
-    func retryModelLoad() async {
-        await modelLoadCoordinator.loadModel()
+    func updateHotkey() {
+        services.hotkeyManager.targetKeyCode = settings.hotkeyCode
     }
 
     func clearAllHistory() async {

@@ -46,4 +46,14 @@ final class StylePreferenceService {
         let descriptor = FetchDescriptor<AppStylePreference>(predicate: predicate)
         return try? context.fetch(descriptor).first?.style
     }
+
+    func removeStyle(for bundleID: String) async throws {
+        let context = container.mainContext
+        let predicate = #Predicate<AppStylePreference> { $0.bundleID == bundleID }
+        let descriptor = FetchDescriptor<AppStylePreference>(predicate: predicate)
+        if let existing = try? context.fetch(descriptor).first {
+            context.delete(existing)
+            try context.save()
+        }
+    }
 }

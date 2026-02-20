@@ -1,97 +1,70 @@
 import Cocoa
 import SwiftUI
 
-/// Two NSPanels that visually extend from the notch as black wings with rounded bottom corners.
-/// Left wing: always-visible app logo (clickable to toggle listening).
-/// Right wing: waveform (listening) or static bars (idle), slides in/out.
+/// Single NSPanel that visually extends from the notch as a black wing with rounded bottom corners.
+/// The wing expands from compact (3×3 idle) to full width (3×6 listening/processing).
+/// Clickable to toggle listening.
 @MainActor
 final class NotchIndicatorPanels {
     private var leftPanel: NSPanel?
-    private var rightPanel: NSPanel?
-    private let amplitudeProvider: AudioAmplitudeProvider
     var onLeftWingTapped: (() -> Void)?
 
-    private static let leftWingWidth: CGFloat = 34
-    private static let rightWingWidth: CGFloat = 64
-    private static let cornerRadius: CGFloat = 8
+    private static let idleWingWidth: CGFloat = 26
+    private static let expandedWingWidth: CGFloat = 42
     private static let notchOverlap: CGFloat = 10
 
-    private var isListening = false
+    private var currentState: SpinnerState = .idle
 
     var isAvailable: Bool { leftPanel != nil }
 
-    init(amplitudeProvider: AudioAmplitudeProvider) {
-        self.amplitudeProvider = amplitudeProvider
-
-        guard let hidden = Self.calculateHiddenFrames() else { return }
+    init() {
+        guard let frame = Self.calculateFrame(width: Self.idleWingWidth) else { return }
 
         leftPanel = Self.makePanel(
-            contentRect: hidden.left,
-            rootView: NotchLeftWingView(isListening: false, onTap: { }),
+            contentRect: frame,
+            rootView: NotchLeftWingView(state: .idle, onTap: { }),
             ignoresMouseEvents: false
-        )
-        rightPanel = Self.makePanel(
-            contentRect: hidden.right,
-            rootView: NotchRightWingView(isListening: false, amplitudeProvider: amplitudeProvider)
         )
     }
 
     /// Show the left wing permanently. Call once at app startup.
     func showLeftWing() {
-        guard let shown = Self.calculateShownFrames(),
-              let hidden = Self.calculateHiddenFrames() else { return }
+        guard let hiddenFrame = Self.calculateHiddenFrame(width: Self.idleWingWidth),
+              let shownFrame = Self.calculateFrame(width: Self.idleWingWidth) else { return }
 
-        leftPanel?.setFrame(hidden.left, display: false)
+        leftPanel?.setFrame(hiddenFrame, display: false)
         leftPanel?.orderFrontRegardless()
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.3
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            leftPanel?.animator().setFrame(shown.left, display: true)
+            leftPanel?.animator().setFrame(shownFrame, display: true)
         }
     }
 
-    func show() {
-        guard let shown = Self.calculateShownFrames(),
-              let hidden = Self.calculateHiddenFrames() else { return }
+    func setState(_ state: SpinnerState) {
+        currentState = state
 
-        // Left wing is already visible — just ensure it's ordered front
-        leftPanel?.orderFrontRegardless()
-
-        rightPanel?.setFrame(hidden.right, display: false)
-        rightPanel?.orderFrontRegardless()
-
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.3
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            rightPanel?.animator().setFrame(shown.right, display: true)
-        }
-    }
-
-    func hide() {
-        guard let hidden = Self.calculateHiddenFrames() else { return }
-
-        // Only hide the right wing — left wing stays visible
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.2
-            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            rightPanel?.animator().setFrame(hidden.right, display: true)
-        }, completionHandler: { [weak self] in
-            MainActor.assumeIsolated {
-                self?.rightPanel?.orderOut(nil)
-            }
-        })
-    }
-
-    func setListening(_ listening: Bool) {
-        isListening = listening
+        // Update SwiftUI content
         let tapAction: () -> Void = { [weak self] in self?.onLeftWingTapped?() }
         leftPanel?.contentView = NSHostingView(
-            rootView: NotchLeftWingView(isListening: listening, onTap: tapAction)
+            rootView: NotchLeftWingView(state: state, onTap: tapAction)
         )
-        rightPanel?.contentView = NSHostingView(
-            rootView: NotchRightWingView(isListening: listening, amplitudeProvider: amplitudeProvider)
-        )
+
+        // Animate wing width
+        let targetWidth: CGFloat = switch state {
+        case .idle, .error: Self.idleWingWidth
+        default:            Self.expandedWingWidth
+        }
+
+        guard let newFrame = Self.calculateFrame(width: targetWidth) else { return }
+
+        leftPanel?.orderFrontRegardless()
+        NSAnimationContext.runAnimationGroup { [weak self] context in
+            context.duration = 0.25
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            self?.leftPanel?.animator().setFrame(newFrame, display: true)
+        }
     }
 
     func updateAppearance() {
@@ -100,60 +73,36 @@ final class NotchIndicatorPanels {
 
     // MARK: - Geometry
 
-    private static func calculateShownFrames() -> (left: NSRect, right: NSRect)? {
+    private static func calculateFrame(width: CGFloat) -> NSRect? {
         guard let screen = NSScreen.main,
-              let leftArea = screen.auxiliaryTopLeftArea,
-              let rightArea = screen.auxiliaryTopRightArea else {
-            return nil
-        }
+              let leftArea = screen.auxiliaryTopLeftArea else { return nil }
 
         let wingHeight = screen.safeAreaInsets.top
         let notchLeftEdge = screen.frame.origin.x + leftArea.width
-        let notchRightEdge = screen.frame.maxX - rightArea.width
         let topY = screen.frame.maxY - wingHeight
 
-        let leftRect = NSRect(
-            x: notchLeftEdge - leftWingWidth + notchOverlap,
+        return NSRect(
+            x: notchLeftEdge - width + notchOverlap,
             y: topY,
-            width: leftWingWidth,
+            width: width,
             height: wingHeight
         )
-        let rightRect = NSRect(
-            x: notchRightEdge - notchOverlap,
-            y: topY,
-            width: rightWingWidth,
-            height: wingHeight
-        )
-
-        return (leftRect, rightRect)
     }
 
-    private static func calculateHiddenFrames() -> (left: NSRect, right: NSRect)? {
+    private static func calculateHiddenFrame(width: CGFloat) -> NSRect? {
         guard let screen = NSScreen.main,
-              let leftArea = screen.auxiliaryTopLeftArea,
-              let rightArea = screen.auxiliaryTopRightArea else {
-            return nil
-        }
+              let leftArea = screen.auxiliaryTopLeftArea else { return nil }
 
         let wingHeight = screen.safeAreaInsets.top
         let notchLeftEdge = screen.frame.origin.x + leftArea.width
-        let notchRightEdge = screen.frame.maxX - rightArea.width
         let topY = screen.frame.maxY - wingHeight
 
-        let leftRect = NSRect(
+        return NSRect(
             x: notchLeftEdge,
             y: topY,
-            width: leftWingWidth,
+            width: width,
             height: wingHeight
         )
-        let rightRect = NSRect(
-            x: notchRightEdge - rightWingWidth,
-            y: topY,
-            width: rightWingWidth,
-            height: wingHeight
-        )
-
-        return (leftRect, rightRect)
     }
 
     // MARK: - Panel Factory
@@ -185,11 +134,14 @@ final class NotchIndicatorPanels {
 // MARK: - SwiftUI Views
 
 private struct NotchLeftWingView: View {
-    let isListening: Bool
+    let state: SpinnerState
     let onTap: () -> Void
 
     private var spinnerColor: Color {
-        isListening ? Color(red: 0.96, green: 0.65, blue: 0.28) : .white
+        switch state {
+        case .listening: return Color(red: 0.40, green: 0.90, blue: 0.55)
+        default:         return .white
+        }
     }
 
     var body: some View {
@@ -201,7 +153,7 @@ private struct NotchLeftWingView: View {
             .fill(.black)
             .overlay {
                 ClaudePixelSpinner(
-                    state: isListening ? .listening : .idle,
+                    state: state,
                     color: spinnerColor,
                     pixelSize: 3,
                     spacing: 1,
@@ -211,49 +163,5 @@ private struct NotchLeftWingView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture { onTap() }
-    }
-}
-
-private struct NotchRightWingView: View {
-    let isListening: Bool
-    let amplitudeProvider: AudioAmplitudeProvider
-
-    var body: some View {
-        UnevenRoundedRectangle(
-                bottomLeadingRadius: 8,
-                bottomTrailingRadius: 8,
-                style: .continuous
-            )
-            .fill(.black)
-            .overlay {
-                Group {
-                    if isListening {
-                        LiveAudioWaveform(
-                            amplitudes: amplitudeProvider.amplitudes,
-                            barCount: 5,
-                            height: 18,
-                            showGlass: false,
-                            horizontalPadding: 4,
-                            barColor: .white,
-                            amplitudeExponent: 0.4
-                        )
-                    } else {
-                        IdleNotchBars()
-                    }
-                }
-                .offset(y: 4)
-            }
-    }
-}
-
-private struct IdleNotchBars: View {
-    var body: some View {
-        HStack(spacing: LiveAudioWaveform.barGap) {
-            ForEach(0..<5, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(Color.red)
-                    .frame(width: LiveAudioWaveform.barWidth, height: 6)
-            }
-        }
     }
 }

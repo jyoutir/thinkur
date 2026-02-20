@@ -36,7 +36,7 @@ enum SpinnerState: String, CaseIterable, Identifiable {
         case .success:     return 1.8
         case .error:       return 0.6
         case .connecting:  return 1.0
-        case .processing:  return 0.45
+        case .processing:  return 0.35
         }
     }
 }
@@ -49,7 +49,7 @@ extension SpinnerState {
         case .idle:          self = .idle
         case .loading:       self = .connecting
         case .listening:     self = .listening
-        case .processing:    self = .thinking
+        case .processing:    self = .processing
         case .error:         self = .error
         }
     }
@@ -64,11 +64,28 @@ struct ClaudePixelSpinner: View {
     var pixelSize: CGFloat = 8
     var spacing: CGFloat = 4
     var glowIntensity: Double = 1.0
+    var cols: Int = 6
 
     @State private var epochDate = Date()
     @State private var blinkPixel: Int = -1
     @State private var blinkBrightness: Double = 0
     @State private var blinkTimer: Timer?
+
+    // MARK: - Expansion Mechanic
+
+    private var visibleCols: Int {
+        switch state {
+        case .idle, .error: return 3
+        default:            return cols
+        }
+    }
+
+    private var colStart: Int { (cols - visibleCols) / 2 }
+    private var colEnd: Int { colStart + visibleCols }
+
+    private func isColumnVisible(_ col: Int) -> Bool {
+        col >= colStart && col < colEnd
+    }
 
     var body: some View {
         TimelineView(.animation) { timeline in
@@ -78,18 +95,23 @@ struct ClaudePixelSpinner: View {
             VStack(spacing: spacing) {
                 ForEach(0..<3, id: \.self) { row in
                     HStack(spacing: spacing) {
-                        ForEach(0..<3, id: \.self) { col in
-                            let index = row * 3 + col
+                        ForEach(0..<cols, id: \.self) { col in
+                            let index = row * cols + col
+                            let visible = isColumnVisible(col)
                             PixelDot(
                                 color: pixelColor(for: state),
-                                brightness: brightness(row: row, col: col, index: index, phase: phase),
+                                brightness: visible ? brightness(row: row, col: col, index: index, phase: phase) : 0,
                                 size: pixelSize,
-                                glowIntensity: effectiveGlow(for: state, index: index)
+                                glowIntensity: visible ? effectiveGlow(for: state, index: index) : 0
                             )
+                            .frame(width: visible ? pixelSize : 0)
+                            .opacity(visible ? 1 : 0)
+                            .clipped()
                         }
                     }
                 }
             }
+            .animation(.spring(duration: 0.3, bounce: 0.15), value: state)
         }
         .onAppear {
             if state == .idle { startBlinkTimer() }
@@ -114,43 +136,38 @@ struct ClaudePixelSpinner: View {
     private func brightness(row: Int, col: Int, index: Int, phase: Double) -> Double {
         switch state {
 
-        // All pixels breathe together barely above darkness.
-        // Random lone-pixel "firefly" blinks add life.
+        // Playful breathing + faster firefly twinkle (3×3 compact)
         case .idle:
-            let breath = 0.12 + 0.06 * sin(phase * 2 * .pi)
+            let breath = 0.15 + 0.07 * sin(phase * 2 * .pi)
             if index == blinkPixel {
                 return breath + blinkBrightness
             }
             return breath
 
-        // Equalizer columns — each column oscillates at a different frequency/phase
-        // like vertical waveform bars. Bottom row stays bright as the "base".
+        // Column equalizer waveform (expanded 3×6, green)
         case .listening:
-            let colPhaseOffset = [0.0, 0.33, 0.15][col]
+            let colPhaseOffset = Double(col) * 0.15
             let wave = sin((phase + colPhaseOffset) * 2 * .pi)
-            // Row 2 (bottom) = base, always fairly bright
-            // Row 1 (mid) = follows wave
-            // Row 0 (top) = only lights up at peaks
             let rowThreshold: Double = switch row {
-            case 2:  0.35 + 0.15 * wave  // base: always visible
-            case 1:  max(0.08, 0.5 + 0.5 * wave)  // mid: follows amplitude
-            default: max(0.06, wave)  // top: only at peaks
+            case 2:  0.35 + 0.15 * wave
+            case 1:  max(0.08, 0.5 + 0.5 * wave)
+            default: max(0.06, wave)
             }
             return rowThreshold
 
-        // Classic left-to-right sine with vertical stagger.
+        // Classic left-to-right sine with vertical stagger
         case .thinking:
-            let offset = Double(col) / 3.0 + Double(row) * 0.1
+            let offset = Double(col) / Double(cols) + Double(row) * 0.1
             return 0.5 + 0.5 * sin((phase + offset) * 2 * .pi)
 
-        // Top-to-bottom cascade with column wobble.
+        // Top-to-bottom cascade with column wobble
         case .speaking:
             let rowDelay = Double(row) * 0.25
             let colWobble = Double(col) * 0.06
             let wave = sin((phase - rowDelay - colWobble) * 2 * .pi)
             return max(0, wave)
 
-        // All 9 bloom bright, hold, fade to afterglow.
+        // All pixels bloom bright, hold, fade to afterglow
         case .success:
             let t = min(phase / 1.0, 1.0)
             if t < 0.15 {
@@ -162,7 +179,7 @@ struct ClaudePixelSpinner: View {
                 return 1.0 - easeIn(fadeT) * 0.7
             }
 
-        // Sharp double-pulse (cardiac skip), then dims.
+        // Sharp double-pulse (cardiac skip), then dims
         case .error:
             let t = fmod(phase, 1.0)
             if t < 0.12 { return easeOut(t / 0.12) }
@@ -171,10 +188,11 @@ struct ClaudePixelSpinner: View {
             if t < 0.50 { return 1.0 - easeIn((t - 0.32) / 0.18) * 0.85 }
             return 0.15
 
-        // Clockwise spiral around perimeter, center dim.
+        // Clockwise spiral around perimeter, center dim
         case .connecting:
-            let perimOrder = [0, 1, 2, 5, 8, 7, 6, 3]
-            if index == 4 {
+            let perimOrder = perimeterOrder()
+            let interiorIndices = interiorIndices()
+            if interiorIndices.contains(index) {
                 return 0.08 + 0.04 * sin(phase * 2 * .pi)
             }
             guard let pi = perimOrder.firstIndex(of: index) else { return 0 }
@@ -183,36 +201,68 @@ struct ClaudePixelSpinner: View {
             let spread = 0.15
             return exp(-pow(min(diff, 1.0 - diff) / spread, 2))
 
-        // Dual diagonal interference with golden ratio offset.
+        // Fast clockwise perimeter loop (expanded 3×6)
         case .processing:
-            let diag1 = Double(row + col) / 4.0
-            let diag2 = Double(row - col + 2) / 4.0
-            let wave1 = sin((phase + diag1) * 2 * .pi)
-            let wave2 = sin((phase * 1.618 + diag2) * 2 * .pi)
-            return 0.5 + 0.5 * (wave1 + wave2) / 2.0
+            let perimOrder = perimeterOrder()
+            let interiorIndices = interiorIndices()
+            if interiorIndices.contains(index) {
+                return 0.06
+            }
+            guard let pi = perimOrder.firstIndex(of: index) else { return 0 }
+            let pixelPhase = Double(pi) / Double(perimOrder.count)
+            let diff = fmod(phase - pixelPhase + 1.0, 1.0)
+            let spread = 0.10
+            return exp(-pow(min(diff, 1.0 - diff) / spread, 2))
         }
+    }
+
+    // MARK: - Dynamic Perimeter & Interior
+
+    /// Computes clockwise perimeter indices for a 3×cols grid
+    private func perimeterOrder() -> [Int] {
+        var order: [Int] = []
+        // Top row left to right
+        for c in 0..<cols { order.append(c) }
+        // Right column top+1 to bottom
+        for r in 1..<3 { order.append(r * cols + (cols - 1)) }
+        // Bottom row right-1 to left
+        for c in stride(from: cols - 2, through: 0, by: -1) { order.append(2 * cols + c) }
+        // Left column: only row 1 for a 3-row grid
+        order.append(1 * cols)
+        return order
+    }
+
+    /// Interior indices (row 1, cols 1..<cols-1) for a 3×cols grid
+    private func interiorIndices() -> Set<Int> {
+        var interior = Set<Int>()
+        for c in 1..<(cols - 1) {
+            interior.insert(1 * cols + c)
+        }
+        return interior
     }
 
     // MARK: - Per-State Color
 
     private func pixelColor(for state: SpinnerState) -> Color {
         switch state {
-        case .success: return Color(red: 0.40, green: 0.90, blue: 0.55)
-        case .error:   return Color(red: 0.90, green: 0.40, blue: 0.40)
-        default:       return color
+        case .listening: return Color(red: 0.40, green: 0.90, blue: 0.55)
+        case .success:   return Color(red: 0.40, green: 0.90, blue: 0.55)
+        case .error:     return Color(red: 0.90, green: 0.40, blue: 0.40)
+        default:         return color
         }
     }
 
     // MARK: - Per-State Glow
 
     private func effectiveGlow(for state: SpinnerState, index: Int) -> Double {
+        let interiorSet = interiorIndices()
         switch state {
         case .idle:
             return index == blinkPixel ? glowIntensity * 1.5 : glowIntensity * 0.3
         case .success:    return glowIntensity * 1.8
         case .error:      return glowIntensity * 1.4
-        case .connecting: return index == 4 ? glowIntensity * 0.2 : glowIntensity * 1.2
-        case .processing: return glowIntensity * 1.3
+        case .connecting: return interiorSet.contains(index) ? glowIntensity * 0.2 : glowIntensity * 1.2
+        case .processing: return interiorSet.contains(index) ? glowIntensity * 0.2 : glowIntensity * 1.3
         default:          return glowIntensity
         }
     }
@@ -225,14 +275,19 @@ struct ClaudePixelSpinner: View {
     }
 
     private func scheduleBlink() {
-        let delay = Double.random(in: 1.5...4.0)
+        let delay = Double.random(in: 0.8...2.0)
         blinkTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { _ in
             triggerBlink()
         }
     }
 
     private func triggerBlink() {
-        blinkPixel = Int.random(in: 0..<9)
+        // Pick from visible column range only
+        let visibleIndices = (0..<3).flatMap { row in
+            (colStart..<colEnd).map { col in row * cols + col }
+        }
+        guard !visibleIndices.isEmpty else { return }
+        blinkPixel = visibleIndices.randomElement()!
         withAnimation(.easeOut(duration: 0.2)) { blinkBrightness = 0.7 }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             withAnimation(.easeIn(duration: 0.6)) { blinkBrightness = 0 }
