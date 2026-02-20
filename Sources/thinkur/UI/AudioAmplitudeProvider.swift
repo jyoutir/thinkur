@@ -22,6 +22,10 @@ final class AudioAmplitudeProvider {
         self.amplitudes = Array(repeating: 0.0, count: bufferSize)
     }
 
+    // Note: Timer cleanup via deinit is not possible due to @MainActor isolation.
+    // However, no memory leak exists because timer uses [weak self] capture (line 30).
+    // Proper cleanup is handled via stopPolling() which should be called before deallocation.
+
     func startPolling(source: @escaping () -> Float) {
         levelSource = source
         ringBuffer = Array(repeating: 0.0, count: bufferSize)

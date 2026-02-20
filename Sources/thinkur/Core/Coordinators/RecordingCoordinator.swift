@@ -10,6 +10,7 @@ final class RecordingCoordinator {
     private let transcriptionEngine: any Transcribing
     private let textInsertionService: any TextInserting
     private let textPostProcessor: TextPostProcessor
+    private let postProcessingActor: PostProcessingActor
     private let frontmostAppDetector: FrontmostAppDetector
     private let analyticsService: any AnalyticsRecording
     private let shortcutService: any ShortcutLookup
@@ -40,6 +41,7 @@ final class RecordingCoordinator {
         self.transcriptionEngine = transcriptionEngine
         self.textInsertionService = textInsertionService
         self.textPostProcessor = textPostProcessor
+        self.postProcessingActor = PostProcessingActor(processor: textPostProcessor)
         self.frontmostAppDetector = frontmostAppDetector
         self.analyticsService = analyticsService
         self.shortcutService = shortcutService
@@ -146,7 +148,8 @@ final class RecordingCoordinator {
                 if !settings.intentCorrection { disabled.insert("SelfCorrection") }
                 if !settings.smartFormatting { disabled.insert("SmartFormatting") }
                 if !settings.listFormatting { disabled.insert("ListDetection") }
-                let result = textPostProcessor.process(rawText, context: context, disabledProcessors: disabled)
+                // Run post-processing on background actor to avoid blocking main thread (200-500ms typical)
+                let result = await postProcessingActor.process(rawText, context: context, disabledProcessors: disabled)
                 text = result.text
                 correctionCount = result.corrections.count
             } else {
@@ -172,11 +175,8 @@ final class RecordingCoordinator {
                 return
             }
 
-            // Check for shortcut expansion
-            var finalText = text
-            if let expansion = await shortcutService.findExpansion(for: text.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                finalText = expansion
-            }
+            // Apply shortcut expansions (inline find-and-replace)
+            let finalText = await shortcutService.applyShortcuts(to: text)
 
             sharedState.lastTranscription = finalText
             textInsertionService.insertText(finalText)

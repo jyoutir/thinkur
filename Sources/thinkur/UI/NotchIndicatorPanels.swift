@@ -46,6 +46,11 @@ final class NotchIndicatorPanels {
         currentState = state
 
         // Update SwiftUI content
+        // Clean up old NSHostingView to prevent view hierarchy accumulation
+        if let oldView = leftPanel?.contentView {
+            oldView.removeFromSuperview()
+        }
+
         let tapAction: () -> Void = { [weak self] in self?.onLeftWingTapped?() }
         leftPanel?.contentView = NSHostingView(
             rootView: NotchLeftWingView(state: state, onTap: tapAction)
