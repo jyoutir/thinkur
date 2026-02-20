@@ -80,31 +80,37 @@ final class HotkeyManager: HotkeyListening {
             return Unmanaged.passRetained(event)
         }
 
-        // Only trigger when held modifiers match the configured combo exactly
-        let standardFlags: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
-        let currentModifiers = event.flags.intersection(standardFlags)
-        guard currentModifiers == targetModifiers else {
-            return Unmanaged.passRetained(event)
-        }
-
         if type == .keyDown {
+            // Already activated — suppress repeats regardless of modifier state
+            // (user may have released a modifier while still holding the key)
+            if isKeyDown {
+                return nil
+            }
+
+            // Strict modifier matching only on initial activation
+            let standardFlags: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
+            let currentModifiers = event.flags.intersection(standardFlags)
+            guard currentModifiers == targetModifiers else {
+                return Unmanaged.passRetained(event)
+            }
+
             // Ignore key repeat events
             let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat)
             if isRepeat != 0 {
-                return nil // Suppress repeat but don't re-trigger
+                return nil
             }
 
-            if !isKeyDown {
-                isKeyDown = true
-                onKeyDown?()
-            }
-            return nil // Suppress the Tab key
+            isKeyDown = true
+            onKeyDown?()
+            return nil
         } else if type == .keyUp {
+            // Lenient on release — always handle if we're in activated state,
+            // even if modifiers changed since keyDown (e.g. user released Shift before S)
             if isKeyDown {
                 isKeyDown = false
                 onKeyUp?()
             }
-            return nil // Suppress the Tab key
+            return nil
         }
 
         return Unmanaged.passRetained(event)
