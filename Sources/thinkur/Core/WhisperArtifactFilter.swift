@@ -2,7 +2,6 @@ import Foundation
 
 enum WhisperArtifactFilter {
     /// Lowercased bracket tokens WhisperKit emits for non-speech audio.
-    /// Using an explicit allowlist avoids false positives on real text with brackets.
     private static let noiseTokens: Set<String> = [
         "[blank_audio]",
         "[music]",
@@ -15,13 +14,23 @@ enum WhisperArtifactFilter {
         "[silence]",
     ]
 
-    /// Returns true if `word` (trimmed, lowercased) is a Whisper noise token.
+    /// Matches any `[...]` or `(...)` annotation segment.
+    private static let annotationPattern = try! NSRegularExpression(
+        pattern: #"\[.*?\]|\(.*?\)"#, options: []
+    )
+
+    /// Returns true if `word` is a Whisper noise token or a bracket/paren annotation.
     static func isArtifact(_ word: String) -> Bool {
-        noiseTokens.contains(word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+        let trimmed = word.trimmingCharacters(in: .whitespacesAndNewlines)
+        if noiseTokens.contains(trimmed.lowercased()) { return true }
+        if let first = trimmed.first, let last = trimmed.last {
+            return (first == "[" && last == "]") || (first == "(" && last == ")")
+        }
+        return false
     }
 
-    /// Removes all Whisper noise tokens from `text` and normalises whitespace.
-    /// Returns `nil` if nothing meaningful remains after stripping.
+    /// Removes all Whisper noise tokens and bracket/paren annotations from `text`
+    /// and normalises whitespace. Returns `nil` if nothing meaningful remains.
     static func strip(_ text: String) -> String? {
         var result = text
         for token in noiseTokens {
@@ -31,6 +40,12 @@ enum WhisperArtifactFilter {
                 range: result.startIndex..<result.endIndex
             )
         }
+        // Strip any remaining [...] or (...) annotations
+        result = annotationPattern.stringByReplacingMatches(
+            in: result,
+            range: NSRange(result.startIndex..., in: result),
+            withTemplate: ""
+        )
         result = result
             .components(separatedBy: .whitespaces)
             .filter { !$0.isEmpty }
