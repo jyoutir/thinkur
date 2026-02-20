@@ -15,6 +15,11 @@ final class ModelLoadCoordinator {
         sharedState.appState = .loading
         await transcriptionEngine.loadModel()
 
+        if !transcriptionEngine.isLoaded && Constants.whisperModel != "small.en" {
+            Logger.app.warning("Preferred model '\(Constants.whisperModel)' failed to load, falling back to small.en")
+            await transcriptionEngine.loadModel(name: "small.en")
+        }
+
         if transcriptionEngine.isLoaded {
             sharedState.appState = .idle
             sharedState.isModelReady = true
