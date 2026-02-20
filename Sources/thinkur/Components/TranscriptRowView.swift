@@ -45,7 +45,7 @@ struct TranscriptRowView: View {
                             .foregroundStyle(ColorTokens.textTertiary)
                     }
                     if showDiff {
-                        Text(TextDiffBuilder.buildGhostDiff(raw: rawText, processed: preview))
+                        Text(DiffCache.shared.getDiff(raw: rawText, processed: preview))
                             .font(Typography.caption)
                             .foregroundStyle(ColorTokens.textSecondary)
                     } else {

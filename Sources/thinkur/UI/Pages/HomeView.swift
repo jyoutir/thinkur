@@ -103,7 +103,7 @@ struct HomeView: View {
                         subtitle: "Press Tab to start dictating"
                     )
                 } else {
-                    ForEach(viewModel.groupedTranscriptions) { group in
+                    ForEach(viewModel.groupedTranscriptions, id: \.id) { group in
                         let isExpanded = !viewModel.collapsedGroups.contains(group.id)
 
                         VStack(alignment: .leading, spacing: Spacing.sm) {

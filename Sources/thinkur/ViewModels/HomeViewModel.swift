@@ -9,18 +9,32 @@ struct TranscriptionGroup: Identifiable {
 @MainActor
 @Observable
 final class HomeViewModel {
+    // Keep observable - these affect UI directly
     var groupedTranscriptions: [TranscriptionGroup] = []
-    var activeDateStrings: Set<String> = []
+    var collapsedGroups: Set<String> = []
     var rangeStart: Date?
     var rangeEnd: Date?
-    var collapsedGroups: Set<String> = []
+
+    // Mark as ignored - changes shouldn't trigger full rebuild
+    @ObservationIgnored
+    var activeDateStrings: Set<String> = []
+
+    @ObservationIgnored
     var totalTimeSaved: TimeInterval = 0
+
+    @ObservationIgnored
     var totalWords: Int = 0
 
+    @ObservationIgnored
     private var allRecords: [TranscriptionRecord] = []
+
+    @ObservationIgnored
     private let analyticsService: any AnalyticsRecording
+
+    @ObservationIgnored
     private let sharedState: SharedAppState
 
+    // Computed property - no observation needed
     var transcriptionVersion: Int { sharedState.transcriptionVersion }
 
     private static let dateKeyFormatter: DateFormatter = {
