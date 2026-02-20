@@ -18,6 +18,7 @@ struct thinkurApp: App {
                 .environment(coordinator.onboardingViewModel)
                 .environment(coordinator.integrationsViewModel)
                 .environment(coordinator.settings)
+                .environment(coordinator.sharedState)
                 .tint(.primary)
         }
         .defaultSize(width: 920, height: 620)
