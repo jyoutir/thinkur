@@ -7,6 +7,9 @@ struct HotkeySettingsView: View {
     @State private var appeared = false
     @State private var isRecording = false
     @State private var eventMonitor: Any?
+    @State private var liveModifiers: NSEvent.ModifierFlags = []
+
+    private static let standardModifiers: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
     var body: some View {
         @Bindable var s = settings
@@ -23,9 +26,7 @@ struct HotkeySettingsView: View {
                             Button {
                                 startRecording()
                             } label: {
-                                KeyboardShortcutBadge(
-                                    key: isRecording ? "Press a key\u{2026}" : keyName(for: settings.hotkeyCode)
-                                )
+                                KeyboardShortcutBadge(key: recordingLabel)
                             }
                             .buttonStyle(.plain)
                         }
@@ -34,8 +35,8 @@ struct HotkeySettingsView: View {
 
                         ToggleRow(
                             icon: "hand.tap",
-                            title: "Hold Mode",
-                            subtitle: "Hold key to record, release to stop",
+                            title: "Push to Talk",
+                            subtitle: "Hold to dictate, release to finish",
                             isOn: $s.hotkeyHoldMode
                         )
                     }
@@ -59,18 +60,40 @@ struct HotkeySettingsView: View {
         .onDisappear { stopRecording() }
     }
 
+    // MARK: - Display
+
+    private var recordingLabel: String {
+        if isRecording {
+            let mods = modifierSymbols(for: liveModifiers)
+            return mods.isEmpty ? "Press a key\u{2026}" : "\(mods)\u{2026}"
+        }
+        return hotkeyDisplayName(
+            keyCode: settings.hotkeyCode,
+            modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.hotkeyModifiers))
+        )
+    }
+
     // MARK: - Key Recording
 
     private func startRecording() {
         isRecording = true
-        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+        liveModifiers = []
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+            if event.type == .flagsChanged {
+                liveModifiers = event.modifierFlags.intersection(Self.standardModifiers)
+                return event
+            }
+
+            // keyDown — capture key + modifiers
             let keyCode = event.keyCode
-            // Don't allow Escape as hotkey — it's used for cancel
             guard keyCode != 53 else {
                 stopRecording()
                 return nil
             }
+
+            let modifiers = event.modifierFlags.intersection(Self.standardModifiers)
             settings.hotkeyCode = keyCode
+            settings.hotkeyModifiers = UInt(modifiers.rawValue)
             coordinator.updateHotkey()
             stopRecording()
             return nil
@@ -83,9 +106,25 @@ struct HotkeySettingsView: View {
             eventMonitor = nil
         }
         isRecording = false
+        liveModifiers = []
     }
 
     // MARK: - Key Name Display
+
+    private func modifierSymbols(for flags: NSEvent.ModifierFlags) -> String {
+        var s = ""
+        if flags.contains(.control) { s += "\u{2303}" }
+        if flags.contains(.option) { s += "\u{2325}" }
+        if flags.contains(.shift) { s += "\u{21E7}" }
+        if flags.contains(.command) { s += "\u{2318}" }
+        return s
+    }
+
+    private func hotkeyDisplayName(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> String {
+        let mods = modifierSymbols(for: modifiers)
+        let key = keyName(for: keyCode)
+        return mods.isEmpty ? key : "\(mods)\(key)"
+    }
 
     private func keyName(for keyCode: UInt16) -> String {
         let specialKeys: [UInt16: String] = [

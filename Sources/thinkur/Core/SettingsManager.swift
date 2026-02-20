@@ -13,6 +13,10 @@ final class SettingsManager {
         didSet { defaults.set(Int(hotkeyCode), forKey: "hotkeyCode") }
     }
 
+    var hotkeyModifiers: UInt {
+        didSet { defaults.set(Int(hotkeyModifiers), forKey: "hotkeyModifiers") }
+    }
+
     var vadThreshold: Float {
         didSet { defaults.set(vadThreshold, forKey: "vadThreshold") }
     }
@@ -103,6 +107,7 @@ final class SettingsManager {
         }
 
         self.hotkeyCode = UInt16(defaults.integer(forKey: "hotkeyCode"))
+        self.hotkeyModifiers = UInt(defaults.integer(forKey: "hotkeyModifiers"))
         self.vadThreshold = defaults.float(forKey: "vadThreshold")
         self.postProcessingEnabled = defaults.bool(forKey: "postProcessingEnabled")
 
