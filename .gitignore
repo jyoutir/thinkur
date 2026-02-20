@@ -6,6 +6,7 @@ DerivedData/
 
 # SPM
 .build/
+build/
 .swiftpm/
 Package.resolved
 
