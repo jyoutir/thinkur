@@ -35,7 +35,7 @@ struct SystemSettingsView: View {
                         ToggleRow(
                             icon: "speaker.wave.1",
                             title: "Dim Music While Recording",
-                            subtitle: "Lower music volume while recording",
+                            subtitle: "Lower system volume while recording",
                             isOn: $s.dimMusicWhileRecording
                         )
 
