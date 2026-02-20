@@ -104,7 +104,8 @@ final class AudioCaptureManager: AudioCapturing {
         // Vectorized RMS via Accelerate (replaces reduce-based calculation)
         var rms: Float = 0
         vDSP_rmsqv(channelData[0], 1, &rms, vDSP_Length(frameLength))
-        let normalized = min(rms * 6.0, 1.0)
+        // Increased gain from 6.0 to 12.0 for better whisper sensitivity
+        let normalized = min(rms * 12.0, 1.0)
         currentAudioLevel = normalized
 
         bufferQueue.sync {

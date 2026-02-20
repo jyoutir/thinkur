@@ -33,10 +33,10 @@ struct SystemSettingsView: View {
                         Divider()
 
                         ToggleRow(
-                            icon: "pause.circle",
-                            title: "Pause Music While Recording",
-                            subtitle: "Automatically pause playback during dictation",
-                            isOn: $s.pauseMusicWhileRecording
+                            icon: "speaker.wave.1",
+                            title: "Dim Music While Recording",
+                            subtitle: "Lower music volume while recording",
+                            isOn: $s.dimMusicWhileRecording
                         )
 
                         Divider()
