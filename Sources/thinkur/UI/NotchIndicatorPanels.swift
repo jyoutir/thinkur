@@ -174,10 +174,14 @@ private struct NotchLeftWingView: View {
             )
             .fill(.black)
             .overlay {
-                Image(systemName: "waveform")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(isListening ? .white : .red)
-                    .offset(y: 4)
+                ClaudePixelSpinner(
+                    state: isListening ? .listening : .idle,
+                    color: .white,
+                    pixelSize: 3,
+                    spacing: 1,
+                    glowIntensity: 0.6
+                )
+                .offset(y: 4)
             }
     }
 }

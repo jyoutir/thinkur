@@ -4,6 +4,7 @@ struct SidebarView: View {
     @Binding var selectedPage: NavigationPage
     @Environment(ShortcutsViewModel.self) private var shortcutsVM
     @Environment(SettingsManager.self) private var settings
+    @Environment(SharedAppState.self) private var sharedState
     @State private var settingsExpanded = false
 
     // Rolling greeting state
@@ -14,16 +15,24 @@ struct SidebarView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Rolling greeting
-            VStack(alignment: .leading, spacing: 3) {
-                Text(phrases.isEmpty ? "Hello..." : phrases[currentPhraseIndex])
-                    .font(Typography.headline)
-                    .foregroundStyle(ColorTokens.textPrimary)
-                    .contentTransition(.numericText())
-                    .animation(.easeInOut(duration: 0.6), value: currentPhraseIndex)
+            HStack(spacing: Spacing.sm) {
+                ClaudePixelSpinner(
+                    state: SpinnerState(from: sharedState.appState),
+                    pixelSize: 4,
+                    spacing: 2,
+                    glowIntensity: 0.8
+                )
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(phrases.isEmpty ? "Hello..." : phrases[currentPhraseIndex])
+                        .font(Typography.headline)
+                        .foregroundStyle(ColorTokens.textPrimary)
+                        .contentTransition(.numericText())
+                        .animation(.easeInOut(duration: 0.6), value: currentPhraseIndex)
 
-                Text(firstName)
-                    .font(Typography.caption)
-                    .foregroundStyle(ColorTokens.textTertiary)
+                    Text(firstName)
+                        .font(Typography.caption)
+                        .foregroundStyle(ColorTokens.textTertiary)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Spacing.md)
