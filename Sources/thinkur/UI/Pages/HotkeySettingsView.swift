@@ -82,7 +82,20 @@ struct HotkeySettingsView: View {
         // (e.g. from keyboard-activating the button itself)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             guard self.isRecording else { return }
-            self.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            self.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+                if event.type == .flagsChanged {
+                    // Capture Fn/Globe key as standalone hotkey (keyCode 63)
+                    if event.keyCode == 63 && event.modifierFlags.contains(.function) {
+                        self.settings.hotkeyCode = 63
+                        self.settings.hotkeyModifiers = 0
+                        self.coordinator.updateHotkey()
+                        self.stopRecording()
+                        return nil
+                    }
+                    // Other modifiers (Shift, Cmd, etc.) are captured with the keyDown
+                    return event
+                }
+
                 let keyCode = event.keyCode
                 // Escape cancels recording
                 guard keyCode != 53 else {
@@ -131,7 +144,7 @@ struct HotkeySettingsView: View {
             53: "Esc", 76: "Enter", 123: "\u{2190}", 124: "\u{2192}",
             125: "\u{2193}", 126: "\u{2191}", 115: "Home", 119: "End",
             116: "Page Up", 121: "Page Down", 117: "\u{2326}",
-            122: "F1", 120: "F2", 99: "F3", 118: "F4",
+            63: "Fn", 122: "F1", 120: "F2", 99: "F3", 118: "F4",
             96: "F5", 97: "F6", 98: "F7", 100: "F8",
             101: "F9", 109: "F10", 103: "F11", 111: "F12",
         ]
