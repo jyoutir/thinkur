@@ -12,6 +12,7 @@ enum WhisperArtifactFilter {
         "[speech]",
         "[inaudible]",
         "[speaking foreign language]",
+        "[silence]",
     ]
 
     /// Returns true if `word` (trimmed, lowercased) is a Whisper noise token.
