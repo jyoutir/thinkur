@@ -89,11 +89,16 @@ struct ShortcutServiceTests {
         #expect(result == "Hello, here's my https://cal.com/jyo, schedule one below.")
     }
 
-    @Test @MainActor func preservesAdjacentPunctuation() async throws {
+    @Test @MainActor func consumesTrailingPunctuationAtEndOfText() async throws {
         let service = makeService()
         try await service.add(trigger: "usage", expansion: "https://console.anthropic.com/usage")
-        #expect(await service.applyShortcuts(to: "Usage.") == "https://console.anthropic.com/usage.")
+        // Trailing period at end of text (auto-added by post-processing) is consumed
+        #expect(await service.applyShortcuts(to: "Usage.") == "https://console.anthropic.com/usage")
+        #expect(await service.applyShortcuts(to: "Usage!") == "https://console.anthropic.com/usage")
+        // Mid-sentence punctuation is preserved
         #expect(await service.applyShortcuts(to: "Check usage, then continue.") == "Check https://console.anthropic.com/usage, then continue.")
+        // Period mid-sentence (before more text) is preserved
+        #expect(await service.applyShortcuts(to: "Check usage. Then continue.") == "Check https://console.anthropic.com/usage. Then continue.")
     }
 
     @Test @MainActor func doesNotMatchPartialWords() async throws {
