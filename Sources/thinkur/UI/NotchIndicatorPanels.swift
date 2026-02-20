@@ -14,15 +14,24 @@ final class NotchIndicatorPanels {
     private static let notchOverlap: CGFloat = 10
 
     private var currentState: SpinnerState = .idle
+    private var amplitudeProvider: AudioAmplitudeProvider?
 
     var isAvailable: Bool { leftPanel != nil }
 
-    init() {
+    init(amplitudeProvider: AudioAmplitudeProvider? = nil) {
+        self.amplitudeProvider = amplitudeProvider
         guard let frame = Self.calculateFrame(width: Self.idleWingWidth) else { return }
+
+        let initialView = NotchLeftWingView(state: .idle, onTap: { })
+        let rootView = if let provider = amplitudeProvider {
+            AnyView(initialView.environment(provider))
+        } else {
+            AnyView(initialView)
+        }
 
         leftPanel = Self.makePanel(
             contentRect: frame,
-            rootView: NotchLeftWingView(state: .idle, onTap: { }),
+            rootView: rootView,
             ignoresMouseEvents: false
         )
     }
@@ -48,9 +57,17 @@ final class NotchIndicatorPanels {
         // Update SwiftUI content
         // NSPanel automatically manages view lifecycle when setting contentView
         let tapAction: () -> Void = { [weak self] in self?.onLeftWingTapped?() }
-        leftPanel?.contentView = NSHostingView(
-            rootView: NotchLeftWingView(state: state, onTap: tapAction)
-        )
+
+        if let provider = amplitudeProvider {
+            leftPanel?.contentView = NSHostingView(
+                rootView: NotchLeftWingView(state: state, onTap: tapAction)
+                    .environment(provider)
+            )
+        } else {
+            leftPanel?.contentView = NSHostingView(
+                rootView: NotchLeftWingView(state: state, onTap: tapAction)
+            )
+        }
 
         // Animate wing width
         let targetWidth: CGFloat = switch state {
@@ -108,9 +125,9 @@ final class NotchIndicatorPanels {
 
     // MARK: - Panel Factory
 
-    private static func makePanel<V: View>(
+    private static func makePanel(
         contentRect: NSRect,
-        rootView: V,
+        rootView: some View,
         ignoresMouseEvents: Bool = true
     ) -> NSPanel {
         let panel = NSPanel(
@@ -138,6 +155,8 @@ private struct NotchLeftWingView: View {
     let state: SpinnerState
     let onTap: () -> Void
 
+    @Environment(AudioAmplitudeProvider.self) private var amplitudeProvider: AudioAmplitudeProvider?
+
     private var spinnerColor: Color {
         switch state {
         case .listening: return Color(red: 0.40, green: 0.90, blue: 0.55)
@@ -158,7 +177,8 @@ private struct NotchLeftWingView: View {
                     color: spinnerColor,
                     pixelSize: 3,
                     spacing: 1,
-                    glowIntensity: 0.6
+                    glowIntensity: 0.6,
+                    audioAmplitudes: amplitudeProvider?.amplitudes
                 )
                 .offset(x: -3, y: 0)
             }

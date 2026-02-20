@@ -65,6 +65,7 @@ struct ClaudePixelSpinner: View {
     var spacing: CGFloat = 4
     var glowIntensity: Double = 1.0
     var cols: Int = 6
+    var audioAmplitudes: [Double]? = nil
 
     @State private var epochDate = Date()
     @State private var blinkPixel: Int = -1
@@ -145,15 +146,38 @@ struct ClaudePixelSpinner: View {
             return breath
 
         // Column equalizer waveform (expanded 3×6, green)
+        // If we have audio amplitudes, use them for a live reactive waveform
         case .listening:
-            let colPhaseOffset = Double(col) * 0.15
-            let wave = sin((phase + colPhaseOffset) * 2 * .pi)
-            let rowThreshold: Double = switch row {
-            case 2:  0.35 + 0.15 * wave
-            case 1:  max(0.08, 0.5 + 0.5 * wave)
-            default: max(0.06, wave)
+            if let amplitudes = audioAmplitudes, !amplitudes.isEmpty {
+                // Map each column to a recent amplitude sample (right-to-left, newest on right)
+                let sampleIndex = max(0, min(amplitudes.count - cols + col, amplitudes.count - 1))
+                let amplitude = amplitudes[sampleIndex]
+
+                // Apply exponential curve for better visual dynamic range
+                let curved = pow(amplitude, 0.6)
+
+                // Row-based threshold: bottom row (2) easiest to light, top row (0) hardest
+                // This creates a "growing bar" effect where higher amplitude lights more rows
+                let rowThreshold: Double = switch row {
+                case 2:  0.08  // Bottom row - always on with slight activity
+                case 1:  0.25  // Middle row - lights up with moderate input
+                default: 0.50  // Top row - only lights up with strong input
+                }
+
+                // Pixel brightness based on whether amplitude exceeds row threshold
+                let brightness = curved > rowThreshold ? (curved - rowThreshold) / (1.0 - rowThreshold) : 0.1
+                return max(0.06, brightness)
+            } else {
+                // Fallback: original sine wave animation when no audio data
+                let colPhaseOffset = Double(col) * 0.15
+                let wave = sin((phase + colPhaseOffset) * 2 * .pi)
+                let rowThreshold: Double = switch row {
+                case 2:  0.35 + 0.15 * wave
+                case 1:  max(0.08, 0.5 + 0.5 * wave)
+                default: max(0.06, wave)
+                }
+                return rowThreshold
             }
-            return rowThreshold
 
         // Classic left-to-right sine with vertical stagger
         case .thinking:
