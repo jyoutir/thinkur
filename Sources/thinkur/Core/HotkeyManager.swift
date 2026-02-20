@@ -80,6 +80,21 @@ final class HotkeyManager: HotkeyListening {
             return Unmanaged.passRetained(event)
         }
 
+        // Handle Fn/Globe key — it only generates flagsChanged, not keyDown/keyUp
+        if type == .flagsChanged && targetKeyCode == 63 {
+            let fnDown = event.flags.contains(.maskSecondaryFn)
+            if fnDown && !isKeyDown {
+                isKeyDown = true
+                onKeyDown?()
+                return nil
+            } else if !fnDown && isKeyDown {
+                isKeyDown = false
+                onKeyUp?()
+                return nil
+            }
+            return Unmanaged.passRetained(event)
+        }
+
         if type == .keyDown {
             // Already activated — suppress repeats regardless of modifier state
             // (user may have released a modifier while still holding the key)
