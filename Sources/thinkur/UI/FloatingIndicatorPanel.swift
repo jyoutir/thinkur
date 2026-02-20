@@ -114,7 +114,7 @@ private struct FloatingThinkingView: View {
     var body: some View {
         GlassEffectContainer {
             ClaudePixelSpinner(
-                state: .thinking,
+                state: .processing,
                 color: .primary,
                 pixelSize: 6,
                 spacing: 3,

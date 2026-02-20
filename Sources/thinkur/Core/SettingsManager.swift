@@ -75,24 +75,6 @@ final class SettingsManager {
         didSet { defaults.set(listFormatting, forKey: "listFormatting") }
     }
 
-    // Smart Home
-    var smartHomeEnabled: Bool {
-        didSet { defaults.set(smartHomeEnabled, forKey: "smartHomeEnabled") }
-    }
-
-    // Language settings
-    var selectedLanguage: String {
-        didSet { defaults.set(selectedLanguage, forKey: "selectedLanguage") }
-    }
-
-    var multilingualMode: Bool {
-        didSet { defaults.set(multilingualMode, forKey: "multilingualMode") }
-    }
-
-    var modelSize: String {
-        didSet { defaults.set(modelSize, forKey: "modelSize") }
-    }
-
     // Theme
     var themeMode: ThemeMode {
         didSet { defaults.set(themeMode.rawValue, forKey: "themeMode") }
@@ -140,14 +122,6 @@ final class SettingsManager {
         self.intentCorrection = defaults.object(forKey: "intentCorrection") != nil ? defaults.bool(forKey: "intentCorrection") : true
         self.smartFormatting = defaults.object(forKey: "smartFormatting") != nil ? defaults.bool(forKey: "smartFormatting") : true
         self.listFormatting = defaults.object(forKey: "listFormatting") != nil ? defaults.bool(forKey: "listFormatting") : true
-
-        // Smart Home
-        self.smartHomeEnabled = defaults.object(forKey: "smartHomeEnabled") != nil ? defaults.bool(forKey: "smartHomeEnabled") : true
-
-        // Language
-        self.selectedLanguage = defaults.string(forKey: "selectedLanguage") ?? "English"
-        self.multilingualMode = defaults.bool(forKey: "multilingualMode")
-        self.modelSize = defaults.string(forKey: "modelSize") ?? "small.en"
 
         // Theme
         self.themeMode = ThemeMode(rawValue: defaults.string(forKey: "themeMode") ?? "") ?? .dark

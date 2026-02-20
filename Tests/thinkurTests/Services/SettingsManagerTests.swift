@@ -22,8 +22,6 @@ struct SettingsManagerTests {
         #expect(settings.autoPunctuation == true)
         #expect(settings.intentCorrection == true)
         #expect(settings.smartFormatting == true)
-        #expect(settings.selectedLanguage == "English")
-        #expect(settings.modelSize == "small.en")
         #expect(settings.themeMode == .dark)
         #expect(settings.vadThreshold == 0.3)
     }
@@ -34,10 +32,10 @@ struct SettingsManagerTests {
         #expect(defaults.bool(forKey: "postProcessingEnabled") == false)
     }
 
-    @Test @MainActor func setStringPersists() {
+    @Test @MainActor func setHotkeyCodePersists() {
         let (settings, defaults) = makeSettings()
-        settings.selectedLanguage = "Spanish"
-        #expect(defaults.string(forKey: "selectedLanguage") == "Spanish")
+        settings.hotkeyCode = 49 // Space
+        #expect(defaults.integer(forKey: "hotkeyCode") == 49)
     }
 
     @Test @MainActor func setThemeModePersists() {
@@ -55,7 +53,7 @@ struct SettingsManagerTests {
     @Test @MainActor func isolatedSuitesDontLeak() {
         let (settings1, _) = makeSettings()
         let (settings2, _) = makeSettings()
-        settings1.selectedLanguage = "French"
-        #expect(settings2.selectedLanguage == "English")
+        settings1.postProcessingEnabled = false
+        #expect(settings2.postProcessingEnabled == true)
     }
 }

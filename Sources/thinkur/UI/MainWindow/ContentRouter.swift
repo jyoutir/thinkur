@@ -20,8 +20,6 @@ struct ContentRouter: View {
                 HotkeySettingsView()
             case .dictation:
                 DictationSettingsView()
-            case .language:
-                LanguageSettingsView()
             case .system:
                 SystemSettingsView()
             case .permissions:

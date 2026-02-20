@@ -8,6 +8,7 @@ final class HotkeyManager: HotkeyListening {
 
     var onKeyDown: (() -> Void)?
     var onKeyUp: (() -> Void)?
+    var targetKeyCode: UInt16 = Constants.tabKeyCode
 
     private(set) var isRunning = false
 
@@ -74,8 +75,7 @@ final class HotkeyManager: HotkeyListening {
 
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
 
-        // Only handle Tab key (keycode 48)
-        guard keyCode == Int64(Constants.tabKeyCode) else {
+        guard keyCode == Int64(targetKeyCode) else {
             return Unmanaged.passRetained(event)
         }
 
