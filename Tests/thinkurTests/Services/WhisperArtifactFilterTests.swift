@@ -26,12 +26,6 @@ struct WhisperArtifactFilterTests {
         #expect(WhisperArtifactFilter.strip(input) == input)
     }
 
-    @Test func unknownBracketsUnchanged() {
-        // Brackets not on allowlist must pass through (e.g. markdown, code)
-        let input = "myArray[0] and [link](url)"
-        #expect(WhisperArtifactFilter.strip(input) == input)
-    }
-
     @Test func caseInsensitive() {
         #expect(WhisperArtifactFilter.strip("[blank_audio]") == nil)
         #expect(WhisperArtifactFilter.strip("[MUSIC]") == nil)
@@ -40,11 +34,48 @@ struct WhisperArtifactFilterTests {
     @Test func isArtifactDetectsToken() {
         #expect(WhisperArtifactFilter.isArtifact("[BLANK_AUDIO]"))
         #expect(!WhisperArtifactFilter.isArtifact("hello"))
-        #expect(!WhisperArtifactFilter.isArtifact("[0]"))
     }
 
     @Test func multipleTokensStripped() {
         let result = WhisperArtifactFilter.strip("[BLANK_AUDIO] [Music] actual text [Noise]")
         #expect(result == "actual text")
+    }
+
+    // --- New: parenthesized annotations ---
+
+    @Test func parenthesizedAnnotationStripped() {
+        #expect(WhisperArtifactFilter.strip("(sniffling)") == nil)
+        #expect(WhisperArtifactFilter.strip("(coughing)") == nil)
+        #expect(WhisperArtifactFilter.strip("(laughing)") == nil)
+    }
+
+    @Test func spacedBracketsStripped() {
+        #expect(WhisperArtifactFilter.strip("[ Silence ]") == nil)
+        #expect(WhisperArtifactFilter.strip("[ BLANK_AUDIO ]") == nil)
+    }
+
+    @Test func mixedTextWithParenAnnotation() {
+        let result = WhisperArtifactFilter.strip("Hello (coughing) world")
+        #expect(result == "Hello world")
+    }
+
+    @Test func multipleAnnotationsAllStripped() {
+        #expect(WhisperArtifactFilter.strip("(laughing) [noise]") == nil)
+        #expect(WhisperArtifactFilter.strip("[music] (sniffling) [silence]") == nil)
+    }
+
+    @Test func isArtifactCatchesParenWrapped() {
+        #expect(WhisperArtifactFilter.isArtifact("(sniffling)"))
+        #expect(WhisperArtifactFilter.isArtifact("(coughing)"))
+    }
+
+    @Test func isArtifactCatchesBracketWrapped() {
+        #expect(WhisperArtifactFilter.isArtifact("[ Silence ]"))
+        #expect(WhisperArtifactFilter.isArtifact("[unknown]"))
+    }
+
+    @Test func isArtifactRejectsNormalWords() {
+        #expect(!WhisperArtifactFilter.isArtifact("hello"))
+        #expect(!WhisperArtifactFilter.isArtifact("world"))
     }
 }
