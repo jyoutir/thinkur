@@ -6,11 +6,8 @@ import Foundation
 @MainActor
 @Observable
 final class AudioAmplitudeProvider {
-    /// Amplitude data — @ObservationIgnored because TimelineView already drives
-    /// per-frame reads at 30fps during listening. Redundant observation notifications
-    /// from 12.5/sec timer updates would only add overhead.
-    @ObservationIgnored var amplitudes: [Double]
-    @ObservationIgnored var amplitudesStartIndex: Int = 0
+    var amplitudes: [Double]
+    var amplitudesStartIndex: Int = 0
 
     private let bufferSize: Int
     private let smoothingFactor: Double

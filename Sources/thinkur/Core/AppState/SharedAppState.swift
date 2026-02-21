@@ -3,7 +3,7 @@ import Foundation
 @MainActor
 @Observable
 final class SharedAppState {
-    var appState: AppState = .loading
+    var appState: AppState = .idle
     var lastTranscription: String = ""
     var isModelReady: Bool = false
     var isModelLoading: Bool = false

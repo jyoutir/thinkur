@@ -41,6 +41,9 @@ final class AppCoordinator {
         guard !hasSetup else { return }
         hasSetup = true
 
+        // Start model loading concurrently — runs alongside permission setup
+        async let modelLoad: () = modelLoadCoordinator.loadModel()
+
         permissionManager.checkAll()
 
         if !permissionManager.microphoneGranted {
@@ -56,7 +59,7 @@ final class AppCoordinator {
         services.frontmostAppDetector.startObserving()
         recordingViewModel.setupHotkey()
 
-        await modelLoadCoordinator.loadModel()
+        await modelLoad
     }
 
     func updateHotkey() {
