@@ -17,7 +17,7 @@ struct BillingView: View {
                         SettingsRowView(icon: "crown.fill", title: "Plan") {
                             Text(licenseManager.planName ?? "thinkur")
                                 .font(Typography.caption)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Color(light: .white, dark: .black))
                                 .padding(.horizontal, Spacing.xs)
                                 .padding(.vertical, Spacing.xxs)
                                 .background(ColorTokens.textPrimary, in: Capsule())

@@ -5,6 +5,7 @@ struct SidebarView: View {
     @Environment(ShortcutsViewModel.self) private var shortcutsVM
     @Environment(SettingsManager.self) private var settings
     @Environment(SharedAppState.self) private var sharedState
+    @Environment(LicenseManager.self) private var licenseManager
     @State private var settingsExpanded = false
 
     // Rolling greeting state
@@ -18,6 +19,7 @@ struct SidebarView: View {
             HStack(spacing: Spacing.sm) {
                 ClaudePixelSpinner(
                     state: SpinnerState(from: sharedState.appState),
+                    color: sharedState.appState == .listening ? settings.accentColor : Color(red: 0.83, green: 0.55, blue: 0.38),
                     pixelSize: 4,
                     spacing: 2,
                     glowIntensity: 0.8
@@ -68,23 +70,39 @@ struct SidebarView: View {
 
             Divider()
 
-            // Theme toggle — whole row clickable, light/dark only
-            Button {
-                settings.themeMode = settings.themeMode.next
-            } label: {
-                HStack(spacing: Spacing.xs) {
-                    Image(systemName: settings.themeMode.iconName)
-                        .font(.system(size: 13))
-                    Text(settings.themeMode.title)
-                        .font(Typography.caption)
-                    Spacer()
+            // Theme toggle + plan badge
+            HStack(spacing: 0) {
+                Button {
+                    settings.themeMode = settings.themeMode.next
+                } label: {
+                    HStack(spacing: Spacing.xs) {
+                        Image(systemName: settings.themeMode.iconName)
+                            .font(.system(size: 13))
+                        Text(settings.themeMode.title)
+                            .font(Typography.caption)
+                    }
+                    .foregroundStyle(ColorTokens.textSecondary)
+                    .contentShape(Rectangle())
                 }
-                .foregroundStyle(ColorTokens.textSecondary)
-                .contentShape(Rectangle())
-                .padding(.horizontal, Spacing.md)
-                .padding(.vertical, Spacing.sm)
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                if let plan = licenseManager.planName {
+                    HStack(spacing: Spacing.xxs) {
+                        Image(systemName: plan == "Lifetime" ? "infinity" : "arrow.triangle.2.circlepath")
+                            .font(.system(size: 8))
+                        Text(plan)
+                            .font(Typography.caption)
+                    }
+                    .foregroundStyle(Color(light: .white, dark: .black))
+                    .padding(.horizontal, Spacing.xs)
+                    .padding(.vertical, Spacing.xxs)
+                    .background(ColorTokens.textPrimary, in: Capsule())
+                }
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.sm)
         }
         .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
         .onChange(of: selectedPage) { _, newPage in

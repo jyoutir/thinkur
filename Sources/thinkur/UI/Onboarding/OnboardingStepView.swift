@@ -365,7 +365,7 @@ struct TryItPage: View {
             } label: {
                 Image(systemName: isActive ? "mic.fill" : "mic")
                     .font(.system(size: 20))
-                    .foregroundStyle(isActive ? Color(red: 0.40, green: 0.90, blue: 0.55) : ColorTokens.textPrimary)
+                    .foregroundStyle(isActive ? settings.accentColor : ColorTokens.textPrimary)
                     .frame(width: 40, height: 40)
                     .glassClear(cornerRadius: CornerRadius.button)
             }
