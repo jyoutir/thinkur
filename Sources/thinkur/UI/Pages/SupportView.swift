@@ -10,12 +10,24 @@ private enum FeedbackCategory: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// Delegate to detect when the user actually sends the email from Mail.app.
+private class SharingDelegate: NSObject, NSSharingServiceDelegate {
+    var onSent: (() -> Void)?
+
+    func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
+        onSent?()
+    }
+}
+
 struct SupportView: View {
     @State private var appeared = false
     @State private var showForm = false
     @State private var selectedCategory: FeedbackCategory = .bug
     @State private var descriptionText = ""
     @State private var attachedImage: NSImage?
+    @State private var feedbackSent = false
+    @State private var pasteMonitor: Any?
+    @State private var sharingDelegate: SharingDelegate?
 
     var body: some View {
         ScrollView {
@@ -47,7 +59,11 @@ struct SupportView: View {
                 }
 
                 if showForm {
-                    feedbackForm()
+                    if feedbackSent {
+                        thankYouView()
+                    } else {
+                        feedbackForm()
+                    }
                 }
             }
             .padding(.horizontal, Spacing.lg)
@@ -70,6 +86,7 @@ struct SupportView: View {
                 if showForm {
                     descriptionText = ""
                     attachedImage = nil
+                    feedbackSent = false
                 }
             }
         } label: {
@@ -96,6 +113,27 @@ struct SupportView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Thank You
+
+    private func thankYouView() -> some View {
+        VStack(spacing: Spacing.sm) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 32))
+                .foregroundStyle(.green)
+
+            Text("Your feedback has been sent.")
+                .font(Typography.headline)
+                .foregroundStyle(ColorTokens.textPrimary)
+
+            Text("Thank you for helping improve thinkur.")
+                .font(Typography.caption)
+                .foregroundStyle(ColorTokens.textTertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.xl)
+        .glassCard()
     }
 
     // MARK: - Feedback Form
@@ -129,14 +167,6 @@ struct SupportView: View {
                     RoundedRectangle(cornerRadius: CornerRadius.field)
                         .fill(.quaternary.opacity(0.5))
                 )
-                .onPasteCommand(of: [.png, .tiff, .fileURL]) { providers in
-                    for provider in providers {
-                        _ = provider.loadDataRepresentation(for: .image) { data, _ in
-                            guard let data, let image = NSImage(data: data) else { return }
-                            DispatchQueue.main.async { attachedImage = image }
-                        }
-                    }
-                }
 
             // Image attachment preview
             if let image = attachedImage {
@@ -184,6 +214,30 @@ struct SupportView: View {
         }
         .padding(Spacing.md)
         .glassCard()
+        .onAppear { installPasteMonitor() }
+        .onDisappear { removePasteMonitor() }
+    }
+
+    // MARK: - Paste Monitor
+
+    /// Intercepts Cmd+V when the pasteboard contains an image so pasting
+    /// screenshots works even while the TextEditor has focus.
+    private func installPasteMonitor() {
+        pasteMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard event.modifierFlags.contains(.command),
+                  event.charactersIgnoringModifiers == "v" else { return event }
+            let pb = NSPasteboard.general
+            guard let image = NSImage(pasteboard: pb) else { return event }
+            attachedImage = image
+            return nil // consume the event
+        }
+    }
+
+    private func removePasteMonitor() {
+        if let monitor = pasteMonitor {
+            NSEvent.removeMonitor(monitor)
+            pasteMonitor = nil
+        }
     }
 
     // MARK: - Attach Screenshot
@@ -209,6 +263,15 @@ struct SupportView: View {
             openMailto(subject: subject, body: body)
             return
         }
+
+        let delegate = SharingDelegate()
+        delegate.onSent = {
+            withAnimation(Animations.glassMorph) {
+                feedbackSent = true
+            }
+        }
+        self.sharingDelegate = delegate
+        service.delegate = delegate
 
         service.recipients = ["jyo@thinkur.app"]
         service.subject = subject
