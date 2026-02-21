@@ -5,7 +5,7 @@ import SwiftUI
 @Observable
 final class OnboardingViewModel {
     var currentStep: Int = 0
-    private let totalSteps = 4
+    private let totalSteps = 5
 
     var isComplete: Bool {
         get { settings.hasCompletedOnboarding }
@@ -15,12 +15,14 @@ final class OnboardingViewModel {
     private let permissionManager: PermissionManager
     private let settings: SettingsManager
     private let sharedState: SharedAppState
+    let licenseManager: LicenseManager
     private var pollingTimer: Timer?
 
-    init(permissionManager: PermissionManager, settings: SettingsManager, sharedState: SharedAppState) {
+    init(permissionManager: PermissionManager, settings: SettingsManager, sharedState: SharedAppState, licenseManager: LicenseManager) {
         self.permissionManager = permissionManager
         self.settings = settings
         self.sharedState = sharedState
+        self.licenseManager = licenseManager
     }
 
     // MARK: - Navigation
@@ -37,6 +39,7 @@ final class OnboardingViewModel {
         switch currentStep {
         case 0: return allPermissionsGranted
         case 1: return isModelReady
+        case 4: return licenseManager.isLicensed
         default: return true
         }
     }

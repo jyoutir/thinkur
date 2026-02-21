@@ -14,6 +14,7 @@ final class AppCoordinator {
     var settings: SettingsManager { services.settings }
     var sharedState: SharedAppState { services.sharedState }
     var permissionManager: PermissionManager { services.permissionManager }
+    var licenseManager: LicenseManager { services.licenseManager }
 
     var recordingViewModel: RecordingViewModel { viewModels.recordingViewModel }
     var homeViewModel: HomeViewModel { viewModels.homeViewModel }
@@ -59,6 +60,7 @@ final class AppCoordinator {
         services.frontmostAppDetector.startObserving()
         recordingViewModel.setupHotkey()
 
+        await services.licenseManager.validateOnLaunch()
         await modelLoad
     }
 

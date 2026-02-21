@@ -1,7 +1,9 @@
 import SwiftUI
 
 struct BillingView: View {
+    @Environment(LicenseManager.self) private var licenseManager
     @State private var appeared = false
+    @State private var isDeactivating = false
 
     var body: some View {
         ScrollView {
@@ -13,7 +15,7 @@ struct BillingView: View {
                 GroupedSettingsSection(title: "Current Plan") {
                     VStack(spacing: 0) {
                         SettingsRowView(icon: "crown.fill", title: "Plan") {
-                            Text("Lifetime")
+                            Text(licenseManager.planName ?? "thinkur")
                                 .font(Typography.caption)
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, Spacing.xs)
@@ -23,25 +25,63 @@ struct BillingView: View {
 
                         Divider()
 
-                        SettingsRowView(icon: "calendar", title: "Activated") {
-                            Text("February 2026")
-                                .font(Typography.body)
+                        SettingsRowView(icon: "key.fill", title: "License Key") {
+                            Text(licenseManager.maskedKey ?? "---")
+                                .font(.system(size: 11, design: .monospaced))
                                 .foregroundStyle(ColorTokens.textSecondary)
                         }
 
                         Divider()
 
-                        SettingsRowView(icon: "creditcard", title: "Payment") {
-                            Text("One-time purchase")
+                        SettingsRowView(icon: "checkmark.seal.fill", title: "Status") {
+                            Text(statusLabel)
                                 .font(Typography.body)
-                                .foregroundStyle(ColorTokens.textSecondary)
+                                .foregroundStyle(statusColor)
+                        }
+
+                        if let activated = licenseManager.activatedAt {
+                            Divider()
+
+                            SettingsRowView(icon: "calendar", title: "Activated") {
+                                Text(activated, format: .dateTime.month(.wide).year())
+                                    .font(Typography.body)
+                                    .foregroundStyle(ColorTokens.textSecondary)
+                            }
+                        }
+
+                        if let expires = licenseManager.expiresAt {
+                            Divider()
+
+                            SettingsRowView(icon: "clock", title: "Renews") {
+                                Text(expires, format: .dateTime.month(.abbreviated).day().year())
+                                    .font(Typography.body)
+                                    .foregroundStyle(ColorTokens.textSecondary)
+                            }
                         }
                     }
                 }
 
-                Button("Manage Subscription") {}
+                HStack(spacing: Spacing.sm) {
+                    Button("Manage Subscription") {
+                        if let url = URL(string: Constants.customerPortalURL) {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
                     .controlSize(.regular)
-                    .disabled(true)
+
+                    Spacer()
+
+                    Button("Deactivate License") {
+                        Task {
+                            isDeactivating = true
+                            await licenseManager.deactivate()
+                            isDeactivating = false
+                        }
+                    }
+                    .controlSize(.regular)
+                    .disabled(isDeactivating)
+                    .foregroundStyle(.red)
+                }
             }
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.lg)
@@ -52,5 +92,23 @@ struct BillingView: View {
         }
         .navigationTitle("Billing")
         .onAppear { appeared = true }
+    }
+
+    private var statusLabel: String {
+        switch licenseManager.status {
+        case .active: "Active"
+        case .expired: "Expired"
+        case .validating: "Validating..."
+        case .invalid: "Invalid"
+        case .unlicensed: "Unlicensed"
+        }
+    }
+
+    private var statusColor: Color {
+        switch licenseManager.status {
+        case .active: .green
+        case .expired, .invalid: .red
+        default: ColorTokens.textSecondary
+        }
     }
 }

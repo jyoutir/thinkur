@@ -245,9 +245,9 @@ struct TryItPage: View {
             Spacer()
 
             Button {
-                viewModel.completeSetup()
+                viewModel.nextStep()
             } label: {
-                Text("Start Using thinkur")
+                Text("Continue")
                     .font(Typography.headline)
                     .frame(maxWidth: 280)
                     .padding(.vertical, Spacing.sm)

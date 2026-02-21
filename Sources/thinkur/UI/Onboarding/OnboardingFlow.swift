@@ -23,8 +23,10 @@ struct OnboardingFlow: View {
                         ModelLoadingPage()
                     case 2:
                         QuickSettingsPage()
-                    default:
+                    case 3:
                         TryItPage()
+                    default:
+                        LicenseActivationPage()
                     }
                 }
                 .id(viewModel.currentStep)
@@ -36,7 +38,7 @@ struct OnboardingFlow: View {
 
                 // Page dots
                 HStack(spacing: Spacing.xs) {
-                    ForEach(0..<4, id: \.self) { index in
+                    ForEach(0..<5, id: \.self) { index in
                         Capsule()
                             .fill(index == viewModel.currentStep ? ColorTokens.textPrimary : ColorTokens.textTertiary)
                             .frame(width: index == viewModel.currentStep ? 24 : 8, height: 8)
