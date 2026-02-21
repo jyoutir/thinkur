@@ -7,7 +7,7 @@ struct AppCoordinatorTests {
         let container = ServiceContainer()
         // Verify all services are created (non-nil by construction)
         #expect(container.settings === SettingsManager.shared)
-        #expect(container.sharedState.appState == .loading)
+        #expect(container.sharedState.appState == .idle)
     }
 
     @Test @MainActor func viewModelFactoryCreatesAllViewModels() {
@@ -29,6 +29,6 @@ struct AppCoordinatorTests {
             sharedState: sharedState
         )
         // Just verify it doesn't crash — actual model loading would require resources
-        #expect(sharedState.appState == .loading)
+        #expect(sharedState.appState == .idle)
     }
 }

@@ -1,25 +1,31 @@
 import Cocoa
 import SwiftUI
 
-/// Floating NSPanel that displays the audio waveform at the bottom center of the screen.
+/// Floating NSPanel that displays the indicator at the bottom center of the screen.
 /// Uses .nonactivatingPanel so it never steals focus from the app the user is typing in.
+///
+/// The panel is a fixed 160×50 transparent container — all visual sizing and animation
+/// is handled by SwiftUI inside FloatingIndicatorView.
 final class FloatingIndicatorPanel: NSPanel {
     private let amplitudeProvider: AudioAmplitudeProvider
     private let stateHolder = StateHolder()
+    private var screenObserver: NSObjectProtocol?
+
+    /// Fixed panel size — large enough to contain the biggest state (listening: 139×24)
+    private static let fixedSize = NSSize(width: 160, height: 50)
 
     init(amplitudeProvider: AudioAmplitudeProvider, themeMode: ThemeMode = .dark) {
         self.amplitudeProvider = amplitudeProvider
 
-        let panelWidth: CGFloat = 160
-        let panelHeight: CGFloat = 50  // Increased for taller 6pt pixels (was 40)
+        let size = Self.fixedSize
 
         // Position at bottom center of built-in screen (prefer notch screen over main)
         let screenFrame = (NSScreen.screens.first { $0.auxiliaryTopLeftArea != nil } ?? NSScreen.main)?.visibleFrame ?? .zero
-        let originX = screenFrame.midX - panelWidth / 2
-        let originY = screenFrame.minY + 45  // 45pt from bottom (adjusted for taller panel)
+        let originX = screenFrame.midX - size.width / 2
+        let originY = screenFrame.minY + 6
 
         super.init(
-            contentRect: NSRect(x: originX, y: originY, width: panelWidth, height: panelHeight),
+            contentRect: NSRect(x: originX, y: originY, width: size.width, height: size.height),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -28,18 +34,32 @@ final class FloatingIndicatorPanel: NSPanel {
         level = .floating
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
-        ignoresMouseEvents = true  // Click-through
-        hidesOnDeactivate = false  // Stay visible for LSUIElement apps
+        hasShadow = false  // SwiftUI handles shadows
+        ignoresMouseEvents = true
+        hidesOnDeactivate = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = false
         self.appearance = NSAppearance(named: themeMode == .dark ? .darkAqua : .aqua)
 
-        // Create unified view that handles all states
         let indicatorView = FloatingIndicatorView(stateHolder: stateHolder)
             .environment(amplitudeProvider)
 
         contentView = NSHostingView(rootView: indicatorView)
+
+        // Recenter when displays connect/disconnect
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.recenter()
+        }
+    }
+
+    deinit {
+        if let screenObserver {
+            NotificationCenter.default.removeObserver(screenObserver)
+        }
     }
 
     func updateAppearance(for themeMode: ThemeMode) {
@@ -56,20 +76,11 @@ final class FloatingIndicatorPanel: NSPanel {
     }
 
     private func recenter() {
+        let size = Self.fixedSize
         let screenFrame = (NSScreen.screens.first { $0.auxiliaryTopLeftArea != nil } ?? NSScreen.main)?.visibleFrame ?? .zero
-        let panelWidth = frame.width
-        let originX = screenFrame.midX - panelWidth / 2
-        let originY = screenFrame.minY + 45  // Adjusted for taller panel
-        setFrameOrigin(NSPoint(x: originX, y: originY))
-    }
-
-    /// Transition to processing (white spinning), then settle back to idle.
-    func hideWithThinkingTransition() {
-        setState(.processing)
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.setState(.idle)
-        }
+        let originX = screenFrame.midX - size.width / 2
+        let originY = screenFrame.minY + 6
+        setFrame(NSRect(x: originX, y: originY, width: size.width, height: size.height), display: true)
     }
 }
 
@@ -82,78 +93,77 @@ final class StateHolder: ObservableObject {
 
 // MARK: - Unified Indicator View
 
-/// Unified view that displays both listening (green waveform) and processing (white spinner) states
-/// Eliminates NSHostingView recreation for better performance
+/// All visual sizing and animation is handled here via SwiftUI.
+/// The NSPanel is a dumb fixed-size transparent container.
 private struct FloatingIndicatorView: View {
     @Environment(AudioAmplitudeProvider.self) private var amplitudeProvider
     @ObservedObject var stateHolder: StateHolder
 
+    private var isIdle: Bool { stateHolder.currentState == .idle }
+    private var isListening: Bool { stateHolder.currentState == .listening }
+
+    private var frameWidth: CGFloat {
+        switch stateHolder.currentState {
+        case .idle: return 80
+        case .listening: return 139
+        default: return 50
+        }
+    }
+
+    private var frameHeight: CGFloat {
+        switch stateHolder.currentState {
+        case .idle: return 4
+        case .listening: return 24
+        default: return 24
+        }
+    }
+
+    private var cornerRadius: CGFloat {
+        switch stateHolder.currentState {
+        case .idle: return 2
+        case .listening: return 12
+        default: return 8
+        }
+    }
+
     var body: some View {
         ZStack {
-            // Dark liquid glass container - rich black with subtle glass effect
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(.black.opacity(0.92))
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(.regularMaterial.opacity(0.4))
-                )
-                .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 4)
+                .shadow(color: .black.opacity(isIdle ? 0.3 : 0.5), radius: isIdle ? 4 : 12,
+                        x: 0, y: isIdle ? 2 : 4)
 
-            // Canvas waveform for listening (high perf), pixel spinner for idle/processing
-            Group {
-                if stateHolder.currentState == .listening {
-                    CanvasWaveform(
-                        audioAmplitudes: amplitudeProvider.amplitudes,
-                        amplitudesStartIndex: amplitudeProvider.amplitudesStartIndex,
-                        color: spinnerColor,
-                        glowIntensity: glowIntensity,
-                        cols: 34,
-                        rows: 5,
-                        pixelSize: 6,
-                        spacing: 1
-                    )
-                } else {
-                    ClaudePixelSpinner(
-                        state: stateHolder.currentState,
-                        color: spinnerColor,
-                        pixelSize: 6,
-                        spacing: 1,
-                        glowIntensity: glowIntensity,
-                        cols: 34,
-                        rows: 5,
-                        symmetricWaveform: true,
-                        fullWidthIdle: true,
-                        audioAmplitudes: nil,
-                        amplitudesStartIndex: 0
-                    )
-                }
+            if isListening {
+                ClaudePixelSpinner(
+                    state: .listening,
+                    color: Color(red: 0.15, green: 1.0, blue: 0.35),
+                    pixelSize: 4,
+                    spacing: 1,
+                    glowIntensity: 1.5,
+                    cols: 28,
+                    rows: 5,
+                    symmetricWaveform: true,
+                    audioAmplitudes: amplitudeProvider.amplitudes,
+                    amplitudesStartIndex: amplitudeProvider.amplitudesStartIndex
+                )
+            } else if !isIdle {
+                ClaudePixelSpinner(
+                    state: stateHolder.currentState,
+                    color: .white,
+                    pixelSize: 3,
+                    spacing: 1,
+                    glowIntensity: 1.2,
+                    cols: 6,
+                    rows: 3
+                )
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .frame(width: frameWidth, height: frameHeight)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .strokeBorder(.white.opacity(isIdle ? 0.08 : 0.15), lineWidth: 0.5)
         )
-    }
-
-    private var spinnerColor: Color {
-        switch stateHolder.currentState {
-        case .listening:
-            // Ultra-vivid electric neon green
-            return Color(red: 0.15, green: 1.0, blue: 0.35)
-        default:
-            return .white
-        }
-    }
-
-    private var glowIntensity: Double {
-        switch stateHolder.currentState {
-        case .listening:
-            return 1.5  // Increased from 0.6 for much brighter glow
-        case .processing:
-            return 1.2  // Increased from 0.8 for brighter white glow
-        default:
-            return 0.8
-        }
+        .animation(.spring(duration: 0.35, bounce: 0.15), value: stateHolder.currentState)
     }
 }
