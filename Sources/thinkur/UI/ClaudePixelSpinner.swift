@@ -67,6 +67,7 @@ struct ClaudePixelSpinner: View {
     var cols: Int = 6
     var rows: Int = 3
     var symmetricWaveform: Bool = false
+    var fullWidthIdle: Bool = false
     var audioAmplitudes: [Double]? = nil
     var amplitudesStartIndex: Int = 0
 
@@ -90,8 +91,9 @@ struct ClaudePixelSpinner: View {
 
     private var visibleCols: Int {
         switch state {
-        case .idle, .error: return 3
-        default:            return cols
+        case .idle:  return fullWidthIdle ? cols : 3
+        case .error: return 3
+        default:     return cols
         }
     }
 

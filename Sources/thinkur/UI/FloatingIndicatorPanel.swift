@@ -63,27 +63,13 @@ final class FloatingIndicatorPanel: NSPanel {
         setFrameOrigin(NSPoint(x: originX, y: originY))
     }
 
-    /// Transition to processing (white spinning), then fade out after a brief delay.
+    /// Transition to processing (white spinning), then settle back to idle.
     func hideWithThinkingTransition() {
-        // Set processing state (white spinning)
         setState(.processing)
 
-        // Fade out after a short delay to give the processing animation a moment on screen
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.2
-                self?.animator().alphaValue = 0
-            } completionHandler: { [weak self] in
-                self?.orderOut(nil)
-                self?.alphaValue = 1
-                // Reset to listening state for next show()
-                self?.setState(.listening)
-            }
+            self?.setState(.idle)
         }
-    }
-
-    func hide() {
-        orderOut(nil)
     }
 }
 
@@ -91,7 +77,7 @@ final class FloatingIndicatorPanel: NSPanel {
 
 @MainActor
 final class StateHolder: ObservableObject {
-    @Published var currentState: SpinnerState = .listening
+    @Published var currentState: SpinnerState = .idle
 }
 
 // MARK: - Unified Indicator View
@@ -113,8 +99,7 @@ private struct FloatingIndicatorView: View {
                 )
                 .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 4)
 
-            // Use Canvas-based waveform for listening (high performance, defined peaks)
-            // Use ClaudePixelSpinner for other states (idle/processing/error)
+            // Canvas waveform for listening (high perf), pixel spinner for idle/processing
             Group {
                 if stateHolder.currentState == .listening {
                     CanvasWaveform(
@@ -124,19 +109,20 @@ private struct FloatingIndicatorView: View {
                         glowIntensity: glowIntensity,
                         cols: 34,
                         rows: 5,
-                        pixelSize: 6,  // Taller pixels for better peak definition
+                        pixelSize: 6,
                         spacing: 1
                     )
                 } else {
                     ClaudePixelSpinner(
                         state: stateHolder.currentState,
                         color: spinnerColor,
-                        pixelSize: 3,
+                        pixelSize: 6,
                         spacing: 1,
                         glowIntensity: glowIntensity,
                         cols: 34,
-                        rows: 3,  // Smaller for idle/processing
-                        symmetricWaveform: false,
+                        rows: 5,
+                        symmetricWaveform: true,
+                        fullWidthIdle: true,
                         audioAmplitudes: nil,
                         amplitudesStartIndex: 0
                     )

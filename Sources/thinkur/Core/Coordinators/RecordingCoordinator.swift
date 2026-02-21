@@ -58,6 +58,8 @@ final class RecordingCoordinator {
             }
             self.notchPanels = notch
             notch.showLeftWing()
+            // Show persistent bottom bar in idle state
+            floatingPanel?.show()
         }
     }
 
@@ -89,10 +91,8 @@ final class RecordingCoordinator {
             amplitudeProvider.startPolling { [weak self] in
                 self?.audioCaptureManager.currentAudioLevel ?? 0
             }
-            if settings.floatingIndicator || notchPanels?.isAvailable != true {
-                floatingPanel?.updateAppearance(for: settings.themeMode)
-                floatingPanel?.show()
-            }
+            floatingPanel?.updateAppearance(for: settings.themeMode)
+            floatingPanel?.show()  // Recenter and ensure visible
             Logger.app.info("Listening started")
         } catch {
             updateState(previousState)
