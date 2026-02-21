@@ -108,30 +108,29 @@ struct HomeView: View {
 
                         VStack(alignment: .leading, spacing: Spacing.sm) {
                             // Collapsible day header
-                            HStack(spacing: Spacing.xs) {
-                                // Arrow button - triggers expand/collapse
-                                Button {
-                                    withAnimation(Animations.glassMorph) {
-                                        viewModel.toggleGroup(group.id)
-                                    }
-                                } label: {
+                            Button {
+                                withAnimation(Animations.glassMorph) {
+                                    viewModel.toggleGroup(group.id)
+                                }
+                            } label: {
+                                HStack(spacing: Spacing.xs) {
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 9, weight: .bold))
                                         .foregroundStyle(ColorTokens.textTertiary)
                                         .rotationEffect(isExpanded ? .degrees(90) : .zero)
                                         .animation(Animations.glassMorph, value: isExpanded)
-                                }
-                                .buttonStyle(.plain)
 
-                                // Header text - non-interactive
-                                Text(group.title)
-                                    .font(Typography.headline)
-                                    .foregroundStyle(ColorTokens.textPrimary)
-                                Text("\(group.records.count)")
-                                    .font(Typography.caption)
-                                    .foregroundStyle(ColorTokens.textTertiary)
-                                Spacer()
+                                    Text(group.title)
+                                        .font(Typography.headline)
+                                        .foregroundStyle(ColorTokens.textPrimary)
+                                    Text("\(group.records.count)")
+                                        .font(Typography.caption)
+                                        .foregroundStyle(ColorTokens.textTertiary)
+                                    Spacer()
+                                }
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
 
                             if isExpanded {
                                 ForEach(group.records, id: \.timestamp) { record in

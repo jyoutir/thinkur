@@ -11,25 +11,20 @@ struct OnboardingFlow: View {
                 .ignoresSafeArea()
 
             VStack {
-                // Skip button
-                HStack {
-                    Spacer()
-                    Button("Skip") {
-                        viewModel.skip()
-                    }
-                    .buttonStyle(.plain)
-                    .font(Typography.body)
-                    .foregroundStyle(ColorTokens.textSecondary)
-                    .padding(Spacing.md)
-                }
+                Spacer()
+                    .frame(height: Spacing.md)
 
                 // Page content
                 Group {
                     switch viewModel.currentStep {
                     case 0:
                         PermissionsPage()
+                    case 1:
+                        ModelLoadingPage()
+                    case 2:
+                        TryItPage()
                     default:
-                        ValueDemoPage()
+                        QuickSettingsPage()
                     }
                 }
                 .id(viewModel.currentStep)
@@ -41,7 +36,7 @@ struct OnboardingFlow: View {
 
                 // Page dots
                 HStack(spacing: Spacing.xs) {
-                    ForEach(0..<2, id: \.self) { index in
+                    ForEach(0..<4, id: \.self) { index in
                         Capsule()
                             .fill(index == viewModel.currentStep ? ColorTokens.textPrimary : ColorTokens.border)
                             .frame(width: index == viewModel.currentStep ? 24 : 8, height: 8)

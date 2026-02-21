@@ -5,7 +5,7 @@ import SwiftUI
 @Observable
 final class OnboardingViewModel {
     var currentStep: Int = 0
-    private let totalSteps = 2
+    private let totalSteps = 4
 
     var isComplete: Bool {
         get { settings.hasCompletedOnboarding }
@@ -14,11 +14,13 @@ final class OnboardingViewModel {
 
     private let permissionManager: PermissionManager
     private let settings: SettingsManager
+    private let sharedState: SharedAppState
     private var pollingTimer: Timer?
 
-    init(permissionManager: PermissionManager, settings: SettingsManager) {
+    init(permissionManager: PermissionManager, settings: SettingsManager, sharedState: SharedAppState) {
         self.permissionManager = permissionManager
         self.settings = settings
+        self.sharedState = sharedState
     }
 
     // MARK: - Navigation
@@ -31,6 +33,14 @@ final class OnboardingViewModel {
         Double(currentStep + 1) / Double(totalSteps)
     }
 
+    var canContinue: Bool {
+        switch currentStep {
+        case 0: return allPermissionsGranted
+        case 1: return isModelReady
+        default: return true
+        }
+    }
+
     func nextStep() {
         if currentStep < totalSteps - 1 {
             currentStep += 1
@@ -39,8 +49,18 @@ final class OnboardingViewModel {
         }
     }
 
-    func skip() {
-        completeOnboarding()
+    // MARK: - Model State
+
+    var isModelReady: Bool {
+        sharedState.isModelReady
+    }
+
+    var isModelLoading: Bool {
+        sharedState.isModelLoading
+    }
+
+    var modelLoadingMessage: String {
+        sharedState.modelLoadingMessage
     }
 
     // MARK: - Permissions
