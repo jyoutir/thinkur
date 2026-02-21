@@ -31,7 +31,7 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: YZ9FFMX8QS
         CODE_SIGN_IDENTITY: "Apple Development"
-        ENABLE_HARDENED_RUNTIME: false
+        ENABLE_HARDENED_RUNTIME: true
     entitlements:
       path: Sources/thinkur/Resources/thinkur.entitlements
 
