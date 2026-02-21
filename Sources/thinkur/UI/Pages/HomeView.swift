@@ -146,7 +146,6 @@ struct HomeView: View {
                                     .padding(Spacing.sm)
                                     .glassCard()
                                     .hoverBrightness()
-                                    .transition(.opacity.combined(with: .move(edge: .top)))
                                 }
                             }
                         }

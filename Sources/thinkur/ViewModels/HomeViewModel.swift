@@ -26,6 +26,9 @@ final class HomeViewModel {
     var totalWords: Int = 0
 
     @ObservationIgnored
+    private var hasSetInitialCollapse = false
+
+    @ObservationIgnored
     private var allRecords: [TranscriptionRecord] = []
 
     @ObservationIgnored
@@ -66,6 +69,14 @@ final class HomeViewModel {
         totalTimeSaved = await analyticsService.fetchTotalTimeSaved()
         totalWords = await analyticsService.fetchTotalWords()
         rebuildGroups()
+
+        if !hasSetInitialCollapse {
+            hasSetInitialCollapse = true
+            let todayKey = Self.dateKeyFormatter.string(from: Date())
+            collapsedGroups = Set(
+                groupedTranscriptions.map(\.id).filter { $0 != todayKey }
+            )
+        }
     }
 
     /// Tap logic: first tap = start, second different day = end, re-tap bound = clear all
