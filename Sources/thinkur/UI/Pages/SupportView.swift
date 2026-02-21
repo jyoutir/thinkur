@@ -1,14 +1,19 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
-private enum FeedbackType: String {
+private enum FeedbackCategory: String, CaseIterable, Identifiable {
     case bug = "Bug Report"
     case feature = "Feature Request"
+    case question = "Question"
+
+    var id: String { rawValue }
 }
 
 struct SupportView: View {
     @State private var appeared = false
-    @State private var activeFeedback: FeedbackType?
+    @State private var showForm = false
+    @State private var selectedCategory: FeedbackCategory = .bug
     @State private var descriptionText = ""
     @State private var attachedImage: NSImage?
 
@@ -30,7 +35,7 @@ struct SupportView: View {
                         Divider()
 
                         SettingsRowView(icon: "envelope", title: "Contact") {
-                            Link("support@thinkur.app", destination: URL(string: "mailto:support@thinkur.app")!)
+                            Link("jyo@thinkur.app", destination: URL(string: "mailto:jyo@thinkur.app")!)
                                 .font(Typography.body)
                                 .foregroundStyle(Color.accentColor)
                         }
@@ -38,25 +43,11 @@ struct SupportView: View {
                 }
 
                 GroupedSettingsSection(title: "Feedback") {
-                    VStack(spacing: 0) {
-                        feedbackRow(
-                            icon: "ladybug",
-                            title: "Report a Bug",
-                            type: .bug
-                        )
-
-                        Divider()
-
-                        feedbackRow(
-                            icon: "lightbulb",
-                            title: "Request a Feature",
-                            type: .feature
-                        )
-                    }
+                    feedbackRow()
                 }
 
-                if let activeFeedback {
-                    feedbackForm(type: activeFeedback)
+                if showForm {
+                    feedbackForm()
                 }
             }
             .padding(.horizontal, Spacing.lg)
@@ -72,25 +63,23 @@ struct SupportView: View {
 
     // MARK: - Feedback Row
 
-    private func feedbackRow(icon: String, title: String, type: FeedbackType) -> some View {
+    private func feedbackRow() -> some View {
         Button {
             withAnimation(Animations.glassMorph) {
-                if activeFeedback == type {
-                    activeFeedback = nil
-                } else {
-                    activeFeedback = type
+                showForm.toggle()
+                if showForm {
                     descriptionText = ""
                     attachedImage = nil
                 }
             }
         } label: {
             HStack(spacing: Spacing.sm) {
-                Image(systemName: icon)
+                Image(systemName: "envelope.open")
                     .font(.system(size: 14))
                     .foregroundStyle(.primary)
                     .frame(width: 20)
 
-                Text(title)
+                Text("Send Feedback")
                     .font(Typography.body)
                     .foregroundStyle(ColorTokens.textPrimary)
 
@@ -99,8 +88,8 @@ struct SupportView: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(ColorTokens.textTertiary)
-                    .rotationEffect(.degrees(activeFeedback == type ? 90 : 0))
-                    .animation(Animations.glassMorph, value: activeFeedback)
+                    .rotationEffect(.degrees(showForm ? 90 : 0))
+                    .animation(Animations.glassMorph, value: showForm)
             }
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, 14)
@@ -111,9 +100,21 @@ struct SupportView: View {
 
     // MARK: - Feedback Form
 
-    private func feedbackForm(type: FeedbackType) -> some View {
+    private func feedbackForm() -> some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
-            Text(type == .bug ? "Describe the bug" : "Describe your idea")
+            Text("Category")
+                .font(Typography.caption)
+                .foregroundStyle(ColorTokens.textSecondary)
+                .textCase(.uppercase)
+
+            Picker("Category", selection: $selectedCategory) {
+                ForEach(FeedbackCategory.allCases) { category in
+                    Text(category.rawValue).tag(category)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Text("Description")
                 .font(Typography.caption)
                 .foregroundStyle(ColorTokens.textSecondary)
                 .textCase(.uppercase)
@@ -128,8 +129,16 @@ struct SupportView: View {
                     RoundedRectangle(cornerRadius: CornerRadius.field)
                         .fill(.quaternary.opacity(0.5))
                 )
+                .onPasteCommand(of: [.png, .tiff, .fileURL]) { providers in
+                    for provider in providers {
+                        _ = provider.loadDataRepresentation(for: .image) { data, _ in
+                            guard let data, let image = NSImage(data: data) else { return }
+                            DispatchQueue.main.async { attachedImage = image }
+                        }
+                    }
+                }
 
-            // Image attachment area
+            // Image attachment preview
             if let image = attachedImage {
                 HStack(alignment: .top, spacing: Spacing.sm) {
                     Image(nsImage: image)
@@ -150,31 +159,25 @@ struct SupportView: View {
                     .buttonStyle(.plain)
                 }
                 .padding(Spacing.xs)
-            } else {
-                Button {
-                    pasteImageFromClipboard()
-                } label: {
-                    HStack(spacing: Spacing.xs) {
-                        Image(systemName: "paperclip")
-                            .font(.system(size: 12))
-                        Text("Paste Screenshot")
-                            .font(Typography.caption)
-                    }
-                    .foregroundStyle(ColorTokens.textSecondary)
-                }
-                .buttonStyle(.plain)
             }
 
-            HStack {
+            HStack(spacing: Spacing.sm) {
+                Button {
+                    attachScreenshot()
+                } label: {
+                    Label("Attach Screenshot", systemImage: "paperclip")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
+
                 Spacer()
 
                 Button {
-                    sendFeedback(type: type)
+                    sendFeedback()
                 } label: {
-                    Label("Send via Email", systemImage: "paperplane")
-                        .font(Typography.headline)
+                    Label("Send via Email", systemImage: "paperplane.fill")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .controlSize(.regular)
                 .disabled(descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
@@ -183,28 +186,31 @@ struct SupportView: View {
         .glassCard()
     }
 
-    // MARK: - Image Paste
+    // MARK: - Attach Screenshot
 
-    private func pasteImageFromClipboard() {
-        let pasteboard = NSPasteboard.general
-        guard let image = NSImage(pasteboard: pasteboard) else { return }
+    private func attachScreenshot() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.png, .jpeg, .tiff, .heic]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.message = "Choose a screenshot to attach"
+        guard panel.runModal() == .OK, let url = panel.url,
+              let image = NSImage(contentsOf: url) else { return }
         attachedImage = image
     }
 
     // MARK: - Send
 
-    private func sendFeedback(type: FeedbackType) {
-        let subject = "[thinkur] \(type.rawValue)"
-        let body = composeBody(type: type)
+    private func sendFeedback() {
+        let subject = "[thinkur] \(selectedCategory.rawValue)"
+        let body = composeBody()
 
-        // Use NSSharingService to compose email (supports attachments)
         guard let service = NSSharingService(named: .composeEmail) else {
-            // Fallback to mailto if Mail isn't available
             openMailto(subject: subject, body: body)
             return
         }
 
-        service.recipients = ["support@thinkur.app"]
+        service.recipients = ["jyo@thinkur.app"]
         service.subject = subject
 
         var items: [Any] = [body]
@@ -224,7 +230,7 @@ struct SupportView: View {
     private func openMailto(subject: String, body: String) {
         var components = URLComponents()
         components.scheme = "mailto"
-        components.path = "support@thinkur.app"
+        components.path = "jyo@thinkur.app"
         components.queryItems = [
             URLQueryItem(name: "subject", value: subject),
             URLQueryItem(name: "body", value: body),
@@ -234,7 +240,7 @@ struct SupportView: View {
         }
     }
 
-    private func composeBody(type: FeedbackType) -> String {
+    private func composeBody() -> String {
         let osVersion = ProcessInfo.processInfo.operatingSystemVersionString
         let ramGB = ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024)
 
