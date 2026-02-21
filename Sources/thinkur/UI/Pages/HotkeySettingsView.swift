@@ -84,8 +84,8 @@ struct HotkeySettingsView: View {
             guard self.isRecording else { return }
             self.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
                 if event.type == .flagsChanged {
-                    // Capture Fn/Globe key as standalone hotkey (keyCode 63)
-                    if event.keyCode == 63 && event.modifierFlags.contains(.function) {
+                    // Capture Fn/Globe key (keyCode 63) on either press or release
+                    if event.keyCode == 63 {
                         self.settings.hotkeyCode = 63
                         self.settings.hotkeyModifiers = 0
                         self.coordinator.updateHotkey()

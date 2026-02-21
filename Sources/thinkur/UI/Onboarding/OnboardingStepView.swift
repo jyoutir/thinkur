@@ -152,6 +152,7 @@ private enum DemoContext: Int, CaseIterable, Identifiable {
     case browser = 1
     case messages = 2
     case slack = 3
+    case notes = 4
 
     var id: Int { rawValue }
 
@@ -161,16 +162,36 @@ private enum DemoContext: Int, CaseIterable, Identifiable {
         case .browser: "Firefox"
         case .messages: "Messages"
         case .slack: "Slack"
+        case .notes: "Notes"
         }
     }
 
-    var icon: String {
+    var bundleIdentifier: String? {
+        switch self {
+        case .terminal: "com.apple.Terminal"
+        case .browser: "org.mozilla.firefox"
+        case .messages: "com.apple.MobileSMS"
+        case .slack: "com.tinyspeck.slackmacgap"
+        case .notes: "com.apple.Notes"
+        }
+    }
+
+    var fallbackIcon: String {
         switch self {
         case .terminal: "terminal"
         case .browser: "globe"
         case .messages: "message"
         case .slack: "number"
+        case .notes: "note.text"
         }
+    }
+
+    var appIcon: NSImage? {
+        guard let bundleID = bundleIdentifier,
+              let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+            return nil
+        }
+        return NSWorkspace.shared.icon(forFile: url.path(percentEncoded: false))
     }
 }
 
@@ -200,7 +221,7 @@ struct TryItPage: View {
                 .frame(height: Spacing.sm)
 
             VStack(spacing: Spacing.sm) {
-                Text("Try speaking to thinkur")
+                Text("Use thinkur wherever you are")
                     .font(Typography.onboardingTitle)
                     .foregroundStyle(ColorTokens.textPrimary)
 
@@ -276,8 +297,14 @@ struct TryItPage: View {
                     }
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: context.icon)
-                            .font(.system(size: 10))
+                        if let appIcon = context.appIcon {
+                            Image(nsImage: appIcon)
+                                .resizable()
+                                .frame(width: 24, height: 24)
+                        } else {
+                            Image(systemName: context.fallbackIcon)
+                                .font(.system(size: 10))
+                        }
                         Text(context.label)
                             .font(Typography.caption)
                     }
@@ -315,6 +342,8 @@ struct TryItPage: View {
                 MessagesDemoView(messages: messages, isActive: isActive, appState: sharedState.appState)
             case .slack:
                 SlackDemoView(messages: messages, isActive: isActive, appState: sharedState.appState)
+            case .notes:
+                NotesDemoView(messages: messages, isActive: isActive, appState: sharedState.appState)
             }
         }
         .transition(.opacity.combined(with: .scale(scale: 0.98)))
@@ -497,7 +526,7 @@ private struct TerminalDemoView: View {
     private let spacing6: CGFloat = 6
 }
 
-// MARK: - Browser Demo View
+// MARK: - Browser Demo View (Email Compose)
 
 private struct BrowserDemoView: View {
     let messages: [String]
@@ -508,7 +537,6 @@ private struct BrowserDemoView: View {
         VStack(spacing: 0) {
             // Browser chrome
             HStack(spacing: Spacing.xs) {
-                // Navigation buttons
                 HStack(spacing: Spacing.xxs) {
                     Image(systemName: "chevron.left")
                     Image(systemName: "chevron.right")
@@ -517,12 +545,11 @@ private struct BrowserDemoView: View {
                 .font(.system(size: 10))
                 .foregroundStyle(ColorTokens.textTertiary)
 
-                // URL bar
                 HStack(spacing: Spacing.xxs) {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 8))
                         .foregroundStyle(ColorTokens.textTertiary)
-                    Text("compose.email.com")
+                    Text("mail.google.com/compose")
                         .font(.system(size: 11))
                         .foregroundStyle(ColorTokens.textSecondary)
                 }
@@ -535,45 +562,55 @@ private struct BrowserDemoView: View {
             .padding(.vertical, Spacing.xs)
             .background(.ultraThinMaterial)
 
-            // Content area — text editor
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Spacing.sm) {
-                        if messages.isEmpty && !isActive {
-                            Text("Start typing here\u{2026}")
-                                .foregroundStyle(ColorTokens.textTertiary)
-                                .padding(.top, Spacing.xs)
-                        } else {
-                            ForEach(Array(messages.enumerated()), id: \.offset) { index, message in
-                                Text(message)
-                                    .foregroundStyle(ColorTokens.textPrimary)
-                                    .id(index)
-                                    .transition(.opacity)
-                            }
+            // Email compose area
+            VStack(alignment: .leading, spacing: 0) {
+                // Email header fields
+                emailField(label: "To", value: "sarah@company.com")
+                Divider()
+                emailField(label: "Subject", value: "Project Update")
+                Divider()
 
-                            if isActive {
-                                HStack(spacing: Spacing.xxs) {
-                                    ClaudePixelSpinner(
-                                        state: appState == .listening ? .listening : .processing,
-                                        pixelSize: 3,
-                                        spacing: 1,
-                                        cols: 4,
-                                        rows: 2
-                                    )
-                                    Text(appState == .listening ? "Listening\u{2026}" : "Processing\u{2026}")
-                                        .foregroundStyle(ColorTokens.textTertiary)
+                // Email body
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: Spacing.xs) {
+                            if messages.isEmpty && !isActive {
+                                Text("Compose your email\u{2026}")
+                                    .foregroundStyle(ColorTokens.textTertiary)
+                                    .padding(.top, Spacing.xs)
+                            } else {
+                                ForEach(Array(messages.enumerated()), id: \.offset) { index, message in
+                                    Text(message)
+                                        .foregroundStyle(ColorTokens.textPrimary)
+                                        .id(index)
+                                        .transition(.opacity)
                                 }
-                                .font(Typography.caption)
-                                .id("active")
+
+                                if isActive {
+                                    HStack(spacing: Spacing.xxs) {
+                                        ClaudePixelSpinner(
+                                            state: appState == .listening ? .listening : .processing,
+                                            pixelSize: 3,
+                                            spacing: 1,
+                                            cols: 4,
+                                            rows: 2
+                                        )
+                                        Text(appState == .listening ? "Listening\u{2026}" : "Processing\u{2026}")
+                                            .foregroundStyle(ColorTokens.textTertiary)
+                                    }
+                                    .font(Typography.caption)
+                                    .id("active")
+                                }
                             }
                         }
+                        .font(Typography.body)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, Spacing.sm)
+                        .padding(.vertical, Spacing.xs)
                     }
-                    .font(Typography.body)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(Spacing.md)
-                }
-                .onChange(of: messages.count) { _, _ in
-                    withAnimation { proxy.scrollTo(messages.count - 1, anchor: .bottom) }
+                    .onChange(of: messages.count) { _, _ in
+                        withAnimation { proxy.scrollTo(messages.count - 1, anchor: .bottom) }
+                    }
                 }
             }
             .background(ColorTokens.cardBackground.opacity(0.3))
@@ -583,6 +620,21 @@ private struct BrowserDemoView: View {
             RoundedRectangle(cornerRadius: CornerRadius.card)
                 .strokeBorder(ColorTokens.border, lineWidth: 1)
         )
+    }
+
+    @ViewBuilder
+    private func emailField(label: String, value: String) -> some View {
+        HStack(spacing: Spacing.xs) {
+            Text(label)
+                .font(Typography.caption)
+                .foregroundStyle(ColorTokens.textTertiary)
+                .frame(width: 50, alignment: .trailing)
+            Text(value)
+                .font(Typography.caption)
+                .foregroundStyle(ColorTokens.textPrimary)
+        }
+        .padding(.horizontal, Spacing.sm)
+        .padding(.vertical, Spacing.xxs + 2)
     }
 }
 
@@ -847,6 +899,99 @@ private struct SlackDemoView: View {
     }
 }
 
+// MARK: - Notes Demo View
+
+private struct NotesDemoView: View {
+    let messages: [String]
+    let isActive: Bool
+    let appState: AppState
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Notes toolbar
+            HStack {
+                HStack(spacing: Spacing.sm) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.accentColor)
+                    Text("Notes")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.accentColor)
+                }
+                Spacer()
+                HStack(spacing: Spacing.md) {
+                    Image(systemName: "square.and.pencil")
+                    Image(systemName: "ellipsis.circle")
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(Color.accentColor)
+            }
+            .padding(.horizontal, Spacing.sm)
+            .padding(.vertical, Spacing.xs)
+            .background(.ultraThinMaterial)
+
+            // Note content
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        // Note title
+                        Text("Meeting Notes")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(ColorTokens.textPrimary)
+                            .padding(.top, Spacing.xs)
+
+                        Text("February 21, 2026")
+                            .font(Typography.caption)
+                            .foregroundStyle(ColorTokens.textTertiary)
+
+                        if messages.isEmpty && !isActive {
+                            Text("Start dictating your notes\u{2026}")
+                                .foregroundStyle(ColorTokens.textTertiary)
+                                .padding(.top, Spacing.xxs)
+                        } else {
+                            ForEach(Array(messages.enumerated()), id: \.offset) { index, message in
+                                Text(message)
+                                    .font(Typography.body)
+                                    .foregroundStyle(ColorTokens.textPrimary)
+                                    .id(index)
+                                    .transition(.opacity)
+                            }
+
+                            if isActive {
+                                HStack(spacing: Spacing.xxs) {
+                                    ClaudePixelSpinner(
+                                        state: appState == .listening ? .listening : .processing,
+                                        pixelSize: 3,
+                                        spacing: 1,
+                                        cols: 4,
+                                        rows: 2
+                                    )
+                                    Text(appState == .listening ? "Listening\u{2026}" : "Processing\u{2026}")
+                                        .foregroundStyle(ColorTokens.textTertiary)
+                                }
+                                .font(Typography.caption)
+                                .id("active")
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.xs)
+                }
+                .onChange(of: messages.count) { _, _ in
+                    withAnimation { proxy.scrollTo(messages.count - 1, anchor: .bottom) }
+                }
+            }
+            .background(ColorTokens.cardBackground.opacity(0.3))
+        }
+        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: CornerRadius.card)
+                .strokeBorder(ColorTokens.border, lineWidth: 1)
+        )
+    }
+}
+
 // MARK: - Page 4: Quick Settings
 
 @MainActor
@@ -863,7 +1008,8 @@ private final class HotkeyRecorderState: ObservableObject {
             self.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
                 guard let self else { return event }
                 if event.type == .flagsChanged {
-                    if event.keyCode == 63 && event.modifierFlags.contains(.function) {
+                    // Capture Fn/Globe key (keyCode 63) on either press or release
+                    if event.keyCode == 63 {
                         settings.hotkeyCode = 63
                         settings.hotkeyModifiers = 0
                         coordinator.updateHotkey()
@@ -923,38 +1069,39 @@ struct QuickSettingsPage: View {
                     .frame(maxWidth: 420)
             }
 
-            GroupedSettingsSection {
-                VStack(spacing: 0) {
-                    // Hotkey recorder
-                    SettingsRowView(icon: "keyboard", title: "Record Shortcut") {
-                        Button {
-                            if recorder.isRecording {
-                                recorder.stopRecording()
-                            } else {
-                                recorder.startRecording(settings: settings, coordinator: coordinator)
+            VStack(spacing: Spacing.sm) {
+                GroupedSettingsSection {
+                    VStack(spacing: 0) {
+                        // Hotkey recorder
+                        SettingsRowView(icon: "keyboard", title: "Record Shortcut") {
+                            Button {
+                                if recorder.isRecording {
+                                    recorder.stopRecording()
+                                } else {
+                                    recorder.startRecording(settings: settings, coordinator: coordinator)
+                                }
+                            } label: {
+                                KeyboardShortcutBadge(
+                                    key: recorder.isRecording ? "Type shortcut\u{2026}" : currentHotkeyLabel
+                                )
                             }
-                        } label: {
-                            KeyboardShortcutBadge(
-                                key: recorder.isRecording ? "Type shortcut\u{2026}" : currentHotkeyLabel
-                            )
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+
+                        Divider()
+
+                        // Push to talk
+                        ToggleRow(
+                            icon: "hand.tap",
+                            title: "Push to Talk",
+                            subtitle: "Hold to dictate, release to finish",
+                            isOn: $s.hotkeyHoldMode
+                        )
                     }
+                }
 
-                    Divider()
-
-                    // Sound style
+                GroupedSettingsSection {
                     SoundStylePicker(selectedStyle: $s.soundStyle)
-
-                    Divider()
-
-                    // Push to talk
-                    ToggleRow(
-                        icon: "hand.tap",
-                        title: "Push to Talk",
-                        subtitle: "Hold to dictate, release to finish",
-                        isOn: $s.hotkeyHoldMode
-                    )
                 }
             }
             .frame(maxWidth: 420)

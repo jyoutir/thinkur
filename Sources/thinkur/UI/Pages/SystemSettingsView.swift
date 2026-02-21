@@ -139,6 +139,7 @@ struct SoundStylePicker: View {
             Text("Sound Style")
                 .font(Typography.body)
                 .foregroundStyle(ColorTokens.textPrimary)
+                .fixedSize()
 
             Spacer()
 
