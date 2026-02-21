@@ -79,6 +79,10 @@ final class RecordingViewModel {
         }
     }
 
+    func toggleRecording() {
+        toggleListening()
+    }
+
     private func toggleListening() {
         switch state {
         case .listening:

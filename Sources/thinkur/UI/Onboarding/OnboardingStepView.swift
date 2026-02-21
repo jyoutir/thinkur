@@ -83,13 +83,254 @@ struct PermissionsPage: View {
     }
 }
 
-// MARK: - Page 2: Value + Demo + Setup
+// MARK: - Page 2: Model Loading + ROI
 
-struct ValueDemoPage: View {
+struct ModelLoadingPage: View {
+    @Environment(OnboardingViewModel.self) private var viewModel
+
+    var body: some View {
+        VStack(spacing: Spacing.xl) {
+            Spacer()
+
+            // Status area
+            VStack(spacing: Spacing.md) {
+                ClaudePixelSpinner(state: viewModel.isModelReady ? .success : .connecting)
+
+                VStack(spacing: Spacing.xs) {
+                    Text(viewModel.isModelReady ? "You're all set" : "Preparing your voice model")
+                        .font(Typography.onboardingTitle)
+                        .foregroundStyle(ColorTokens.textPrimary)
+                        .contentTransition(.opacity)
+                        .animation(.easeInOut(duration: 0.3), value: viewModel.isModelReady)
+
+                    if !viewModel.isModelReady {
+                        Text(viewModel.modelLoadingMessage.isEmpty ? "This may take a moment\u{2026}" : viewModel.modelLoadingMessage)
+                            .font(Typography.onboardingBody)
+                            .foregroundStyle(ColorTokens.textSecondary)
+                            .contentTransition(.opacity)
+                            .animation(.easeInOut(duration: 0.3), value: viewModel.modelLoadingMessage)
+                    }
+                }
+            }
+
+            // ROI Calculator (interactive content while waiting)
+            ROICalculatorView()
+                .frame(maxWidth: 720)
+
+            Spacer()
+
+            Button {
+                viewModel.nextStep()
+            } label: {
+                HStack(spacing: Spacing.xs) {
+                    if !viewModel.isModelReady {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                    Text("Continue")
+                        .font(Typography.headline)
+                }
+                .frame(maxWidth: 280)
+                .padding(.vertical, Spacing.sm)
+            }
+            .buttonStyle(.glassProminent)
+            .controlSize(.large)
+            .tint(.primary)
+            .disabled(!viewModel.isModelReady)
+
+            Spacer()
+                .frame(height: Spacing.xl)
+        }
+        .padding(.horizontal, Spacing.xl)
+    }
+}
+
+// MARK: - Page 3: Try It (Chat UI)
+
+struct TryItPage: View {
+    @Environment(OnboardingViewModel.self) private var viewModel
+    @Environment(SharedAppState.self) private var sharedState
+    @Environment(RecordingViewModel.self) private var recordingViewModel
+    @Environment(SettingsManager.self) private var settings
+
+    @State private var messages: [String] = []
+    @State private var lastSeenVersion: Int = 0
+
+    var body: some View {
+        VStack(spacing: Spacing.lg) {
+            Spacer()
+                .frame(height: Spacing.sm)
+
+            VStack(spacing: Spacing.sm) {
+                Text("Try speaking to thinkur")
+                    .font(Typography.onboardingTitle)
+                    .foregroundStyle(ColorTokens.textPrimary)
+
+                Text("Press your hotkey or tap the mic below to dictate")
+                    .font(Typography.onboardingBody)
+                    .foregroundStyle(ColorTokens.textSecondary)
+            }
+
+            // Chat area
+            chatArea
+                .frame(maxWidth: 520, maxHeight: 300)
+
+            // Bottom bar: mic + hotkey badge + suggestion
+            bottomBar
+                .frame(maxWidth: 520)
+
+            Spacer()
+
+            Button {
+                viewModel.nextStep()
+            } label: {
+                Text("Continue")
+                    .font(Typography.headline)
+                    .frame(maxWidth: 280)
+                    .padding(.vertical, Spacing.sm)
+            }
+            .buttonStyle(.glassProminent)
+            .controlSize(.large)
+            .tint(.primary)
+
+            Spacer()
+                .frame(height: Spacing.xl)
+        }
+        .padding(.horizontal, Spacing.xl)
+        .onChange(of: sharedState.transcriptionVersion) { _, newVersion in
+            if newVersion > lastSeenVersion {
+                lastSeenVersion = newVersion
+                let text = sharedState.lastTranscription
+                if !text.isEmpty {
+                    withAnimation(.spring(duration: 0.3)) {
+                        messages.append(text)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var chatArea: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: Spacing.sm) {
+                    if messages.isEmpty && !isActive {
+                        // Empty state
+                        VStack(spacing: Spacing.md) {
+                            Spacer()
+                            Text("Your transcriptions will appear here\u{2026}")
+                                .font(Typography.body)
+                                .foregroundStyle(ColorTokens.textTertiary)
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 200)
+                    } else {
+                        ForEach(Array(messages.enumerated()), id: \.offset) { index, message in
+                            ChatBubble(text: message)
+                                .id(index)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                                    removal: .opacity
+                                ))
+                        }
+
+                        // Listening/processing indicator
+                        if isActive {
+                            HStack(spacing: Spacing.xs) {
+                                ClaudePixelSpinner(
+                                    state: sharedState.appState == .listening ? .listening : .processing,
+                                    pixelSize: 4,
+                                    spacing: 2,
+                                    cols: 4,
+                                    rows: 2
+                                )
+                                Text(sharedState.appState == .listening ? "Listening\u{2026}" : "Processing\u{2026}")
+                                    .font(Typography.caption)
+                                    .foregroundStyle(ColorTokens.textTertiary)
+                            }
+                            .padding(.horizontal, Spacing.md)
+                            .id("activity")
+                        }
+                    }
+                }
+                .padding(Spacing.md)
+            }
+            .glassClear()
+            .onChange(of: messages.count) { _, _ in
+                withAnimation {
+                    proxy.scrollTo(messages.count - 1, anchor: .bottom)
+                }
+            }
+            .onChange(of: isActive) { _, active in
+                if active {
+                    withAnimation {
+                        proxy.scrollTo("activity", anchor: .bottom)
+                    }
+                }
+            }
+        }
+    }
+
+    private var isActive: Bool {
+        sharedState.appState == .listening || sharedState.appState == .processing
+    }
+
+    @ViewBuilder
+    private var bottomBar: some View {
+        HStack(spacing: Spacing.md) {
+            // Mic button
+            Button {
+                recordingViewModel.toggleRecording()
+            } label: {
+                Image(systemName: isActive ? "mic.fill" : "mic")
+                    .font(.system(size: 20))
+                    .foregroundStyle(isActive ? Color(red: 0.40, green: 0.90, blue: 0.55) : ColorTokens.textPrimary)
+                    .frame(width: 40, height: 40)
+                    .glassClear(cornerRadius: CornerRadius.button)
+            }
+            .buttonStyle(.plain)
+
+            // Hotkey badge
+            KeyboardShortcutBadge(
+                key: HotkeyDisplayHelper.displayName(
+                    keyCode: settings.hotkeyCode,
+                    modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.hotkeyModifiers))
+                )
+            )
+
+            Spacer()
+
+            Text("Try: \u{201C}I need to buy three apples for twenty dollars\u{201D}")
+                .font(Typography.caption)
+                .foregroundStyle(ColorTokens.textTertiary)
+                .lineLimit(1)
+        }
+    }
+}
+
+// MARK: - Chat Bubble
+
+private struct ChatBubble: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(Typography.body)
+            .foregroundStyle(ColorTokens.textPrimary)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassClear(cornerRadius: CornerRadius.card)
+    }
+}
+
+// MARK: - Page 4: Quick Settings
+
+struct QuickSettingsPage: View {
     @Environment(OnboardingViewModel.self) private var viewModel
     @Environment(SettingsManager.self) private var settings
     @Environment(AppCoordinator.self) private var coordinator
-    @Environment(SharedAppState.self) private var sharedState
 
     @State private var isRecordingHotkey = false
     @State private var eventMonitor: Any?
@@ -99,126 +340,82 @@ struct ValueDemoPage: View {
     var body: some View {
         @Bindable var s = settings
 
-        ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.xl) {
-                // Section A: ROI Calculator
-                ROICalculatorView()
+        VStack(spacing: Spacing.xl) {
+            Spacer()
 
-                // Section B: Try It Yourself
-                tryItSection
+            VStack(spacing: Spacing.sm) {
+                Text("Almost there")
+                    .font(Typography.onboardingTitle)
+                    .foregroundStyle(ColorTokens.textPrimary)
 
-                // Section C: Quick Settings
-                quickSettingsSection
-
-                // CTA
-                HStack {
-                    Spacer()
-                    Button {
-                        viewModel.completeSetup()
-                    } label: {
-                        Text("Start Using thinkur")
-                            .font(Typography.headline)
-                            .frame(maxWidth: 280)
-                            .padding(.vertical, Spacing.sm)
-                    }
-                    .buttonStyle(.glassProminent)
-                    .controlSize(.large)
-                    .tint(.primary)
-                    Spacer()
-                }
-                .padding(.bottom, Spacing.lg)
+                Text("Customize your experience. You can always change these later in Settings.")
+                    .font(Typography.onboardingBody)
+                    .foregroundStyle(ColorTokens.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 420)
             }
-            .padding(.horizontal, Spacing.xl)
-            .padding(.top, Spacing.lg)
-        }
-        .onDisappear { stopRecordingHotkey() }
-    }
 
-    // MARK: - Try It
-
-    @ViewBuilder
-    private var tryItSection: some View {
-        GroupedSettingsSection(title: "Try It Yourself") {
-            if !sharedState.isModelReady {
-                VStack(spacing: Spacing.md) {
-                    ClaudePixelSpinner(state: .connecting)
-                    Text(sharedState.modelLoadingMessage.isEmpty ? "Loading model\u{2026}" : sharedState.modelLoadingMessage)
-                        .font(Typography.callout)
-                        .foregroundStyle(ColorTokens.textSecondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, Spacing.xl)
-            } else {
-                VStack(alignment: .leading, spacing: Spacing.sm) {
-                    Text("Press your hotkey or click the mic to try it")
-                        .font(Typography.body)
-                        .foregroundStyle(ColorTokens.textSecondary)
-                        .padding(.horizontal, Spacing.md)
-                        .padding(.top, Spacing.sm)
-
-                    Text(sharedState.lastTranscription.isEmpty ? "Your transcription will appear here\u{2026}" : sharedState.lastTranscription)
-                        .font(Typography.body)
-                        .foregroundStyle(sharedState.lastTranscription.isEmpty ? ColorTokens.textTertiary : ColorTokens.textPrimary)
-                        .frame(maxWidth: .infinity, minHeight: 60, alignment: .topLeading)
-                        .padding(Spacing.md)
-                        .glassClear()
-
-                    Text("Try saying: \"I need to buy three apples for twenty dollars\"")
-                        .font(Typography.caption)
-                        .foregroundStyle(ColorTokens.textTertiary)
-                        .padding(.horizontal, Spacing.md)
-                        .padding(.bottom, Spacing.sm)
-                }
-            }
-        }
-    }
-
-    // MARK: - Quick Settings
-
-    @ViewBuilder
-    private var quickSettingsSection: some View {
-        @Bindable var s = settings
-
-        GroupedSettingsSection(title: "Quick Settings") {
-            VStack(spacing: 0) {
-                // Hotkey recorder
-                SettingsRowView(icon: "keyboard", title: "Record Shortcut") {
-                    Button {
-                        if isRecordingHotkey {
-                            stopRecordingHotkey()
-                        } else {
-                            startRecordingHotkey()
+            GroupedSettingsSection {
+                VStack(spacing: 0) {
+                    // Hotkey recorder
+                    SettingsRowView(icon: "keyboard", title: "Record Shortcut") {
+                        Button {
+                            if isRecordingHotkey {
+                                stopRecordingHotkey()
+                            } else {
+                                startRecordingHotkey()
+                            }
+                        } label: {
+                            KeyboardShortcutBadge(
+                                key: isRecordingHotkey ? "Type shortcut\u{2026}" : currentHotkeyLabel
+                            )
                         }
-                    } label: {
-                        KeyboardShortcutBadge(
-                            key: isRecordingHotkey ? "Type shortcut\u{2026}" : currentHotkeyLabel
-                        )
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+
+                    Divider()
+
+                    // Sound style
+                    SoundStylePicker(selectedStyle: $s.soundStyle)
+
+                    Divider()
+
+                    // Push to talk
+                    ToggleRow(
+                        icon: "hand.tap",
+                        title: "Push to Talk",
+                        subtitle: "Hold to dictate, release to finish",
+                        isOn: $s.hotkeyHoldMode
+                    )
                 }
-
-                Divider()
-
-                // Sound style
-                SoundStylePicker(selectedStyle: $s.soundStyle)
-
-                Divider()
-
-                // Push to talk
-                ToggleRow(
-                    icon: "hand.tap",
-                    title: "Push to Talk",
-                    subtitle: "Hold to dictate, release to finish",
-                    isOn: $s.hotkeyHoldMode
-                )
             }
+            .frame(maxWidth: 420)
+
+            Spacer()
+
+            Button {
+                viewModel.completeSetup()
+            } label: {
+                Text("Start Using thinkur")
+                    .font(Typography.headline)
+                    .frame(maxWidth: 280)
+                    .padding(.vertical, Spacing.sm)
+            }
+            .buttonStyle(.glassProminent)
+            .controlSize(.large)
+            .tint(.primary)
+
+            Spacer()
+                .frame(height: Spacing.xl)
         }
+        .padding(.horizontal, Spacing.xl)
+        .onDisappear { stopRecordingHotkey() }
     }
 
     // MARK: - Hotkey Recording
 
     private var currentHotkeyLabel: String {
-        hotkeyDisplayName(
+        HotkeyDisplayHelper.displayName(
             keyCode: settings.hotkeyCode,
             modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.hotkeyModifiers))
         )
@@ -263,60 +460,16 @@ struct ValueDemoPage: View {
         }
         isRecordingHotkey = false
     }
-
-    // MARK: - Key Name Display
-
-    private func modifierSymbols(for flags: NSEvent.ModifierFlags) -> String {
-        var s = ""
-        if flags.contains(.control) { s += "\u{2303}" }
-        if flags.contains(.option) { s += "\u{2325}" }
-        if flags.contains(.shift) { s += "\u{21E7}" }
-        if flags.contains(.command) { s += "\u{2318}" }
-        return s
-    }
-
-    private func hotkeyDisplayName(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> String {
-        let mods = modifierSymbols(for: modifiers)
-        let key = keyName(for: keyCode)
-        return mods.isEmpty ? key : "\(mods)\(key)"
-    }
-
-    private func keyName(for keyCode: UInt16) -> String {
-        let specialKeys: [UInt16: String] = [
-            48: "Tab", 49: "Space", 36: "Return", 51: "Delete",
-            53: "Esc", 76: "Enter", 123: "\u{2190}", 124: "\u{2192}",
-            125: "\u{2193}", 126: "\u{2191}", 115: "Home", 119: "End",
-            116: "Page Up", 121: "Page Down", 117: "\u{2326}",
-            63: "Fn", 122: "F1", 120: "F2", 99: "F3", 118: "F4",
-            96: "F5", 97: "F6", 98: "F7", 100: "F8",
-            101: "F9", 109: "F10", 103: "F11", 111: "F12",
-        ]
-        if let name = specialKeys[keyCode] { return name }
-
-        let charKeys: [UInt16: String] = [
-            0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z", 7: "X",
-            8: "C", 9: "V", 11: "B", 12: "Q", 13: "W", 14: "E", 15: "R",
-            16: "Y", 17: "T", 18: "1", 19: "2", 20: "3", 21: "4", 22: "6",
-            23: "5", 24: "=", 25: "9", 26: "7", 27: "-", 28: "8", 29: "0",
-            30: "]", 31: "O", 32: "U", 33: "[", 34: "I", 35: "P",
-            37: "L", 38: "J", 39: "'", 40: "K", 41: ";", 42: "\\",
-            43: ",", 44: "/", 45: "N", 46: "M", 47: ".",
-            50: "`", 10: "\u{00A7}",
-        ]
-        if let name = charKeys[keyCode] { return name }
-
-        return "Key \(keyCode)"
-    }
 }
 
 // MARK: - ROI Calculator
 
 private struct ROICalculatorView: View {
     @State private var typingHoursPerDay: Double = 2.0
-    @State private var hourlyRate: String = "50"
+    @State private var hourlyRate: String = "25"
 
     private var rate: Double {
-        Double(hourlyRate) ?? 50
+        Double(hourlyRate) ?? 25
     }
 
     private var dailyHoursSaved: Double {
@@ -362,7 +515,7 @@ private struct ROICalculatorView: View {
 
                 Text("$\(Int(monthlySavings))")
                     .font(.system(size: 48, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(red: 0.4, green: 0.9, blue: 0.55))
+                    .foregroundStyle(ColorTokens.textPrimary)
                     .contentTransition(.numericText(value: monthlySavings))
                     .animation(.spring(duration: 0.4), value: monthlySavings)
             }
@@ -416,7 +569,7 @@ private struct ROICalculatorView: View {
                 }
 
                 Slider(value: $typingHoursPerDay, in: 0.5...8.0, step: 0.5)
-                    .tint(Color(red: 0.4, green: 0.9, blue: 0.55))
+                    .tint(.accentColor)
             }
 
             VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -429,7 +582,7 @@ private struct ROICalculatorView: View {
                         .font(Typography.headline)
                         .foregroundStyle(ColorTokens.textSecondary)
 
-                    TextField("50", text: $hourlyRate)
+                    TextField("25", text: $hourlyRate)
                         .textFieldStyle(.plain)
                         .font(Typography.headline)
                         .frame(width: 60)
@@ -443,7 +596,7 @@ private struct ROICalculatorView: View {
                 }
             }
 
-            Text("Assumes 4x speed and 22 workdays/month")
+            Text("Assumes 4x dictation speed")
                 .font(Typography.caption)
                 .foregroundStyle(ColorTokens.textTertiary)
         }
