@@ -61,7 +61,9 @@ final class NotchIndicatorPanels {
 
     func setState(_ state: SpinnerState) {
         // Update state through StateHolder — no NSHostingView recreation
-        stateHolder.currentState = state
+        if stateHolder.currentState != state {
+            stateHolder.currentState = state
+        }
 
         // Animate wing width
         let targetWidth: CGFloat = switch state {
@@ -69,9 +71,14 @@ final class NotchIndicatorPanels {
         default:            Self.expandedWingWidth
         }
 
-        guard let newFrame = Self.calculateFrame(width: targetWidth) else { return }
+        guard let panel = leftPanel,
+              let newFrame = Self.calculateFrame(width: targetWidth) else { return }
 
-        leftPanel?.orderFrontRegardless()
+        if abs(panel.frame.width - targetWidth) < 0.5 {
+            return
+        }
+
+        panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { [weak self] context in
             context.duration = 0.25
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)

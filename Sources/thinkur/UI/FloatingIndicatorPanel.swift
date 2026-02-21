@@ -73,10 +73,15 @@ final class FloatingIndicatorPanel: NSPanel {
     }
 
     func setState(_ state: SpinnerState) {
-        stateHolder.currentState = state
+        if stateHolder.currentState != state {
+            stateHolder.currentState = state
+        }
         // Only accept mouse events when idle (hover/click on pill).
         // During listening/processing, pass events through to windows below.
-        ignoresMouseEvents = state != .idle
+        let shouldIgnoreMouse = state != .idle
+        if ignoresMouseEvents != shouldIgnoreMouse {
+            ignoresMouseEvents = shouldIgnoreMouse
+        }
     }
 
     func show() {

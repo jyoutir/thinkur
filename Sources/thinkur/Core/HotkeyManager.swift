@@ -4,6 +4,7 @@ import os
 final class HotkeyManager: HotkeyListening {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+    private var retainedSelf: Unmanaged<HotkeyManager>?
     private var isKeyDown = false
 
     var onKeyDown: (() -> Void)?
@@ -25,7 +26,11 @@ final class HotkeyManager: HotkeyListening {
             (1 << CGEventType.keyUp.rawValue) |
             (1 << CGEventType.flagsChanged.rawValue)
 
-        let refcon = Unmanaged.passUnretained(self).toOpaque()
+        // Retain self for the event tap callback to prevent use-after-free.
+        // Released in stop() before the tap is destroyed.
+        let retained = Unmanaged.passRetained(self)
+        retainedSelf = retained
+        let refcon = retained.toOpaque()
 
         eventTap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -62,6 +67,9 @@ final class HotkeyManager: HotkeyListening {
         runLoopSource = nil
         isRunning = false
         isKeyDown = false
+        // Release the retained self after the tap is fully torn down
+        retainedSelf?.release()
+        retainedSelf = nil
         Logger.hotkey.info("Hotkey manager stopped")
     }
 
