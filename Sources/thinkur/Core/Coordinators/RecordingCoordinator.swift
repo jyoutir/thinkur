@@ -187,7 +187,7 @@ final class RecordingCoordinator {
 
             sharedState.lastTranscription = finalText
             textInsertionService.insertText(finalText)
-            Logger.app.info("Inserted transcription: \"\(text)\"")
+            Logger.app.info("Inserted transcription (\(text.count) chars)")
 
             analyticsService.record(
                 rawText: rawText,

@@ -4,15 +4,15 @@ import SwiftUI
 /// Floating NSPanel that displays the indicator at the bottom center of the screen.
 /// Uses .nonactivatingPanel so it never steals focus from the app the user is typing in.
 ///
-/// The panel is a fixed 160×50 transparent container — all visual sizing and animation
+/// The panel is a fixed 200×50 transparent container — all visual sizing and animation
 /// is handled by SwiftUI inside FloatingIndicatorView.
 final class FloatingIndicatorPanel: NSPanel {
     private let amplitudeProvider: AudioAmplitudeProvider
     private let stateHolder = StateHolder()
     private var screenObserver: NSObjectProtocol?
 
-    /// Fixed panel size — large enough to contain the biggest state (listening: 139×24)
-    private static let fixedSize = NSSize(width: 160, height: 50)
+    /// Fixed panel size — large enough to contain the biggest state (listening: 130×32)
+    private static let fixedSize = NSSize(width: 200, height: 50)
 
     /// Called when the user clicks the idle pill.
     var onTap: (() -> Void)? {
@@ -116,7 +116,7 @@ private struct FloatingIndicatorView: View {
     private var frameWidth: CGFloat {
         switch stateHolder.currentState {
         case .idle: return 80
-        default: return 76
+        default: return 130
         }
     }
 
@@ -145,7 +145,7 @@ private struct FloatingIndicatorView: View {
                 WaveformBars(
                     amplitudes: amplitudeProvider.amplitudes,
                     startIndex: amplitudeProvider.amplitudesStartIndex,
-                    barCount: 15,
+                    barCount: 28,
                     pixelRows: 7,
                     color: Color(red: 0.15, green: 1.0, blue: 0.35)
                 )
@@ -157,7 +157,7 @@ private struct FloatingIndicatorView: View {
                     pixelSize: 3,
                     spacing: 1,
                     glowIntensity: 1.2,
-                    cols: 15,
+                    cols: 28,
                     rows: 3
                 )
                 .transition(.asymmetric(
