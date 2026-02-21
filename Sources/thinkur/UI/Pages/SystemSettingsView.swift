@@ -68,6 +68,26 @@ struct SystemSettingsView: View {
                     }
                 }
 
+                // TODO: Remove this debug section before shipping
+                GroupedSettingsSection(title: "Debug") {
+                    Button {
+                        coordinator.onboardingViewModel.currentStep = 0
+                        coordinator.onboardingViewModel.isComplete = false
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.counterclockwise")
+                                .foregroundStyle(.primary)
+                                .frame(width: 20)
+                            Text("Replay Onboarding")
+                                .foregroundStyle(ColorTokens.textPrimary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.sm)
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 GroupedSettingsSection(title: "Data") {
                     Button(role: .destructive) {
                         showClearConfirmation = true
@@ -106,7 +126,7 @@ struct SystemSettingsView: View {
     }
 }
 
-private struct SoundStylePicker: View {
+struct SoundStylePicker: View {
     @Binding var selectedStyle: String
 
     var body: some View {
