@@ -18,7 +18,7 @@ final class NotchIndicatorPanels {
 
     var isAvailable: Bool { leftPanel != nil }
 
-    init(amplitudeProvider: AudioAmplitudeProvider? = nil) {
+    init(amplitudeProvider: AudioAmplitudeProvider? = nil, settings: SettingsManager? = nil) {
         self.amplitudeProvider = amplitudeProvider
         stateHolder.currentState = .idle
 
@@ -28,17 +28,28 @@ final class NotchIndicatorPanels {
         let tapAction: () -> Void = { [weak self] in self?.onLeftWingTapped?() }
 
         // Create NSHostingView ONCE — state updates flow through StateHolder
+        let wingView = NotchLeftWingView(stateHolder: stateHolder, onTap: tapAction)
         if let provider = amplitudeProvider {
-            leftPanel = Self.makePanel(
-                contentRect: frame,
-                rootView: NotchLeftWingView(stateHolder: stateHolder, onTap: tapAction)
-                    .environment(provider),
-                ignoresMouseEvents: false
-            )
+            if let settings {
+                leftPanel = Self.makePanel(
+                    contentRect: frame,
+                    rootView: wingView
+                        .environment(provider)
+                        .environment(settings),
+                    ignoresMouseEvents: false
+                )
+            } else {
+                leftPanel = Self.makePanel(
+                    contentRect: frame,
+                    rootView: wingView
+                        .environment(provider),
+                    ignoresMouseEvents: false
+                )
+            }
         } else {
             leftPanel = Self.makePanel(
                 contentRect: frame,
-                rootView: NotchLeftWingView(stateHolder: stateHolder, onTap: tapAction),
+                rootView: wingView,
                 ignoresMouseEvents: false
             )
         }
@@ -162,11 +173,12 @@ private struct NotchLeftWingView: View {
     let onTap: () -> Void
 
     @Environment(AudioAmplitudeProvider.self) private var amplitudeProvider: AudioAmplitudeProvider?
+    @Environment(SettingsManager.self) private var settings: SettingsManager?
 
     private var spinnerColor: Color {
         switch stateHolder.currentState {
-        case .listening: return Color(red: 0.40, green: 0.90, blue: 0.55)
-        default:         return .white
+        case .listening, .success: return settings?.accentColor ?? AccentColor.defaultGreen.color
+        default:                   return .white
         }
     }
 
@@ -187,6 +199,8 @@ private struct NotchLeftWingView: View {
                     audioAmplitudes: amplitudeProvider?.amplitudes
                 )
                 .offset(x: -3, y: 0)
+                .opacity(stateHolder.currentState == .idle ? 0 : 1)
+                .animation(.easeInOut(duration: 0.25), value: stateHolder.currentState)
             }
             .contentShape(Rectangle())
             .onTapGesture { onTap() }
