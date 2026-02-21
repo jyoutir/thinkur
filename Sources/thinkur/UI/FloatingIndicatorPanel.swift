@@ -105,21 +105,21 @@ private struct FloatingIndicatorView: View {
     private var frameWidth: CGFloat {
         switch stateHolder.currentState {
         case .idle: return 80
-        default: return 50
+        default: return 76
         }
     }
 
     private var frameHeight: CGFloat {
         switch stateHolder.currentState {
         case .idle: return 4
-        default: return 24
+        default: return 32
         }
     }
 
     private var cornerRadius: CGFloat {
         switch stateHolder.currentState {
         case .idle: return 2
-        default: return 8
+        default: return 10
         }
     }
 
@@ -134,9 +134,11 @@ private struct FloatingIndicatorView: View {
                 WaveformBars(
                     amplitudes: amplitudeProvider.amplitudes,
                     startIndex: amplitudeProvider.amplitudesStartIndex,
-                    barCount: 7,
+                    barCount: 15,
+                    pixelRows: 7,
                     color: Color(red: 0.15, green: 1.0, blue: 0.35)
                 )
+                .transition(.opacity)
             } else if !isIdle {
                 ClaudePixelSpinner(
                     state: stateHolder.currentState,
@@ -144,9 +146,13 @@ private struct FloatingIndicatorView: View {
                     pixelSize: 3,
                     spacing: 1,
                     glowIntensity: 1.2,
-                    cols: 6,
+                    cols: 15,
                     rows: 3
                 )
+                .transition(.asymmetric(
+                    insertion: .opacity,
+                    removal: .scale(scale: 0.01).combined(with: .opacity)
+                ))
             }
         }
         .frame(width: frameWidth, height: frameHeight)

@@ -1,12 +1,17 @@
 import SwiftUI
 
-/// Pixelated vertical bars driven by audio amplitude.
-/// Each bar is a column of square pixel dots (matching ClaudePixelSpinner's aesthetic)
-/// that light up from center outward based on amplitude.
+/// Pixelated waveform driven by live audio amplitude, ported from Flutter's
+/// LiveAudioWaveform pattern: each bar reads one sample from the ring buffer,
+/// newest on the right, naturally scrolling left as new audio arrives.
+///
+/// Brightness per pixel uses a gaussian bell curve centered on the middle row.
+/// The bell's width (sigma) scales with amplitude — quiet bars are narrow
+/// (center pixel only), loud bars are wide (all 5 rows). This avoids hard
+/// on/off thresholds that cause a "green rectangle" during continuous speech.
 struct WaveformBars: View {
     var amplitudes: [Double]
     var startIndex: Int
-    var barCount: Int = 7
+    var barCount: Int = 13
     var pixelRows: Int = 5
     var pixelSize: CGFloat = 3
     var spacing: CGFloat = 1
@@ -25,16 +30,20 @@ struct WaveformBars: View {
                     let amp = sampleAmplitude(for: col)
                     let curveIndex = min(Int(amp * 100), 100)
                     let curved = Self.amplitudeCurveCache[curveIndex]
+                    // Gaussian width scales with amplitude:
+                    // quiet → narrow bell (center only), loud → wide bell (all rows)
+                    let sigma = max(0.3, curved * 2.0)
 
                     VStack(spacing: spacing) {
                         ForEach(0..<pixelRows, id: \.self) { row in
                             let centerRow = pixelRows / 2
                             let distance = abs(row - centerRow)
-                            let threshold = Double(distance) * 0.25
-                            let isLit = curved > threshold
-                            let brightness = isLit
-                                ? 0.4 + 0.6 * min(1, (curved - threshold) / (1.0 - threshold))
-                                : 0.06
+                            let falloff = exp(-Double(distance * distance) / (2.0 * sigma * sigma))
+                            // Center row always has a dim baseline; others fade to near-invisible
+                            let brightness = max(
+                                distance == 0 ? 0.10 : 0.04,
+                                curved * falloff
+                            )
 
                             RoundedRectangle(cornerRadius: pixelSize * 0.15)
                                 .fill(color)
@@ -51,10 +60,13 @@ struct WaveformBars: View {
         }
     }
 
+    /// Read the barCount most recent consecutive samples from the ring buffer.
+    /// Bar 0 (leftmost) = oldest of the N, bar N-1 (rightmost) = newest.
+    /// As new samples arrive, the entire waveform scrolls left naturally.
     private func sampleAmplitude(for barIndex: Int) -> Double {
         guard !amplitudes.isEmpty else { return 0 }
-        let stride = amplitudes.count / barCount
-        let offset = amplitudes.count - barCount * stride + barIndex * stride
-        return amplitudes[(startIndex + offset) % amplitudes.count]
+        let newestIndex = (startIndex - 1 + amplitudes.count) % amplitudes.count
+        let offset = barCount - 1 - barIndex
+        return amplitudes[(newestIndex - offset + amplitudes.count) % amplitudes.count]
     }
 }
