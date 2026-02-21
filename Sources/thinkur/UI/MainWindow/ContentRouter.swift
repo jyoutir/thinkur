@@ -31,7 +31,6 @@ struct ContentRouter: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .backgroundExtensionEffect()
         .transition(.blurReplace)
         .id(page)
         .animation(Animations.glassMorph, value: page)
