@@ -14,6 +14,12 @@ enum Constants {
         default:     return "medium.en"  // 16GB+
         }
     }()
+    // MARK: - LemonSqueezy
+    static let lemonSqueezyAPIBase = "https://api.lemonsqueezy.com"
+    static let checkoutURLMonthly = "https://thinkur.lemonsqueezy.com/buy/monthly"
+    static let checkoutURLLifetime = "https://thinkur.lemonsqueezy.com/buy/lifetime"
+    static let customerPortalURL = "https://thinkur.lemonsqueezy.com/billing"
+
     static let appSupportDirectory: URL = {
         let fm = FileManager.default
         let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!

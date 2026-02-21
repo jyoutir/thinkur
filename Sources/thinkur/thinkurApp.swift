@@ -19,6 +19,7 @@ struct thinkurApp: App {
                 .environment(coordinator.integrationsViewModel)
                 .environment(coordinator.settings)
                 .environment(coordinator.sharedState)
+                .environment(coordinator.licenseManager)
                 .tint(.primary)
         }
         .defaultSize(width: 920, height: 620)
@@ -33,13 +34,16 @@ struct thinkurApp: App {
 private struct RootView: View {
     @Environment(AppCoordinator.self) private var coordinator
     @Environment(SettingsManager.self) private var settings
+    @Environment(LicenseManager.self) private var licenseManager
 
     var body: some View {
         Group {
-            if coordinator.onboardingViewModel.isComplete {
-                MainWindowView()
-            } else {
+            if !coordinator.onboardingViewModel.isComplete {
                 OnboardingFlow()
+            } else if !licenseManager.isLicensed {
+                PaywallView()
+            } else {
+                MainWindowView()
             }
         }
         .preferredColorScheme(settings.themeMode.colorScheme)
