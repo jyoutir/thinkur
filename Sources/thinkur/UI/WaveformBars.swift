@@ -24,40 +24,46 @@ struct WaveformBars: View {
     }()
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1.0 / 30.0)) { _ in
-            HStack(spacing: spacing) {
-                ForEach(0..<barCount, id: \.self) { col in
-                    let amp = sampleAmplitude(for: col)
-                    let curveIndex = min(Int(amp * 100), 100)
-                    let curved = Self.amplitudeCurveCache[curveIndex]
-                    // Gaussian width scales with amplitude:
-                    // quiet → narrow bell (center only), loud → wide bell (all rows)
-                    let sigma = max(0.3, curved * 2.0)
+        HStack(spacing: spacing) {
+            ForEach(0..<barCount, id: \.self) { col in
+                let amp = sampleAmplitude(for: col)
+                let curveIndex = min(Int(amp * 100), 100)
+                let curved = Self.amplitudeCurveCache[curveIndex]
+                // Gaussian width scales with amplitude:
+                // quiet → narrow bell (center only), loud → wide bell (all rows)
+                let sigma = max(0.3, curved * 2.0)
 
-                    VStack(spacing: spacing) {
-                        ForEach(0..<pixelRows, id: \.self) { row in
-                            let centerRow = pixelRows / 2
-                            let distance = abs(row - centerRow)
-                            let falloff = exp(-Double(distance * distance) / (2.0 * sigma * sigma))
-                            // Center row always has a dim baseline; others fade to near-invisible
-                            let brightness = max(
-                                distance == 0 ? 0.10 : 0.04,
-                                curved * falloff
-                            )
+                VStack(spacing: spacing) {
+                    ForEach(0..<pixelRows, id: \.self) { row in
+                        let centerRow = pixelRows / 2
+                        let distance = abs(row - centerRow)
+                        let falloff = exp(-Double(distance * distance) / (2.0 * sigma * sigma))
+                        // Center row always has a dim baseline; others fade to near-invisible
+                        let brightness = max(
+                            distance == 0 ? 0.10 : 0.04,
+                            curved * falloff
+                        )
 
-                            RoundedRectangle(cornerRadius: pixelSize * 0.15)
-                                .fill(color)
-                                .frame(width: pixelSize, height: pixelSize)
-                                .opacity(brightness)
-                                .shadow(color: color.opacity(0.4 * glowIntensity * brightness),
-                                        radius: 2 * glowIntensity)
-                                .shadow(color: color.opacity(0.15 * glowIntensity * brightness),
-                                        radius: 6 * glowIntensity)
+                        let dot = RoundedRectangle(cornerRadius: pixelSize * 0.15)
+                            .fill(color)
+                            .frame(width: pixelSize, height: pixelSize)
+                            .opacity(brightness)
+                            .shadow(color: color.opacity(0.4 * glowIntensity * brightness),
+                                    radius: 2 * glowIntensity)
+
+                        // Skip expensive outer shadow for dim pixels (imperceptible below 0.2)
+                        if brightness > 0.2 {
+                            dot.shadow(color: color.opacity(0.15 * glowIntensity * brightness),
+                                       radius: 6 * glowIntensity)
+                        } else {
+                            dot
                         }
                     }
                 }
             }
         }
+        // Flatten the pixel grid into a single Metal layer — avoids per-pixel compositor passes
+        .drawingGroup()
     }
 
     /// Read the barCount most recent consecutive samples from the ring buffer.

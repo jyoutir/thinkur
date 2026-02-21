@@ -4,11 +4,18 @@ import os
 
 enum SwiftDataContainerFactory {
     /// Creates a persistent ModelContainer at the given URL, falling back to in-memory on failure.
+    /// Sets completeFileProtection on the store directory for at-rest encryption.
     static func create(
         name: String,
         schema: Schema,
         storeURL: URL
     ) -> ModelContainer {
+        // Set file protection on the store's parent directory
+        let storeDir = storeURL.deletingLastPathComponent()
+        try? FileManager.default.setAttributes(
+            [.protectionKey: FileProtectionType.complete],
+            ofItemAtPath: storeDir.path(percentEncoded: false)
+        )
         do {
             let config = ModelConfiguration(name, schema: schema, url: storeURL)
             return try ModelContainer(for: schema, configurations: [config])

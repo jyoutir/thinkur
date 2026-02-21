@@ -27,7 +27,7 @@ final class FrontmostAppDetector {
             Task { @MainActor in
                 self?.bundleID = bundleID
                 self?.appName = appName
-                Logger.app.info("Frontmost app: \(appName) (\(bundleID))")
+                Logger.app.debug("Frontmost app changed")
             }
         }
         Logger.app.info("Frontmost app detector started")

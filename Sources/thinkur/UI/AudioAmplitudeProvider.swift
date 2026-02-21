@@ -11,41 +11,52 @@ final class AudioAmplitudeProvider {
 
     private let bufferSize: Int
     private let smoothingFactor: Double
+    private let pollingInterval: TimeInterval
     private var ringBuffer: [Double]
     private var writeIndex = 0
     private var timer: Timer?
     private var levelSource: (() -> Float)?
 
-    init(bufferSize: Int = 40, smoothingFactor: Double = 0.7) {
+    init(
+        bufferSize: Int = 40,
+        smoothingFactor: Double = 0.7,
+        pollingInterval: TimeInterval = 1.0 / 30.0
+    ) {
         self.bufferSize = bufferSize
         self.smoothingFactor = smoothingFactor
+        self.pollingInterval = pollingInterval
         self.ringBuffer = Array(repeating: 0.0, count: bufferSize)
         self.amplitudes = Array(repeating: 0.0, count: bufferSize)
     }
 
-    // Note: Timer cleanup via deinit is not possible due to @MainActor isolation.
-    // However, no memory leak exists because timer uses [weak self] capture (line 33).
-    // Proper cleanup is handled via stopPolling() which should be called before deallocation.
-
     func startPolling(source: @escaping () -> Float) {
+        timer?.invalidate()
         levelSource = source
-        ringBuffer = Array(repeating: 0.0, count: bufferSize)
+        zeroBuffers()
         writeIndex = 0
-        amplitudes = Array(repeating: 0.0, count: bufferSize)
-        timer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
+        amplitudesStartIndex = 0
+        timer = Timer.scheduledTimer(withTimeInterval: pollingInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
                 self?.tick()
             }
         }
+        timer?.tolerance = pollingInterval * 0.2
     }
 
     func stopPolling() {
         timer?.invalidate()
         timer = nil
         levelSource = nil
-        ringBuffer = Array(repeating: 0.0, count: bufferSize)
+        zeroBuffers()
         writeIndex = 0
-        amplitudes = Array(repeating: 0.0, count: bufferSize)
+        amplitudesStartIndex = 0
+    }
+
+    private func zeroBuffers() {
+        for i in ringBuffer.indices {
+            ringBuffer[i] = 0.0
+            amplitudes[i] = 0.0
+        }
     }
 
     private func tick() {

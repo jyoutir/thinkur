@@ -14,7 +14,7 @@ final class TextInsertionService: TextInserting {
         // Mark as transient so clipboard managers (like Paste, Maccy) ignore it
         pasteboard.setData(Data(), forType: NSPasteboard.PasteboardType("org.nspasteboard.TransientType"))
 
-        Logger.textInsertion.info("Clipboard set with transcribed text (\(text.count) chars)")
+        Logger.textInsertion.info("Clipboard set with transcribed text (\(text.count, privacy: .public) chars)")
 
         // 3. Simulate Cmd+V paste after a short delay
         DispatchQueue.main.asyncAfter(deadline: .now() + Constants.pasteDelay) { [weak self] in

@@ -68,7 +68,7 @@ final class AnalyticsService: AnalyticsRecording {
 
         do {
             try context.save()
-            Logger.analytics.debug("Recorded transcription: \(wordCount) words, \(String(format: "%.1f", duration))s")
+            Logger.analytics.debug("Recorded transcription: \(wordCount, privacy: .public) words, \(String(format: "%.1f", duration), privacy: .public)s")
         } catch {
             Logger.analytics.error("Failed to save analytics: \(error)")
         }

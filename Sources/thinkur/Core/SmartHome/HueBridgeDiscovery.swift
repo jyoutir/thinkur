@@ -10,17 +10,13 @@ final class HueBridgeDiscovery {
         let id: String?
     }
 
-    private var browser: NWBrowser?
-    private var discovered: [DiscoveredBridge] = []
-
     /// Discover bridges using mDNS, falling back to the Hue broker
     func discover(timeout: TimeInterval = 5) async throws -> [DiscoveredBridge] {
-        discovered = []
-
         // Try mDNS first
         let mdnsResults = await discoverViaMDNS(timeout: timeout)
-        if !mdnsResults.isEmpty {
-            return mdnsResults
+        let validMDNSResults = mdnsResults.filter { !$0.ip.isEmpty && HueTrustDelegate.isPrivateNetworkHost($0.ip) }
+        if !validMDNSResults.isEmpty {
+            return validMDNSResults
         }
 
         // Fallback to broker
@@ -31,21 +27,25 @@ final class HueBridgeDiscovery {
     // MARK: - mDNS Discovery
 
     private func discoverViaMDNS(timeout: TimeInterval) async -> [DiscoveredBridge] {
-        await withCheckedContinuation { continuation in
+        final class DiscoveryAccumulator {
+            var results: [DiscoveredBridge] = []
+            var finished = false
+        }
+
+        return await withCheckedContinuation { continuation in
             let params = NWParameters()
             params.includePeerToPeer = true
             let browser = NWBrowser(for: .bonjour(type: "_hue._tcp", domain: "local."), using: params)
 
-            var results: [DiscoveredBridge] = []
-            var finished = false
+            let accumulator = DiscoveryAccumulator()
 
             browser.browseResultsChangedHandler = { newResults, _ in
                 for result in newResults {
                     if case let .service(name, _, _, _) = result.endpoint {
-                        // Resolve the endpoint to get IP
-                        // For mDNS, the name is typically the bridge ID
-                        // We'll resolve via connection
-                        results.append(DiscoveredBridge(ip: "", id: name))
+                        if !accumulator.results.contains(where: { $0.id == name }) {
+                            // NWBrowser service results do not include direct IPs; keep ID only.
+                            accumulator.results.append(DiscoveredBridge(ip: "", id: name))
+                        }
                     }
                 }
             }
@@ -53,8 +53,8 @@ final class HueBridgeDiscovery {
             browser.stateUpdateHandler = { state in
                 switch state {
                 case .failed:
-                    if !finished {
-                        finished = true
+                    if !accumulator.finished {
+                        accumulator.finished = true
                         browser.cancel()
                         continuation.resume(returning: [])
                     }
@@ -68,16 +68,10 @@ final class HueBridgeDiscovery {
             // Wait for timeout then collect results
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(timeout))
-                if !finished {
-                    finished = true
+                if !accumulator.finished {
+                    accumulator.finished = true
                     browser.cancel()
-                    // Resolve IPs via connection for any found bridges
-                    var resolved: [DiscoveredBridge] = []
-                    for result in results {
-                        // mDNS results need IP resolution — use broker as reliable fallback
-                        resolved.append(result)
-                    }
-                    continuation.resume(returning: resolved)
+                    continuation.resume(returning: accumulator.results)
                 }
             }
         }
@@ -90,7 +84,11 @@ final class HueBridgeDiscovery {
             return []
         }
 
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 6
+        configuration.timeoutIntervalForResource = 10
+        let session = URLSession(configuration: configuration)
+        let (data, response) = try await session.data(from: url)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             return []
         }
@@ -101,6 +99,8 @@ final class HueBridgeDiscovery {
         }
 
         let brokerResults = try JSONDecoder().decode([BrokerResult].self, from: data)
-        return brokerResults.map { DiscoveredBridge(ip: $0.internalipaddress, id: $0.id) }
+        return brokerResults
+            .map { DiscoveredBridge(ip: $0.internalipaddress, id: $0.id) }
+            .filter { HueTrustDelegate.isPrivateNetworkHost($0.ip) }
     }
 }

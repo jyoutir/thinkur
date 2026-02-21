@@ -20,7 +20,9 @@ final class TextPostProcessor {
             currentText = processorResult.text
             allCorrections.append(contentsOf: processorResult.corrections)
             if currentText != before {
-                Logger.postProcessing.debug("\(processor.name): \"\(before)\" → \"\(currentText)\"")
+                Logger.postProcessing.debug(
+                    "\(processor.name) changed text length \(before.count) -> \(currentText.count)"
+                )
             }
         }
         // Global cleanup: remove double punctuation after all processors

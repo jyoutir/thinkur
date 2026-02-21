@@ -144,8 +144,31 @@ final class ToneGenerator {
 
     // MARK: - Playback
 
+    /// Reusable audio engine — avoids ~5ms allocation + setup cost per tone.
+    /// Kept alive between tones; source node is swapped for each new sound.
+    private var engine: AVAudioEngine?
+    private var currentSourceNode: AVAudioSourceNode?
+    private var stopWorkItem: DispatchWorkItem?
+
     private func play(_ samples: [Float]) {
-        let engine = AVAudioEngine()
+        // Cancel any pending stop from a previous tone
+        stopWorkItem?.cancel()
+
+        // Tear down previous source node
+        if let node = currentSourceNode {
+            engine?.detach(node)
+            currentSourceNode = nil
+        }
+
+        let eng: AVAudioEngine
+        if let existing = engine {
+            existing.stop()
+            eng = existing
+        } else {
+            eng = AVAudioEngine()
+            engine = eng
+        }
+
         let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
         var index = 0
         let totalSamples = samples.count
@@ -166,19 +189,22 @@ final class ToneGenerator {
             return noErr
         }
 
-        engine.attach(sourceNode)
-        engine.connect(sourceNode, to: engine.mainMixerNode, format: format)
+        eng.attach(sourceNode)
+        eng.connect(sourceNode, to: eng.mainMixerNode, format: format)
+        currentSourceNode = sourceNode
 
         do {
-            try engine.start()
+            try eng.start()
         } catch {
             return
         }
 
         // Schedule engine stop after samples complete plus small buffer
         let durationSeconds = Double(totalSamples) / sampleRate + 0.05
-        DispatchQueue.main.asyncAfter(deadline: .now() + durationSeconds) {
-            engine.stop()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.engine?.stop()
         }
+        stopWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + durationSeconds, execute: workItem)
     }
 }

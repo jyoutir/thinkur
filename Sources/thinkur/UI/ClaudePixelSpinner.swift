@@ -75,6 +75,9 @@ struct ClaudePixelSpinner: View {
     @State private var blinkPixel: Int = -1
     @State private var blinkBrightness: Double = 0
     @State private var blinkTimer: Timer?
+    @State private var cachedPerimeterOrder: [Int] = []
+    @State private var cachedPerimeterIndexMap: [Int] = []
+    @State private var cachedInteriorMask: [Bool] = []
 
     // MARK: - Performance Optimization: Amplitude Curve Cache
 
@@ -146,10 +149,17 @@ struct ClaudePixelSpinner: View {
         }
         .animation(.spring(duration: 0.3, bounce: 0.15), value: state)
         .onAppear {
+            rebuildGridCache()
             if state == .idle { startBlinkTimer() }
         }
         .onDisappear {
             blinkTimer?.invalidate()
+        }
+        .onChange(of: rows) { _, _ in
+            rebuildGridCache()
+        }
+        .onChange(of: cols) { _, _ in
+            rebuildGridCache()
         }
         .onChange(of: state) { _, newState in
             epochDate = Date()
@@ -195,8 +205,9 @@ struct ClaudePixelSpinner: View {
         TimelineView(.periodic(from: .now, by: updateInterval)) { timeline in
             let elapsed = timeline.date.timeIntervalSince(epochDate)
             let phase = fmod(elapsed / state.cycleDuration, 1.0)
-            let perimOrder = perimeterOrder()
-            let interiorSet = interiorIndices()
+            let perimeterCount = cachedPerimeterOrder.count
+            let perimeterMap = cachedPerimeterIndexMap
+            let interiorMask = cachedInteriorMask
             let shadowsEnabled = state != .listening
 
             VStack(spacing: spacing) {
@@ -207,9 +218,9 @@ struct ClaudePixelSpinner: View {
                             let visible = isPixelVisible(col, row)
                             PixelDot(
                                 color: pixelColor(for: state),
-                                brightness: visible ? brightness(row: row, col: col, index: index, phase: phase, perimeterOrder: perimOrder, interiorIndices: interiorSet) : 0,
+                                brightness: visible ? brightness(row: row, col: col, index: index, phase: phase, perimeterCount: perimeterCount, perimeterIndexMap: perimeterMap, interiorMask: interiorMask) : 0,
                                 size: pixelSize,
-                                glowIntensity: visible ? effectiveGlow(for: state, index: index, interiorIndices: interiorSet) : 0,
+                                glowIntensity: visible ? effectiveGlow(for: state, index: index, interiorMask: interiorMask) : 0,
                                 shadowsEnabled: shadowsEnabled
                             )
                             .frame(width: visible ? pixelSize : 0)
@@ -219,12 +230,22 @@ struct ClaudePixelSpinner: View {
                     }
                 }
             }
+            // Flatten pixel grid into single Metal layer — avoids per-pixel compositor passes
+            .drawingGroup()
         }
     }
 
     // MARK: - Brightness Per State
 
-    private func brightness(row: Int, col: Int, index: Int, phase: Double, perimeterOrder: [Int], interiorIndices: Set<Int>) -> Double {
+    private func brightness(
+        row: Int,
+        col: Int,
+        index: Int,
+        phase: Double,
+        perimeterCount: Int,
+        perimeterIndexMap: [Int],
+        interiorMask: [Bool]
+    ) -> Double {
         switch state {
 
         // Playful breathing + faster firefly twinkle (3×3 compact)
@@ -334,22 +355,26 @@ struct ClaudePixelSpinner: View {
 
         // Clockwise spiral around perimeter, center dim
         case .connecting:
-            if interiorIndices.contains(index) {
+            if index < interiorMask.count, interiorMask[index] {
                 return 0.08 + 0.04 * sin(phase * 2 * .pi)
             }
-            guard let pi = perimeterOrder.firstIndex(of: index) else { return 0 }
-            let pixelPhase = Double(pi) / Double(perimeterOrder.count)
+            guard index < perimeterIndexMap.count else { return 0 }
+            let pi = perimeterIndexMap[index]
+            guard pi >= 0, perimeterCount > 0 else { return 0 }
+            let pixelPhase = Double(pi) / Double(perimeterCount)
             let diff = fmod(phase - pixelPhase + 1.0, 1.0)
             let spread = 0.15
             return exp(-pow(min(diff, 1.0 - diff) / spread, 2))
 
         // Fast clockwise perimeter loop (expanded 3×6)
         case .processing:
-            if interiorIndices.contains(index) {
+            if index < interiorMask.count, interiorMask[index] {
                 return 0.06
             }
-            guard let pi = perimeterOrder.firstIndex(of: index) else { return 0 }
-            let pixelPhase = Double(pi) / Double(perimeterOrder.count)
+            guard index < perimeterIndexMap.count else { return 0 }
+            let pi = perimeterIndexMap[index]
+            guard pi >= 0, perimeterCount > 0 else { return 0 }
+            let pixelPhase = Double(pi) / Double(perimeterCount)
             let diff = fmod(phase - pixelPhase + 1.0, 1.0)
             let spread = 0.10
             return exp(-pow(min(diff, 1.0 - diff) / spread, 2))
@@ -359,7 +384,7 @@ struct ClaudePixelSpinner: View {
     // MARK: - Dynamic Perimeter & Interior
 
     /// Computes clockwise perimeter indices for a rows×cols grid
-    private func perimeterOrder() -> [Int] {
+    private func buildPerimeterOrder() -> [Int] {
         var order: [Int] = []
         // Top row left to right
         for c in 0..<cols { order.append(c) }
@@ -374,15 +399,28 @@ struct ClaudePixelSpinner: View {
         return order
     }
 
-    /// Interior indices (all middle rows and middle cols) for a rows×cols grid
-    private func interiorIndices() -> Set<Int> {
-        var interior = Set<Int>()
-        for r in 1..<(rows - 1) {
-            for c in 1..<(cols - 1) {
-                interior.insert(r * cols + c)
+    /// Boolean mask for interior pixels on a rows×cols grid.
+    private func buildInteriorMask() -> [Bool] {
+        var interior = Array(repeating: false, count: max(0, rows * cols))
+        if rows >= 3 && cols >= 3 {
+            for r in 1..<(rows - 1) {
+                for c in 1..<(cols - 1) {
+                    interior[r * cols + c] = true
+                }
             }
         }
         return interior
+    }
+
+    private func rebuildGridCache() {
+        let perimeter = buildPerimeterOrder()
+        var perimeterMap = Array(repeating: -1, count: max(0, rows * cols))
+        for (position, index) in perimeter.enumerated() where index < perimeterMap.count {
+            perimeterMap[index] = position
+        }
+        cachedPerimeterOrder = perimeter
+        cachedPerimeterIndexMap = perimeterMap
+        cachedInteriorMask = buildInteriorMask()
     }
 
     // MARK: - Per-State Color
@@ -398,14 +436,15 @@ struct ClaudePixelSpinner: View {
 
     // MARK: - Per-State Glow
 
-    private func effectiveGlow(for state: SpinnerState, index: Int, interiorIndices: Set<Int>) -> Double {
+    private func effectiveGlow(for state: SpinnerState, index: Int, interiorMask: [Bool]) -> Double {
+        let isInterior = index < interiorMask.count ? interiorMask[index] : false
         switch state {
         case .idle:
             return index == blinkPixel ? glowIntensity * 1.5 : glowIntensity * 0.3
         case .success:    return glowIntensity * 1.8
         case .error:      return glowIntensity * 1.4
-        case .connecting: return interiorIndices.contains(index) ? glowIntensity * 0.2 : glowIntensity * 1.2
-        case .processing: return interiorIndices.contains(index) ? glowIntensity * 0.2 : glowIntensity * 1.3
+        case .connecting: return isInterior ? glowIntensity * 0.2 : glowIntensity * 1.2
+        case .processing: return isInterior ? glowIntensity * 0.2 : glowIntensity * 1.3
         default:          return glowIntensity
         }
     }

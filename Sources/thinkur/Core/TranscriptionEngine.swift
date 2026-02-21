@@ -94,7 +94,9 @@ final class TranscriptionEngine: Transcribing {
                 return nil
             }
 
-            Logger.transcription.debug("Transcription result: \"\(text)\" (\(self.lastWordTimings.count) word timings)")
+            Logger.transcription.debug(
+                "Transcription produced \(text.count) chars with \(self.lastWordTimings.count) word timings"
+            )
             return text
         } catch {
             Logger.transcription.error("Transcription failed: \(error)")
