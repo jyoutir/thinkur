@@ -16,8 +16,8 @@ enum Constants {
     }()
     // MARK: - LemonSqueezy
     static let lemonSqueezyAPIBase = "https://api.lemonsqueezy.com"
-    static let checkoutURLMonthly = "https://thinkur.lemonsqueezy.com/buy/monthly"
-    static let checkoutURLLifetime = "https://thinkur.lemonsqueezy.com/buy/lifetime"
+    static let checkoutURLMonthly = "https://thinkur.lemonsqueezy.com/checkout/buy/eb346813-5cda-438c-b748-0a6d506e0969"
+    static let checkoutURLLifetime = "https://thinkur.lemonsqueezy.com/checkout/buy/4c77431c-ca9c-4883-a857-3e24e83f0a9d"
     static let customerPortalURL = "https://thinkur.lemonsqueezy.com/billing"
 
     static let appSupportDirectory: URL = {
