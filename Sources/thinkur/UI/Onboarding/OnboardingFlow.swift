@@ -22,9 +22,9 @@ struct OnboardingFlow: View {
                     case 1:
                         ModelLoadingPage()
                     case 2:
-                        TryItPage()
-                    default:
                         QuickSettingsPage()
+                    default:
+                        TryItPage()
                     }
                 }
                 .id(viewModel.currentStep)
@@ -38,7 +38,7 @@ struct OnboardingFlow: View {
                 HStack(spacing: Spacing.xs) {
                     ForEach(0..<4, id: \.self) { index in
                         Capsule()
-                            .fill(index == viewModel.currentStep ? ColorTokens.textPrimary : ColorTokens.border)
+                            .fill(index == viewModel.currentStep ? ColorTokens.textPrimary : ColorTokens.textTertiary)
                             .frame(width: index == viewModel.currentStep ? 24 : 8, height: 8)
                             .animation(Animations.springBounce, value: viewModel.currentStep)
                     }

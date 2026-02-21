@@ -154,6 +154,8 @@ struct SoundStylePicker: View {
                                 .font(.system(size: 10))
                             Text(style.displayName)
                                 .font(Typography.caption)
+                                .lineLimit(1)
+                                .fixedSize()
                         }
                         .padding(.horizontal, Spacing.xs)
                         .padding(.vertical, Spacing.xxs)
