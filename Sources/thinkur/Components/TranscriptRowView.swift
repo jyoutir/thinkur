@@ -31,11 +31,13 @@ struct TranscriptRowView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(ColorTokens.textTertiary)
                             .opacity(isHovered && !copied ? 1 : 0)
-                            .onTapGesture { copyText() }
                         if correctionCount > 0 {
                             Text("\(correctionCount)")
                                 .font(Typography.caption2)
                                 .foregroundStyle(ColorTokens.textTertiary)
+                                .onTapGesture {
+                                    withAnimation(Animations.glassMorph) { showDiff.toggle() }
+                                }
                             Text("·")
                                 .font(Typography.caption)
                                 .foregroundStyle(ColorTokens.textTertiary)
@@ -70,15 +72,7 @@ struct TranscriptRowView: View {
         }
         .padding(.vertical, Spacing.xxs)
         .contentShape(Rectangle())
-        .onTapGesture {
-            if hasDiff {
-                withAnimation(Animations.glassMorph) {
-                    showDiff.toggle()
-                }
-            } else {
-                copyText()
-            }
-        }
+        .onTapGesture { copyText() }
         .onHover { isHovered = $0 }
         .animation(.spring(duration: 0.4, bounce: 0.2), value: copied)
         .animation(Animations.hoverFade, value: isHovered)

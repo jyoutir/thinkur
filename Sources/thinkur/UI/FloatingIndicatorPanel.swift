@@ -14,6 +14,12 @@ final class FloatingIndicatorPanel: NSPanel {
     /// Fixed panel size — large enough to contain the biggest state (listening: 139×24)
     private static let fixedSize = NSSize(width: 160, height: 50)
 
+    /// Called when the user clicks the idle pill.
+    var onTap: (() -> Void)? {
+        get { stateHolder.onTap }
+        set { stateHolder.onTap = newValue }
+    }
+
     init(amplitudeProvider: AudioAmplitudeProvider, themeMode: ThemeMode = .dark) {
         self.amplitudeProvider = amplitudeProvider
 
@@ -35,7 +41,7 @@ final class FloatingIndicatorPanel: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false  // SwiftUI handles shadows
-        ignoresMouseEvents = true
+        ignoresMouseEvents = false  // Allow hover/click when idle
         hidesOnDeactivate = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = false
@@ -68,6 +74,9 @@ final class FloatingIndicatorPanel: NSPanel {
 
     func setState(_ state: SpinnerState) {
         stateHolder.currentState = state
+        // Only accept mouse events when idle (hover/click on pill).
+        // During listening/processing, pass events through to windows below.
+        ignoresMouseEvents = state != .idle
     }
 
     func show() {
@@ -89,6 +98,7 @@ final class FloatingIndicatorPanel: NSPanel {
 @MainActor
 final class StateHolder: ObservableObject {
     @Published var currentState: SpinnerState = .idle
+    var onTap: (() -> Void)?
 }
 
 // MARK: - Unified Indicator View
@@ -98,6 +108,7 @@ final class StateHolder: ObservableObject {
 private struct FloatingIndicatorView: View {
     @Environment(AudioAmplitudeProvider.self) private var amplitudeProvider
     @ObservedObject var stateHolder: StateHolder
+    @State private var isHovered = false
 
     private var isIdle: Bool { stateHolder.currentState == .idle }
     private var isListening: Bool { stateHolder.currentState == .listening }
@@ -111,14 +122,14 @@ private struct FloatingIndicatorView: View {
 
     private var frameHeight: CGFloat {
         switch stateHolder.currentState {
-        case .idle: return 4
+        case .idle: return isHovered ? 8 : 4
         default: return 32
         }
     }
 
     private var cornerRadius: CGFloat {
         switch stateHolder.currentState {
-        case .idle: return 2
+        case .idle: return isHovered ? 4 : 2
         default: return 10
         }
     }
@@ -126,7 +137,7 @@ private struct FloatingIndicatorView: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(.black.opacity(0.92))
+                .fill(.black.opacity(isIdle && isHovered ? 0.95 : 0.92))
                 .shadow(color: .black.opacity(isIdle ? 0.3 : 0.5), radius: isIdle ? 4 : 12,
                         x: 0, y: isIdle ? 2 : 4)
 
@@ -159,9 +170,20 @@ private struct FloatingIndicatorView: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius)
-                .strokeBorder(.white.opacity(isIdle ? 0.08 : 0.15), lineWidth: 0.5)
+                .strokeBorder(.white.opacity(isIdle ? (isHovered ? 0.20 : 0.08) : 0.15), lineWidth: 0.5)
         )
+        .contentShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .onHover { hovering in
+            if isIdle { isHovered = hovering }
+        }
+        .onTapGesture {
+            if isIdle { stateHolder.onTap?() }
+        }
+        .onChange(of: stateHolder.currentState) { _, newState in
+            if newState != .idle { isHovered = false }
+        }
         .animation(.spring(duration: 0.35, bounce: 0.15), value: stateHolder.currentState)
+        .animation(.spring(duration: 0.25, bounce: 0.2), value: isHovered)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 }

@@ -52,6 +52,9 @@ final class RecordingCoordinator {
         self.stylePreferenceService = stylePreferenceService
         if createFloatingPanel {
             self.floatingPanel = FloatingIndicatorPanel(amplitudeProvider: amplitudeProvider, themeMode: settings.themeMode)
+            floatingPanel?.onTap = { [weak self] in
+                self?.toggleListening()
+            }
             let notch = NotchIndicatorPanels(amplitudeProvider: amplitudeProvider)
             notch.onLeftWingTapped = { [weak self] in
                 self?.toggleListening()
