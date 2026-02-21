@@ -224,8 +224,17 @@ final class LicenseManager {
     private func applyLicenseData(_ json: [String: Any]) {
         guard let licenseKey = json["license_key"] as? [String: Any] else { return }
 
-        planName = licenseKey["variant_name"] as? String
-            ?? (licenseKey["product_name"] as? String)
+        let rawName = licenseKey["variant_name"] as? String
+            ?? (licenseKey["product_name"] as? String) ?? ""
+        if rawName.localizedCaseInsensitiveContains("lifetime") {
+            planName = "Lifetime"
+        } else if rawName.localizedCaseInsensitiveContains("monthly") {
+            planName = "Monthly"
+        } else {
+            // Fallback: if no expiry it's lifetime, otherwise monthly
+            planName = (licenseKey["expires_at"] is NSNull || licenseKey["expires_at"] == nil)
+                ? "Lifetime" : "Monthly"
+        }
 
         if let key = licenseKey["key"] as? String, key.count > 8 {
             let suffix = String(key.suffix(4))

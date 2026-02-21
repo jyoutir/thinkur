@@ -40,6 +40,12 @@ private struct RootView: View {
         Group {
             if !coordinator.onboardingViewModel.isComplete {
                 OnboardingFlow()
+            } else if licenseManager.status == .validating {
+                ProgressView()
+                    .controlSize(.regular)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.ultraThinMaterial)
+                    .ignoresSafeArea()
             } else if !licenseManager.isLicensed {
                 PaywallView()
             } else {
