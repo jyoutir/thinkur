@@ -112,7 +112,7 @@ final class RecordingCoordinator {
         }
 
         amplitudeProvider.stopPolling()
-        floatingPanel?.hideWithThinkingTransition()
+        floatingPanel?.setState(.processing)
         let samples = audioCaptureManager.stopCapture()
         updateState(.processing)
 
@@ -123,6 +123,8 @@ final class RecordingCoordinator {
             return
         }
 
+        let trimmedSamples = trimSilence(from: samples)
+
         if !transcriptionEngine.isLoaded {
             Logger.app.info("Waiting for model to finish loading...")
             while !transcriptionEngine.isLoaded && transcriptionEngine.isLoading {
@@ -130,7 +132,7 @@ final class RecordingCoordinator {
             }
         }
 
-        if let rawText = await transcriptionEngine.transcribe(audioSamples: samples) {
+        if let rawText = await transcriptionEngine.transcribe(audioSamples: trimmedSamples) {
             let bundleID = frontmostAppDetector.bundleID
             let userStyleString = await stylePreferenceService.getStyle(for: bundleID)
             let resolvedStyle = userStyleString.flatMap { AppStyle(from: $0) }
@@ -198,6 +200,52 @@ final class RecordingCoordinator {
         }
 
         updateState(.idle)
+    }
+
+    /// Trim leading/trailing silence using adaptive energy detection.
+    /// Uses a relative threshold (10% of peak RMS) so it works regardless of mic gain.
+    private func trimSilence(from samples: [Float]) -> [Float] {
+        let frameSamples = Int(0.1 * Constants.sampleRate) // 100ms = 1600 samples
+        let frameCount = (samples.count + frameSamples - 1) / frameSamples
+        guard frameCount >= 3 else { return samples }
+
+        // Compute RMS energy per frame
+        var energies = [Float](repeating: 0, count: frameCount)
+        for i in 0..<frameCount {
+            let start = i * frameSamples
+            let end = min(start + frameSamples, samples.count)
+            var sumSq: Float = 0
+            for j in start..<end {
+                sumSq += samples[j] * samples[j]
+            }
+            energies[i] = sqrt(sumSq / Float(end - start))
+        }
+
+        // Adaptive threshold: 10% of peak energy — works with any mic gain
+        let peakEnergy = energies.max() ?? 0
+        guard peakEnergy > 1e-6 else { return samples }
+        let threshold = peakEnergy * 0.1
+
+        guard let firstActive = energies.firstIndex(where: { $0 > threshold }),
+              let lastActive = energies.lastIndex(where: { $0 > threshold }) else {
+            return samples
+        }
+
+        let paddingSamples = Int(0.15 * Constants.sampleRate) // 150ms padding
+        let startSample = max(0, firstActive * frameSamples - paddingSamples)
+        let endSample = min(samples.count, (lastActive + 1) * frameSamples + paddingSamples)
+
+        // Only trim if we'd save at least 200ms
+        guard samples.count - (endSample - startSample) > Int(0.2 * Constants.sampleRate) else {
+            return samples
+        }
+
+        let trimmed = Array(samples[startSample..<endSample])
+        let trimmedDuration = Double(trimmed.count) / Constants.sampleRate
+        let originalDuration = Double(samples.count) / Constants.sampleRate
+        Logger.app.info("Trimmed silence: \(String(format: "%.1f", originalDuration))s → \(String(format: "%.1f", trimmedDuration))s")
+
+        return trimmed
     }
 
     private func updateState(_ newState: AppState) {
