@@ -36,7 +36,7 @@ enum SpinnerState: String, CaseIterable, Identifiable {
         case .success:     return 1.8
         case .error:       return 0.6
         case .connecting:  return 1.0
-        case .processing:  return 0.35
+        case .processing:  return 0.7
         }
     }
 }
