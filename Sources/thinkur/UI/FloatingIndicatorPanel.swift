@@ -105,7 +105,6 @@ private struct FloatingIndicatorView: View {
     private var frameWidth: CGFloat {
         switch stateHolder.currentState {
         case .idle: return 80
-        case .listening: return 139
         default: return 50
         }
     }
@@ -113,7 +112,6 @@ private struct FloatingIndicatorView: View {
     private var frameHeight: CGFloat {
         switch stateHolder.currentState {
         case .idle: return 4
-        case .listening: return 24
         default: return 24
         }
     }
@@ -121,7 +119,6 @@ private struct FloatingIndicatorView: View {
     private var cornerRadius: CGFloat {
         switch stateHolder.currentState {
         case .idle: return 2
-        case .listening: return 12
         default: return 8
         }
     }
@@ -134,17 +131,11 @@ private struct FloatingIndicatorView: View {
                         x: 0, y: isIdle ? 2 : 4)
 
             if isListening {
-                ClaudePixelSpinner(
-                    state: .listening,
-                    color: Color(red: 0.15, green: 1.0, blue: 0.35),
-                    pixelSize: 4,
-                    spacing: 1,
-                    glowIntensity: 1.5,
-                    cols: 28,
-                    rows: 5,
-                    symmetricWaveform: true,
-                    audioAmplitudes: amplitudeProvider.amplitudes,
-                    amplitudesStartIndex: amplitudeProvider.amplitudesStartIndex
+                WaveformBars(
+                    amplitudes: amplitudeProvider.amplitudes,
+                    startIndex: amplitudeProvider.amplitudesStartIndex,
+                    barCount: 7,
+                    color: Color(red: 0.15, green: 1.0, blue: 0.35)
                 )
             } else if !isIdle {
                 ClaudePixelSpinner(
@@ -165,5 +156,6 @@ private struct FloatingIndicatorView: View {
                 .strokeBorder(.white.opacity(isIdle ? 0.08 : 0.15), lineWidth: 0.5)
         )
         .animation(.spring(duration: 0.35, bounce: 0.15), value: stateHolder.currentState)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 }
