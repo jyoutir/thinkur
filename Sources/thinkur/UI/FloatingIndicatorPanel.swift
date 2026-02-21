@@ -11,12 +11,12 @@ final class FloatingIndicatorPanel: NSPanel {
         self.amplitudeProvider = amplitudeProvider
 
         let panelWidth: CGFloat = 160
-        let panelHeight: CGFloat = 40
+        let panelHeight: CGFloat = 50  // Increased for taller 6pt pixels (was 40)
 
         // Position at bottom center of built-in screen (prefer notch screen over main)
         let screenFrame = (NSScreen.screens.first { $0.auxiliaryTopLeftArea != nil } ?? NSScreen.main)?.visibleFrame ?? .zero
         let originX = screenFrame.midX - panelWidth / 2
-        let originY = screenFrame.minY + 40  // 40pt from bottom
+        let originY = screenFrame.minY + 45  // 45pt from bottom (adjusted for taller panel)
 
         super.init(
             contentRect: NSRect(x: originX, y: originY, width: panelWidth, height: panelHeight),
@@ -59,7 +59,7 @@ final class FloatingIndicatorPanel: NSPanel {
         let screenFrame = (NSScreen.screens.first { $0.auxiliaryTopLeftArea != nil } ?? NSScreen.main)?.visibleFrame ?? .zero
         let panelWidth = frame.width
         let originX = screenFrame.midX - panelWidth / 2
-        let originY = screenFrame.minY + 40
+        let originY = screenFrame.minY + 45  // Adjusted for taller panel
         setFrameOrigin(NSPoint(x: originX, y: originY))
     }
 
@@ -113,18 +113,35 @@ private struct FloatingIndicatorView: View {
                 )
                 .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 4)
 
-            ClaudePixelSpinner(
-                state: stateHolder.currentState,
-                color: spinnerColor,
-                pixelSize: 3,
-                spacing: 1,
-                glowIntensity: glowIntensity,
-                cols: 34,
-                rows: 5,
-                symmetricWaveform: stateHolder.currentState == .listening,
-                audioAmplitudes: stateHolder.currentState == .listening ? amplitudeProvider.amplitudes : nil,
-                amplitudesStartIndex: amplitudeProvider.amplitudesStartIndex
-            )
+            // Use Canvas-based waveform for listening (high performance, defined peaks)
+            // Use ClaudePixelSpinner for other states (idle/processing/error)
+            Group {
+                if stateHolder.currentState == .listening {
+                    CanvasWaveform(
+                        audioAmplitudes: amplitudeProvider.amplitudes,
+                        amplitudesStartIndex: amplitudeProvider.amplitudesStartIndex,
+                        color: spinnerColor,
+                        glowIntensity: glowIntensity,
+                        cols: 34,
+                        rows: 5,
+                        pixelSize: 6,  // Taller pixels for better peak definition
+                        spacing: 1
+                    )
+                } else {
+                    ClaudePixelSpinner(
+                        state: stateHolder.currentState,
+                        color: spinnerColor,
+                        pixelSize: 3,
+                        spacing: 1,
+                        glowIntensity: glowIntensity,
+                        cols: 34,
+                        rows: 3,  // Smaller for idle/processing
+                        symmetricWaveform: false,
+                        audioAmplitudes: nil,
+                        amplitudesStartIndex: 0
+                    )
+                }
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
