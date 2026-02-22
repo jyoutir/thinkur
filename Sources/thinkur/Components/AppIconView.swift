@@ -5,6 +5,7 @@ struct AppIconView: View {
     let bundleID: String
     let appName: String
     var size: CGFloat = 44
+    @Environment(SettingsManager.self) private var settings
 
     var body: some View {
         Group {
@@ -18,7 +19,7 @@ struct AppIconView: View {
                     .font(.system(size: size * 0.45, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .frame(width: size, height: size)
-                    .background(Circle().fill(Color.accentColor.gradient))
+                    .background(Circle().fill(settings.accentUITint.gradient))
             }
         }
         .frame(width: size, height: size)

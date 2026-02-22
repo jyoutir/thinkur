@@ -2,6 +2,7 @@ import SwiftUI
 
 struct InsightsView: View {
     @Environment(InsightsViewModel.self) private var viewModel
+    @Environment(SettingsManager.self) private var settings
     @State private var appeared = false
 
     var body: some View {
@@ -74,7 +75,7 @@ struct InsightsView: View {
                             subtitle: "Start dictating to see your insights"
                         )
                     } else {
-                        BarChartView(data: viewModel.chartData)
+                        BarChartView(data: viewModel.chartData, barColor: settings.accentUITint)
                             .padding(Spacing.md)
                             .glassCard()
                     }
@@ -100,7 +101,8 @@ struct InsightsView: View {
                                     appName: app.appName,
                                     bundleID: app.bundleID,
                                     percentage: totalWords > 0 ? Double(app.totalWords) / Double(totalWords) * 100 : 0,
-                                    wordCount: app.totalWords
+                                    wordCount: app.totalWords,
+                                    color: settings.accentUITint
                                 )
                                 .hoverBrightness()
                                 .opacity(appeared ? 1 : 0)

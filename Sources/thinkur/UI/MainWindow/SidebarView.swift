@@ -193,7 +193,7 @@ struct SidebarView: View {
                 .padding(.vertical, 6)
                 .padding(.horizontal, Spacing.sm)
                 .background(
-                    isSelected ? Color.primary.opacity(0.1) : Color.clear,
+                    isSelected ? settings.accentUITint.opacity(0.15) : Color.clear,
                     in: RoundedRectangle(cornerRadius: 5)
                 )
                 .contentShape(Rectangle())

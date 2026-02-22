@@ -22,7 +22,7 @@ struct thinkurApp: App {
                 .environment(coordinator.settings)
                 .environment(coordinator.sharedState)
                 .environment(coordinator.licenseManager)
-                .tint(.primary)
+                .tint(coordinator.settings.accentUITint)
         }
         .defaultSize(width: 920, height: 620)
         .windowResizability(.contentSize)
