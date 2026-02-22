@@ -39,8 +39,8 @@ struct AnalyticsServiceTests {
             correctionCount: 0
         )
         let timeSaved = await service.fetchTotalTimeSaved()
-        // 10.0 * 2.3 = 23.0
-        #expect(timeSaved == 23.0)
+        // 10.0 * 0.65 = 6.5
+        #expect(timeSaved == 6.5)
     }
 
     @Test @MainActor func fetchTopAppsSortsByWordCount() async {
