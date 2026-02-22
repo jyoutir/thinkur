@@ -1206,7 +1206,7 @@ private struct ROICalculatorView: View {
                     .font(Typography.callout)
                     .foregroundStyle(ColorTokens.textSecondary)
 
-                Text("$\(Int(monthlySavings))")
+                Text("£\(Int(monthlySavings))")
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .foregroundStyle(ColorTokens.textPrimary)
                     .contentTransition(.numericText(value: monthlySavings))
@@ -1268,7 +1268,7 @@ private struct ROICalculatorView: View {
                     .foregroundStyle(ColorTokens.textPrimary)
 
                 HStack(spacing: Spacing.xxs) {
-                    Text("$")
+                    Text("£")
                         .font(Typography.headline)
                         .foregroundStyle(ColorTokens.textSecondary)
 

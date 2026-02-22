@@ -29,7 +29,7 @@ struct LicenseActivationPage: View {
             HStack(spacing: Spacing.md) {
                 PlanCard(
                     title: "Monthly",
-                    price: "$5",
+                    price: "£5",
                     period: "/ month",
                     detail: "Cancel anytime",
                     action: "Subscribe"
@@ -41,7 +41,7 @@ struct LicenseActivationPage: View {
 
                 PlanCard(
                     title: "Lifetime",
-                    price: "$29",
+                    price: "£28",
                     period: "one-time",
                     detail: "Pay once, use forever",
                     action: "Purchase",

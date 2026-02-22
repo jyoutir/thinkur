@@ -31,7 +31,7 @@ struct PaywallView: View {
                 HStack(spacing: Spacing.md) {
                     PlanCardCompact(
                         title: "Monthly",
-                        price: "$5/mo",
+                        price: "£5/mo",
                         action: "Subscribe"
                     ) {
                         if let url = URL(string: Constants.checkoutURLMonthly) {
@@ -41,7 +41,7 @@ struct PaywallView: View {
 
                     PlanCardCompact(
                         title: "Lifetime",
-                        price: "$29",
+                        price: "£28",
                         action: "Purchase",
                         highlighted: true
                     ) {
