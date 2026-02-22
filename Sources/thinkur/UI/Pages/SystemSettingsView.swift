@@ -161,11 +161,11 @@ struct AccentColorPicker: View {
                     } label: {
                         Circle()
                             .fill(accent.color)
-                            .frame(width: 20, height: 20)
+                            .frame(width: 16, height: 16)
                             .overlay(
                                 Circle()
                                     .fill(.white)
-                                    .frame(width: 10, height: 10)
+                                    .frame(width: 7, height: 7)
                                     .opacity(isSelected ? 1 : 0)
                             )
                             .overlay(
@@ -174,7 +174,7 @@ struct AccentColorPicker: View {
                                         isSelected ? accent.color : Color.clear,
                                         lineWidth: 2
                                     )
-                                    .frame(width: 26, height: 26)
+                                    .frame(width: 22, height: 22)
                             )
                     }
                     .buttonStyle(.plain)
