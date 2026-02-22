@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PermissionRowView: View {
+    @Environment(SettingsManager.self) private var settings
     let icon: String
     let name: String
     let description: String
@@ -11,7 +12,7 @@ struct PermissionRowView: View {
         HStack(spacing: Spacing.sm) {
             Image(systemName: icon)
                 .font(.system(size: 18))
-                .foregroundStyle(.primary)
+                .foregroundStyle(settings.accentUITint)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 2) {

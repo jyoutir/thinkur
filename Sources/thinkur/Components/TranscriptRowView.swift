@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 
 struct TranscriptRowView: View {
+    @Environment(SettingsManager.self) private var settings
     let appName: String
     let appBundleID: String
     let timestamp: Date
@@ -34,7 +35,10 @@ struct TranscriptRowView: View {
                         if correctionCount > 0 {
                             Text("\(correctionCount)")
                                 .font(Typography.caption2)
-                                .foregroundStyle(ColorTokens.textTertiary)
+                                .foregroundStyle(settings.accentUITint)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(settings.accentUITint.opacity(0.12), in: Capsule())
                                 .onTapGesture {
                                     withAnimation(Animations.glassMorph) { showDiff.toggle() }
                                 }
@@ -63,10 +67,11 @@ struct TranscriptRowView: View {
             HStack(spacing: Spacing.xs) {
                 Image(systemName: "checkmark")
                     .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(settings.accentUITint)
                 Text("Copied to clipboard")
                     .font(Typography.body)
+                    .foregroundStyle(ColorTokens.textPrimary)
             }
-            .foregroundStyle(ColorTokens.textPrimary)
             .opacity(copied ? 1 : 0)
             .scaleEffect(copied ? 1 : 0.8)
         }

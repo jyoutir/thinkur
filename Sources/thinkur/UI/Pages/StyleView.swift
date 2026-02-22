@@ -2,6 +2,7 @@ import SwiftUI
 
 struct StyleView: View {
     @Environment(StyleViewModel.self) private var viewModel
+    @Environment(SettingsManager.self) private var settings
     @State private var appeared = false
     @State private var showingAddMenu = false
 
@@ -55,6 +56,7 @@ struct StyleView: View {
                     Label("Add App", systemImage: "plus")
                         .font(Typography.body)
                 }
+                .tint(settings.accentUITint)
             }
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.lg)
