@@ -239,13 +239,13 @@ struct TryItPage: View {
 
             // App-themed demo area
             demoArea
-                .frame(maxWidth: 520, minHeight: 240, maxHeight: 280)
+                .frame(maxWidth: 520, minHeight: 180, maxHeight: 260)
 
             // Bottom bar: mic + hotkey badge + suggestion
             bottomBar
                 .frame(maxWidth: 520)
 
-            Spacer()
+            Spacer(minLength: Spacing.sm)
 
             Button {
                 viewModel.nextStep()
@@ -260,8 +260,7 @@ struct TryItPage: View {
             .tint(.primary)
             .disabled(messages.isEmpty)
 
-            Spacer()
-                .frame(height: Spacing.xl)
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, Spacing.xl)
         .onKeyPress(.leftArrow) {
@@ -1238,9 +1237,6 @@ private struct ROICalculatorView: View {
                 }
             }
 
-            Text("Buy once for $29. Keep the upside.")
-                .font(Typography.caption)
-                .foregroundStyle(ColorTokens.textTertiary)
         }
         .padding(Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1288,7 +1284,7 @@ private struct ROICalculatorView: View {
                 }
             }
 
-            Text("Assumes 4x dictation speed")
+            Text("Assumes 80 wpm typing \u{2014} faster than 95% of people")
                 .font(Typography.caption)
                 .foregroundStyle(ColorTokens.textTertiary)
         }
