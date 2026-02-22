@@ -45,6 +45,8 @@ targets:
           OTHER_CODE_SIGN_FLAGS: "--timestamp --options runtime"
     entitlements:
       path: Sources/thinkur/Resources/thinkur.entitlements
+      properties:
+        com.apple.security.device.audio-input: true
 
   thinkurTests:
     type: bundle.unit-test
