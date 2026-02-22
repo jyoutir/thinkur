@@ -52,6 +52,7 @@ extension View {
 // MARK: - Glass Empty State
 
 struct GlassEmptyState: View {
+    @Environment(SettingsManager.self) private var settings
     let icon: String
     let title: String
     let subtitle: String
@@ -60,7 +61,7 @@ struct GlassEmptyState: View {
         VStack(spacing: Spacing.sm) {
             Image(systemName: icon)
                 .font(.system(size: 40))
-                .foregroundStyle(ColorTokens.textTertiary.opacity(0.5))
+                .foregroundStyle(settings.accentUITint.opacity(0.3))
 
             Text(title)
                 .font(Typography.headline)

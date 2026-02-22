@@ -128,7 +128,7 @@ struct HomeView: View {
                                         .foregroundStyle(ColorTokens.textPrimary)
                                     Text("\(group.records.count)")
                                         .font(Typography.caption)
-                                        .foregroundStyle(ColorTokens.textTertiary)
+                                        .foregroundStyle(settings.accentUITint)
                                     Spacer()
                                 }
                                 .contentShape(Rectangle())
@@ -174,6 +174,7 @@ struct HomeView: View {
 // MARK: - Stat Pill
 
 private struct StatPill: View {
+    @Environment(SettingsManager.self) private var settings
     let value: String
     let label: String
 
@@ -181,7 +182,7 @@ private struct StatPill: View {
         HStack(spacing: Spacing.xs) {
             Text(value)
                 .font(Typography.headline)
-                .foregroundStyle(ColorTokens.textPrimary)
+                .foregroundStyle(settings.accentUITint)
             Text(label)
                 .font(Typography.callout)
                 .foregroundStyle(ColorTokens.textTertiary)
