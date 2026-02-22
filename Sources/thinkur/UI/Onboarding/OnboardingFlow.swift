@@ -10,10 +10,7 @@ struct OnboardingFlow: View {
                 .background(.ultraThinMaterial)
                 .ignoresSafeArea()
 
-            HStack(spacing: Spacing.xl) {
-                sidebar
-                    .frame(width: 240, alignment: .leading)
-
+            VStack(spacing: 0) {
                 VStack(spacing: 0) {
                     Spacer()
                         .frame(height: Spacing.md)
@@ -80,57 +77,7 @@ struct OnboardingFlow: View {
             .padding(.horizontal, Spacing.xl)
             .padding(.vertical, Spacing.lg)
         }
-        .frame(minWidth: 1000, minHeight: 650)
-    }
-
-    @ViewBuilder
-    private var sidebar: some View {
-        VStack(alignment: .leading, spacing: Spacing.lg) {
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text("thinkur")
-                    .font(Typography.title2)
-                    .foregroundStyle(ColorTokens.textPrimary)
-
-                Text("Setup in five short steps")
-                    .font(Typography.callout)
-                    .foregroundStyle(ColorTokens.textSecondary)
-            }
-
-            HStack(spacing: Spacing.xs) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(settings.accentUITint)
-                    .frame(width: 3, height: 26)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Step \(viewModel.currentStep + 1) of \(stepItems.count)")
-                        .font(Typography.caption)
-                        .foregroundStyle(ColorTokens.textTertiary)
-                    Text(stepItems[viewModel.currentStep])
-                        .font(Typography.headline)
-                        .foregroundStyle(ColorTokens.textPrimary)
-                        .lineLimit(1)
-                }
-            }
-            .id(viewModel.currentStep)
-            .transition(.asymmetric(
-                insertion: .move(edge: .bottom).combined(with: .opacity),
-                removal: .move(edge: .top).combined(with: .opacity)
-            ))
-            .animation(.spring(duration: 0.35), value: viewModel.currentStep)
-
-            Spacer()
-
-            VStack(alignment: .leading, spacing: Spacing.xxs + 2) {
-                Text("£28 lifetime")
-                Text("£5 monthly")
-                Text("On-device")
-                Text("No account needed")
-            }
-            .font(Typography.caption)
-            .foregroundStyle(ColorTokens.textTertiary)
-        }
-        .padding(Spacing.lg)
-        .glassCard(cornerRadius: CornerRadius.window)
+        .frame(minWidth: 760, minHeight: 650)
     }
 
     private var stepItems: [String] {
