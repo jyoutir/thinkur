@@ -96,31 +96,33 @@ struct OnboardingFlow: View {
                     .foregroundStyle(ColorTokens.textSecondary)
             }
 
-            VStack(alignment: .leading, spacing: Spacing.sm) {
-                ForEach(Array(stepItems.enumerated()), id: \.offset) { index, step in
-                    HStack(spacing: Spacing.xs) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(index == viewModel.currentStep ? settings.accentUITint : ColorTokens.textTertiary.opacity(0.35))
-                            .frame(width: 3, height: 26)
+            HStack(spacing: Spacing.xs) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(settings.accentUITint)
+                    .frame(width: 3, height: 26)
 
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("Step \(index + 1)")
-                                .font(Typography.caption)
-                                .foregroundStyle(ColorTokens.textTertiary)
-                            Text(step)
-                                .font(Typography.headline)
-                                .foregroundStyle(index == viewModel.currentStep ? ColorTokens.textPrimary : ColorTokens.textSecondary)
-                                .lineLimit(1)
-                        }
-                    }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Step \(viewModel.currentStep + 1) of \(stepItems.count)")
+                        .font(Typography.caption)
+                        .foregroundStyle(ColorTokens.textTertiary)
+                    Text(stepItems[viewModel.currentStep])
+                        .font(Typography.headline)
+                        .foregroundStyle(ColorTokens.textPrimary)
+                        .lineLimit(1)
                 }
             }
+            .id(viewModel.currentStep)
+            .transition(.asymmetric(
+                insertion: .move(edge: .bottom).combined(with: .opacity),
+                removal: .move(edge: .top).combined(with: .opacity)
+            ))
+            .animation(.spring(duration: 0.35), value: viewModel.currentStep)
 
             Spacer()
 
             VStack(alignment: .leading, spacing: Spacing.xxs + 2) {
-                Text("$29 lifetime")
-                Text("$5 monthly")
+                Text("£28 lifetime")
+                Text("£5 monthly")
                 Text("On-device")
                 Text("No account needed")
             }
