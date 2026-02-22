@@ -26,7 +26,7 @@ struct HomeView: View {
                     } label: {
                         HStack(spacing: Spacing.xs) {
                             Image(systemName: "calendar")
-                                .font(Typography.caption)
+                                .font(Typography.headline)
                                 .foregroundStyle(ColorTokens.textTertiary)
 
                             Image(systemName: "chevron.right")
