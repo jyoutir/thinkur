@@ -6,6 +6,7 @@ import Cocoa
 struct PermissionsPage: View {
     @Environment(OnboardingViewModel.self) private var viewModel
     @Environment(PermissionManager.self) private var permissionManager
+    @Environment(SettingsManager.self) private var settings
 
     var body: some View {
         VStack(spacing: Spacing.xl) {
@@ -71,7 +72,7 @@ struct PermissionsPage: View {
             }
             .buttonStyle(.glassProminent)
             .controlSize(.large)
-            .tint(.primary)
+            .tint(settings.accentUITint)
             .disabled(!viewModel.allPermissionsGranted)
 
             Spacer()
@@ -87,6 +88,7 @@ struct PermissionsPage: View {
 
 struct ModelLoadingPage: View {
     @Environment(OnboardingViewModel.self) private var viewModel
+    @Environment(SettingsManager.self) private var settings
 
     var body: some View {
         VStack(spacing: Spacing.xl) {
@@ -135,7 +137,7 @@ struct ModelLoadingPage: View {
             }
             .buttonStyle(.glassProminent)
             .controlSize(.large)
-            .tint(.primary)
+            .tint(settings.accentUITint)
             .disabled(!viewModel.isModelReady)
 
             Spacer()
@@ -257,7 +259,7 @@ struct TryItPage: View {
             }
             .buttonStyle(.glassProminent)
             .controlSize(.large)
-            .tint(.primary)
+            .tint(settings.accentUITint)
             .disabled(messages.isEmpty)
 
             Spacer(minLength: 0)
@@ -1134,7 +1136,7 @@ struct QuickSettingsPage: View {
             }
             .buttonStyle(.glassProminent)
             .controlSize(.large)
-            .tint(.primary)
+            .tint(settings.accentUITint)
 
             Spacer()
                 .frame(height: Spacing.xl)

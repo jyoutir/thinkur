@@ -151,6 +151,33 @@ struct SidebarView: View {
                     .padding(.bottom, Spacing.xxs)
                 }
                 .frame(maxHeight: 220)
+
+                // Accent color dots
+                HStack(spacing: 4) {
+                    ForEach(AccentColor.allCases) { accent in
+                        let isSelected = settings.accentColorName == accent.rawValue
+                        Button {
+                            withAnimation(.spring(duration: 0.2)) {
+                                settings.accentColorName = accent.rawValue
+                            }
+                        } label: {
+                            Circle()
+                                .fill(accent.color)
+                                .frame(width: 15, height: 15)
+                                .overlay(
+                                    Circle()
+                                        .fill(.white)
+                                        .frame(width: 6, height: 6)
+                                        .opacity(isSelected ? 1 : 0)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .help(accent.displayName)
+                    }
+                }
+                .padding(.horizontal, Spacing.md)
+                .padding(.vertical, Spacing.xs)
+
                 .transition(.blurReplace)
             }
         }
