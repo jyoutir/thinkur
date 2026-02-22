@@ -427,10 +427,8 @@ struct ClaudePixelSpinner: View {
 
     private func pixelColor(for state: SpinnerState) -> Color {
         switch state {
-        case .listening: return Color(red: 0.40, green: 0.90, blue: 0.55)
-        case .success:   return Color(red: 0.40, green: 0.90, blue: 0.55)
-        case .error:     return Color(red: 0.90, green: 0.40, blue: 0.40)
-        default:         return color
+        case .error: return Color(red: 0.90, green: 0.40, blue: 0.40)
+        default:     return color
         }
     }
 

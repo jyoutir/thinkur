@@ -68,6 +68,10 @@ struct SystemSettingsView: View {
                     }
                 }
 
+                GroupedSettingsSection(title: "Aesthetics") {
+                    AccentColorPicker(selectedColor: $s.accentColorName)
+                }
+
                 // TODO: Remove this debug section before shipping
                 GroupedSettingsSection(title: "Debug") {
                     Button {
@@ -123,6 +127,59 @@ struct SystemSettingsView: View {
         }
         .navigationTitle("System")
         .onAppear { appeared = true }
+    }
+}
+
+struct AccentColorPicker: View {
+    @Binding var selectedColor: String
+
+    var body: some View {
+        HStack(spacing: Spacing.sm) {
+            Image(systemName: "paintpalette")
+                .font(.system(size: 14))
+                .foregroundStyle(.primary)
+                .frame(width: 20)
+
+            Text("Accent Color")
+                .font(Typography.body)
+                .foregroundStyle(ColorTokens.textPrimary)
+                .fixedSize()
+
+            Spacer()
+
+            HStack(spacing: Spacing.xs) {
+                ForEach(AccentColor.allCases) { accent in
+                    let isSelected = selectedColor == accent.rawValue
+                    Button {
+                        withAnimation(.spring(duration: 0.2)) {
+                            selectedColor = accent.rawValue
+                        }
+                    } label: {
+                        Circle()
+                            .fill(accent.color)
+                            .frame(width: 20, height: 20)
+                            .overlay(
+                                Circle()
+                                    .fill(accent == .black ? Color(hex: "1C1C1E") : .white)
+                                    .frame(width: 10, height: 10)
+                                    .opacity(isSelected ? 1 : 0)
+                            )
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(
+                                        isSelected ? accent.color : accent == .black ? Color(hex: "38383A") : Color.clear,
+                                        lineWidth: 2
+                                    )
+                                    .frame(width: 26, height: 26)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .help(accent.displayName)
+                }
+            }
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, 14)
     }
 }
 

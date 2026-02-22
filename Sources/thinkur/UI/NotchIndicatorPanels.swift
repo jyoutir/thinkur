@@ -199,7 +199,7 @@ private struct NotchLeftWingView: View {
                     audioAmplitudes: amplitudeProvider?.amplitudes
                 )
                 .offset(x: -3, y: 0)
-                .opacity(stateHolder.currentState == .idle ? 0 : 1)
+                .opacity(stateHolder.currentState == .idle ? 0.3 : 1)
                 .animation(.easeInOut(duration: 0.25), value: stateHolder.currentState)
             }
             .contentShape(Rectangle())

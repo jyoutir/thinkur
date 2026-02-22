@@ -88,6 +88,15 @@ final class SettingsManager {
         didSet { defaults.set(themeMode.rawValue, forKey: "themeMode") }
     }
 
+    // Accent color
+    var accentColorName: String {
+        didSet { defaults.set(accentColorName, forKey: "accentColorName") }
+    }
+
+    var accentColor: Color {
+        (AccentColor(rawValue: accentColorName) ?? .defaultGreen).color
+    }
+
     // Onboarding
     var hasCompletedOnboarding: Bool {
         didSet { defaults.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding") }
@@ -135,6 +144,9 @@ final class SettingsManager {
 
         // Theme
         self.themeMode = ThemeMode(rawValue: defaults.string(forKey: "themeMode") ?? "") ?? .dark
+
+        // Accent color
+        self.accentColorName = defaults.string(forKey: "accentColorName") ?? AccentColor.defaultGreen.rawValue
 
         // Onboarding
         self.hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")

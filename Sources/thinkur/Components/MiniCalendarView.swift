@@ -4,9 +4,8 @@ struct MiniCalendarView: View {
     let activeDateStrings: Set<String>
     @Binding var rangeStart: Date?
     @Binding var rangeEnd: Date?
+    @Binding var displayedMonth: Date
     let onSelectDate: (Date) -> Void
-
-    @State private var displayedMonth: Date = .now
 
     private let calendar = Calendar.current
     private let dateFormatter: DateFormatter = {
@@ -45,7 +44,7 @@ struct MiniCalendarView: View {
 
             // Weekday headers
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 2) {
-                ForEach(weekdaySymbols, id: \.self) { symbol in
+                ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
                     Text(symbol)
                         .font(Typography.caption2)
                         .foregroundStyle(ColorTokens.textTertiary)
@@ -75,8 +74,6 @@ struct MiniCalendarView: View {
             }
         }
         .padding(Spacing.sm)
-        .glassCard()
-        .frame(maxWidth: 240)
     }
 
     private func shiftMonth(_ delta: Int) {

@@ -7,7 +7,7 @@ struct PixelatedAudioBar: View {
     var barCount: Int = 21
     var pixelSize: CGFloat = 3.0  // 3pt pixels
     var spacing: CGFloat = 1.0
-    var baselineColor: Color = Color(red: 0.40, green: 0.90, blue: 0.55)  // Green
+    var baselineColor: Color = AccentColor.defaultGreen.color
 
     // Snap amplitude to discrete pixel heights (5 levels: 2, 3, 4, 5, 6 pixels)
     private func pixelHeight(for amplitude: Double) -> CGFloat {
