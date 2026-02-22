@@ -14,10 +14,50 @@ struct HomeView: View {
                     .font(Typography.callout)
                     .foregroundStyle(ColorTokens.textTertiary)
 
-                // Summary stats + Press Tab prompt
+                // Summary stats + calendar toggle + Press Tab prompt
                 HStack(spacing: Spacing.sm) {
                     StatPill(value: Formatters.formatTimeSaved(viewModel.totalTimeSaved), label: "saved")
                     StatPill(value: Formatters.compactNumber(viewModel.totalWords), label: "words")
+
+                    Button {
+                        withAnimation(Animations.glassMorph) {
+                            calendarExpanded.toggle()
+                        }
+                    } label: {
+                        HStack(spacing: Spacing.xs) {
+                            Image(systemName: "calendar")
+                                .font(Typography.caption)
+                                .foregroundStyle(ColorTokens.textTertiary)
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(ColorTokens.textTertiary)
+                                .rotationEffect(calendarExpanded ? .degrees(90) : .zero)
+                                .animation(Animations.glassMorph, value: calendarExpanded)
+
+                            if let desc = viewModel.filterDescription {
+                                Text(desc)
+                                    .font(Typography.caption)
+                                    .foregroundStyle(ColorTokens.textTertiary)
+                            }
+                        }
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.sm)
+                        .contentShape(Rectangle())
+                        .glassCard()
+                    }
+                    .buttonStyle(.plain)
+
+                    if viewModel.rangeStart != nil {
+                        Button {
+                            viewModel.clearFilter()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(Typography.caption)
+                                .foregroundStyle(ColorTokens.textTertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                     Spacer()
 
@@ -32,67 +72,28 @@ struct HomeView: View {
                     }
                 }
 
-                // Collapsible calendar
-                VStack(alignment: .leading, spacing: Spacing.sm) {
-                    HStack(spacing: Spacing.xs) {
-                        // Arrow button - triggers expand/collapse
-                        Button {
-                            withAnimation(Animations.glassMorph) {
-                                calendarExpanded.toggle()
-                            }
-                        } label: {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(ColorTokens.textTertiary)
-                                .rotationEffect(calendarExpanded ? .degrees(90) : .zero)
-                                .animation(Animations.glassMorph, value: calendarExpanded)
-                        }
-                        .buttonStyle(.plain)
-
-                        // Header - non-interactive
-                        Image(systemName: "calendar")
-                            .font(Typography.headline)
-                            .foregroundStyle(ColorTokens.textPrimary)
-                        Text("Calendar")
-                            .font(Typography.headline)
-                            .foregroundStyle(ColorTokens.textPrimary)
-                        Spacer()
+                // Calendar grid (collapsible)
+                if calendarExpanded {
+                    MiniCalendarView(
+                        activeDateStrings: viewModel.activeDateStrings,
+                        rangeStart: Binding(
+                            get: { viewModel.rangeStart },
+                            set: { _ in }
+                        ),
+                        rangeEnd: Binding(
+                            get: { viewModel.rangeEnd },
+                            set: { _ in }
+                        ),
+                        displayedMonth: Binding(
+                            get: { viewModel.displayedMonth },
+                            set: { viewModel.displayedMonth = $0 }
+                        ),
+                        onSelectDate: { viewModel.selectDate($0) }
+                    )
+                    .frame(maxWidth: 240)
+                    .onChange(of: viewModel.displayedMonth) {
+                        viewModel.monthChanged()
                     }
-
-                    if calendarExpanded {
-                        MiniCalendarView(
-                            activeDateStrings: viewModel.activeDateStrings,
-                            rangeStart: Binding(
-                                get: { viewModel.rangeStart },
-                                set: { _ in }
-                            ),
-                            rangeEnd: Binding(
-                                get: { viewModel.rangeEnd },
-                                set: { _ in }
-                            ),
-                            onSelectDate: { viewModel.selectDate($0) }
-                        )
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                }
-
-                // Filter indicator
-                if let description = viewModel.filterDescription {
-                    HStack(spacing: Spacing.sm) {
-                        Text("Showing: \(description)")
-                            .font(Typography.caption)
-                            .foregroundStyle(ColorTokens.textSecondary)
-                        Spacer()
-                        Button("Clear") {
-                            viewModel.clearFilter()
-                        }
-                        .font(Typography.caption)
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.blue)
-                    }
-                    .padding(.horizontal, Spacing.sm)
-                    .padding(.vertical, Spacing.xs)
-                    .glassCard()
                 }
 
                 // Grouped transcriptions

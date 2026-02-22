@@ -20,7 +20,7 @@ final class FloatingIndicatorPanel: NSPanel {
         set { stateHolder.onTap = newValue }
     }
 
-    init(amplitudeProvider: AudioAmplitudeProvider, themeMode: ThemeMode = .dark) {
+    init(amplitudeProvider: AudioAmplitudeProvider, settings: SettingsManager, themeMode: ThemeMode = .dark) {
         self.amplitudeProvider = amplitudeProvider
 
         let size = Self.fixedSize
@@ -49,6 +49,7 @@ final class FloatingIndicatorPanel: NSPanel {
 
         let indicatorView = FloatingIndicatorView(stateHolder: stateHolder)
             .environment(amplitudeProvider)
+            .environment(settings)
 
         contentView = NSHostingView(rootView: indicatorView)
 
@@ -112,6 +113,7 @@ final class StateHolder: ObservableObject {
 /// The NSPanel is a dumb fixed-size transparent container.
 private struct FloatingIndicatorView: View {
     @Environment(AudioAmplitudeProvider.self) private var amplitudeProvider
+    @Environment(SettingsManager.self) private var settings
     @ObservedObject var stateHolder: StateHolder
     @State private var isHovered = false
 
@@ -152,7 +154,7 @@ private struct FloatingIndicatorView: View {
                     startIndex: amplitudeProvider.amplitudesStartIndex,
                     barCount: 28,
                     pixelRows: 7,
-                    color: Color(red: 0.15, green: 1.0, blue: 0.35)
+                    color: settings.accentColor
                 )
                 .transition(.opacity)
             } else if !isIdle {

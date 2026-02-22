@@ -1,5 +1,12 @@
 import Foundation
 
+enum TimeFilter: String, CaseIterable {
+    case today = "Today"
+    case week = "This Week"
+    case month = "This Month"
+    case all = "All"
+}
+
 struct TranscriptionGroup: Identifiable {
     let id: String        // "2026-02-16"
     let title: String     // "Today", "Yesterday", "Monday, Feb 14"
@@ -14,9 +21,8 @@ final class HomeViewModel {
     var collapsedGroups: Set<String> = []
     var rangeStart: Date?
     var rangeEnd: Date?
+    var displayedMonth: Date = .now
 
-    // Mark as ignored - changes shouldn't trigger full rebuild
-    @ObservationIgnored
     var activeDateStrings: Set<String> = []
 
     @ObservationIgnored
@@ -64,7 +70,7 @@ final class HomeViewModel {
     }
 
     func loadData() async {
-        allRecords = await analyticsService.fetchTranscriptions(since: 30)
+        allRecords = await analyticsService.fetchTranscriptions(since: 30, limit: 5000)
         activeDateStrings = await analyticsService.fetchActiveDateStrings(since: 30)
         totalTimeSaved = await analyticsService.fetchTotalTimeSaved()
         totalWords = await analyticsService.fetchTotalWords()
@@ -79,41 +85,66 @@ final class HomeViewModel {
         }
     }
 
-    /// Tap logic: first tap = start, second different day = end, re-tap bound = clear all
+    /// Range selection: first click sets start, second sets end, third clears and starts fresh
     func selectDate(_ day: Date) {
         let calendar = Calendar.current
+        activeFilter = .all
 
-        if let start = rangeStart, calendar.isDate(day, inSameDayAs: start) {
-            // Tapped on start bound — clear filter
-            rangeStart = nil
-            rangeEnd = nil
-        } else if let end = rangeEnd, calendar.isDate(day, inSameDayAs: end) {
-            // Tapped on end bound — clear filter
-            rangeStart = nil
-            rangeEnd = nil
-        } else if rangeStart == nil {
-            // No selection yet — set start
+        if rangeStart != nil, rangeEnd != nil {
+            // Both set — clear and start fresh
             rangeStart = day
             rangeEnd = nil
-        } else if rangeEnd == nil {
-            // Have start, no end — set end (auto-swap if needed)
-            let start = rangeStart!
-            if day < start {
-                rangeStart = day
-                rangeEnd = start
+        } else if let start = rangeStart {
+            // Only start set
+            if calendar.isDate(day, inSameDayAs: start) {
+                // Same day — clear
+                rangeStart = nil
             } else {
-                rangeEnd = day
+                // Different day — set range, ensure start ≤ end
+                if day < start {
+                    rangeStart = day
+                    rangeEnd = start
+                } else {
+                    rangeEnd = day
+                }
             }
         } else {
-            // Both set, tapping new day — reset to new single selection
+            // Nothing selected — set start
             rangeStart = day
-            rangeEnd = nil
         }
 
         rebuildGroups()
     }
 
+    var activeFilter: TimeFilter = .all
+
+    func applyFilter(_ filter: TimeFilter) {
+        if activeFilter == filter {
+            activeFilter = .all
+        } else {
+            activeFilter = filter
+        }
+
+        let calendar = Calendar.current
+        switch activeFilter {
+        case .today:
+            rangeStart = calendar.startOfDay(for: Date())
+            rangeEnd = nil
+        case .week:
+            rangeStart = calendar.date(byAdding: .day, value: -7, to: Date())
+            rangeEnd = Date()
+        case .month:
+            rangeStart = calendar.date(byAdding: .month, value: -1, to: Date())
+            rangeEnd = Date()
+        case .all:
+            rangeStart = nil
+            rangeEnd = nil
+        }
+        rebuildGroups()
+    }
+
     func clearFilter() {
+        activeFilter = .all
         rangeStart = nil
         rangeEnd = nil
         rebuildGroups()
@@ -137,6 +168,12 @@ final class HomeViewModel {
         return startStr
     }
 
+    func monthChanged() {
+        if rangeStart == nil && rangeEnd == nil {
+            rebuildGroups()
+        }
+    }
+
     private func rebuildGroups() {
         let calendar = Calendar.current
         let records: [TranscriptionRecord]
@@ -150,7 +187,14 @@ final class HomeViewModel {
                 records = allRecords.filter { calendar.isDate($0.timestamp, inSameDayAs: start) }
             }
         } else {
-            records = allRecords
+            // No selection — filter to displayed month
+            let components = calendar.dateComponents([.year, .month], from: displayedMonth)
+            guard let monthStart = calendar.date(from: components),
+                  let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else {
+                records = allRecords
+                return
+            }
+            records = allRecords.filter { $0.timestamp >= monthStart && $0.timestamp < monthEnd }
         }
 
         let grouped = Dictionary(grouping: records) { record in
