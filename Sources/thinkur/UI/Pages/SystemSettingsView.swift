@@ -133,6 +133,10 @@ struct SystemSettingsView: View {
 struct AccentColorPicker: View {
     @Binding var selectedColor: String
 
+    private var currentColor: Color {
+        (AccentColor(rawValue: selectedColor) ?? .defaultGreen).color
+    }
+
     var body: some View {
         HStack(spacing: Spacing.sm) {
             Image(systemName: "paintpalette")
@@ -140,7 +144,7 @@ struct AccentColorPicker: View {
                 .foregroundStyle(.primary)
                 .frame(width: 20)
 
-            Text("Accent Color")
+            Text("Indicator Color")
                 .font(Typography.body)
                 .foregroundStyle(ColorTokens.textPrimary)
                 .fixedSize()
@@ -160,14 +164,14 @@ struct AccentColorPicker: View {
                             .frame(width: 20, height: 20)
                             .overlay(
                                 Circle()
-                                    .fill(accent == .black ? Color(hex: "1C1C1E") : .white)
+                                    .fill(.white)
                                     .frame(width: 10, height: 10)
                                     .opacity(isSelected ? 1 : 0)
                             )
                             .overlay(
                                 Circle()
                                     .strokeBorder(
-                                        isSelected ? accent.color : accent == .black ? Color(hex: "38383A") : Color.clear,
+                                        isSelected ? accent.color : Color.clear,
                                         lineWidth: 2
                                     )
                                     .frame(width: 26, height: 26)
@@ -177,9 +181,48 @@ struct AccentColorPicker: View {
                     .help(accent.displayName)
                 }
             }
+
+            IndicatorPreview(color: currentColor)
+                .padding(.leading, Spacing.xs)
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, 14)
+    }
+}
+
+/// Animated mini floating indicator preview that shows what the color controls
+private struct IndicatorPreview: View {
+    let color: Color
+    @State private var phase: CGFloat = 0
+
+    private let barCount = 14
+    private let pixelSize: CGFloat = 2
+    private let spacing: CGFloat = 1
+
+    var body: some View {
+        HStack(spacing: spacing) {
+            ForEach(0..<barCount, id: \.self) { i in
+                let normalized = Double(i) / Double(barCount - 1)
+                let wave = (sin(phase + normalized * .pi * 2.5) + 1) / 2
+                let height = pixelSize * (2 + round(wave * 3))
+
+                RoundedRectangle(cornerRadius: 0.5)
+                    .fill(color)
+                    .frame(width: pixelSize, height: height)
+            }
+        }
+        .frame(height: pixelSize * 5)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 5)
+                .fill(.black.opacity(0.85))
+        )
+        .onAppear {
+            withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                phase = .pi * 2
+            }
+        }
     }
 }
 
