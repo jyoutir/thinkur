@@ -6,6 +6,7 @@ struct SmartLightRowView: View {
     var onBrightnessChange: ((Int) -> Void)?
     var onColorTemperatureChange: ((Int) -> Void)?
 
+    @Environment(SettingsManager.self) private var settings
     @State private var sliderValue: Double = 50
     @State private var isDragging = false
     @State private var colorTempValue: Double = 326
@@ -34,9 +35,8 @@ struct SmartLightRowView: View {
                     get: { light.isOn },
                     set: { onToggle?($0) }
                 ))
-                .toggleStyle(.switch)
                 .labelsHidden()
-                .controlSize(.small)
+                .toggleStyle(AccentSwitchStyle(tint: settings.accentUITint))
             }
 
             // Row 2: Brightness slider (only when light is on)

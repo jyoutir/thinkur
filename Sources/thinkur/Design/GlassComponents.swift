@@ -3,11 +3,17 @@ import SwiftUI
 // MARK: - Glass Card
 
 struct GlassCard: ViewModifier {
+    @Environment(SettingsManager.self) private var settings
+    @Environment(\.colorScheme) private var colorScheme
     var cornerRadius: CGFloat = CornerRadius.card
 
     func body(content: Content) -> some View {
         content
             .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .strokeBorder(settings.accentUITint.opacity(colorScheme == .dark ? 0.2 : 0.4), lineWidth: 1)
+            )
     }
 }
 

@@ -11,9 +11,7 @@ struct ToggleRow: View {
         SettingsRowView(icon: icon, title: title, subtitle: subtitle) {
             Toggle("", isOn: $isOn)
                 .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .tint(settings.accentUITint)
+                .toggleStyle(AccentSwitchStyle(tint: settings.accentUITint))
         }
     }
 }
