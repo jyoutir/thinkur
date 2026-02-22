@@ -23,8 +23,6 @@ defaults delete "$BUNDLE_ID" 2>/dev/null || true
 rm -f ~/Library/Preferences/${BUNDLE_ID}.plist
 # Restart preferences daemon to flush cache (auto-respawns immediately)
 killall cfprefsd 2>/dev/null || true
-rm -rf ~/Library/Application\ Support/${BUNDLE_ID}
-rm -rf ~/Library/Application\ Support/${APP_NAME}
 rm -rf ~/Library/Caches/${BUNDLE_ID}
 rm -rf ~/Library/Saved\ Application\ State/${BUNDLE_ID}.savedState
 rm -rf ~/Library/HTTPStorages/${BUNDLE_ID} 2>/dev/null
