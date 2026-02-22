@@ -216,7 +216,7 @@ private struct IndicatorPreview: View {
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 5)
-                .fill(.black.opacity(0.85))
+                .fill(.primary.opacity(0.1))
         )
         .onAppear {
             withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
