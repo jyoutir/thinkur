@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ShortcutsView: View {
     @Environment(ShortcutsViewModel.self) private var viewModel
+    @Environment(SettingsManager.self) private var settings
     @State private var appeared = false
 
     var body: some View {
@@ -30,6 +31,7 @@ struct ShortcutsView: View {
                             Button("Add") {
                                 Task { await viewModel.addShortcut() }
                             }
+                            .tint(settings.accentUITint)
                             .disabled(vm.newTrigger.isEmpty || vm.newExpansion.isEmpty)
                         }
 

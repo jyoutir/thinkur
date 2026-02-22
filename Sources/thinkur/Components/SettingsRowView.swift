@@ -5,6 +5,7 @@ struct SettingsRowView<Trailing: View>: View {
     let title: String
     var subtitle: String? = nil
     @ViewBuilder let trailing: Trailing
+    @Environment(SettingsManager.self) private var settings
 
     init(
         icon: String,
@@ -22,7 +23,7 @@ struct SettingsRowView<Trailing: View>: View {
         HStack(spacing: Spacing.sm) {
             Image(systemName: icon)
                 .font(.system(size: 14))
-                .foregroundStyle(.primary)
+                .foregroundStyle(settings.accentUITint)
                 .frame(width: 20)
 
             VStack(alignment: .leading, spacing: 2) {

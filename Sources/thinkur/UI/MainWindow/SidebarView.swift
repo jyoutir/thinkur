@@ -27,7 +27,7 @@ struct SidebarView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(phrases.isEmpty ? "Hello..." : phrases[currentPhraseIndex])
                         .font(Typography.headline)
-                        .foregroundStyle(ColorTokens.textPrimary)
+                        .foregroundStyle(settings.accentUITint)
                         .contentTransition(.numericText())
                         .animation(.easeInOut(duration: 0.6), value: currentPhraseIndex)
 
@@ -52,14 +52,12 @@ struct SidebarView: View {
             }
 
             // Main pages
-            List(selection: $selectedPage) {
+            VStack(spacing: 2) {
                 ForEach(NavigationPage.mainPages) { page in
-                    sidebarLabel(for: page)
-                        .tag(page)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
+                    mainPageRow(for: page)
                 }
             }
-            .listStyle(.sidebar)
+            .padding(.horizontal, Spacing.xs)
 
             Spacer(minLength: 0)
 
@@ -161,12 +159,24 @@ struct SidebarView: View {
     // MARK: - Row Builders
 
     @ViewBuilder
-    private func sidebarLabel(for page: NavigationPage) -> some View {
-        Label {
-            HStack {
+    private func mainPageRow(for page: NavigationPage) -> some View {
+        let isSelected = selectedPage == page
+        Button {
+            selectedPage = page
+        } label: {
+            HStack(spacing: Spacing.sm) {
+                Image(systemName: page.icon)
+                    .font(.system(size: 13))
+                    .foregroundStyle(isSelected ? settings.accentUITint : ColorTokens.textSecondary)
+                    .frame(width: 18)
+
                 Text(page.title)
+                    .font(Typography.body)
+                    .foregroundStyle(ColorTokens.textPrimary)
+
+                Spacer()
+
                 if page == .shortcuts && shortcutsVM.shortcutCount > 0 {
-                    Spacer()
                     Text("\(shortcutsVM.shortcutCount)")
                         .font(Typography.caption2)
                         .foregroundStyle(ColorTokens.textTertiary)
@@ -175,9 +185,15 @@ struct SidebarView: View {
                         .background(ColorTokens.border, in: Capsule())
                 }
             }
-        } icon: {
-            Image(systemName: page.icon)
+            .padding(.vertical, 6)
+            .padding(.horizontal, Spacing.sm)
+            .background(
+                isSelected ? settings.accentUITint.opacity(0.12) : Color.clear,
+                in: RoundedRectangle(cornerRadius: 5)
+            )
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -186,17 +202,26 @@ struct SidebarView: View {
         Button {
             selectedPage = page
         } label: {
-            Label(page.title, systemImage: page.icon)
-                .font(Typography.body)
-                .foregroundStyle(ColorTokens.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 6)
-                .padding(.horizontal, Spacing.sm)
-                .background(
-                    isSelected ? settings.accentUITint.opacity(0.15) : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 5)
-                )
-                .contentShape(Rectangle())
+            HStack(spacing: Spacing.sm) {
+                Image(systemName: page.icon)
+                    .font(.system(size: 13))
+                    .foregroundStyle(isSelected ? settings.accentUITint : ColorTokens.textSecondary)
+                    .frame(width: 18)
+
+                Text(page.title)
+                    .font(Typography.body)
+                    .foregroundStyle(ColorTokens.textPrimary)
+
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 6)
+            .padding(.horizontal, Spacing.sm)
+            .background(
+                isSelected ? settings.accentUITint.opacity(0.15) : Color.clear,
+                in: RoundedRectangle(cornerRadius: 5)
+            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .padding(.horizontal, Spacing.xs)

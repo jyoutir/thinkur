@@ -12,11 +12,11 @@ struct PermissionsPage: View {
             Spacer()
 
             VStack(spacing: Spacing.sm) {
-                Text("Let's get you set up")
+                Text("Set up thinkur")
                     .font(Typography.onboardingTitle)
                     .foregroundStyle(ColorTokens.textPrimary)
 
-                Text("thinkur needs a few permissions to work its magic. Your voice never leaves your Mac.")
+                Text("Grant three permissions. Your voice stays on your Mac.")
                     .font(Typography.onboardingBody)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .multilineTextAlignment(.center)
@@ -64,7 +64,7 @@ struct PermissionsPage: View {
             Button {
                 viewModel.nextStep()
             } label: {
-                Text(viewModel.allPermissionsGranted ? "Continue" : "Grant permissions above")
+                Text(viewModel.allPermissionsGranted ? "Continue" : "Grant required permissions")
                     .font(Typography.headline)
                     .frame(maxWidth: 280)
                     .padding(.vertical, Spacing.sm)
@@ -97,14 +97,14 @@ struct ModelLoadingPage: View {
                 ClaudePixelSpinner(state: viewModel.isModelReady ? .success : .connecting)
 
                 VStack(spacing: Spacing.xs) {
-                    Text(viewModel.isModelReady ? "You're all set" : "Preparing your voice model")
+                    Text(viewModel.isModelReady ? "Model ready" : "Preparing voice model")
                         .font(Typography.onboardingTitle)
                         .foregroundStyle(ColorTokens.textPrimary)
                         .contentTransition(.opacity)
                         .animation(.easeInOut(duration: 0.3), value: viewModel.isModelReady)
 
                     if !viewModel.isModelReady {
-                        Text(viewModel.modelLoadingMessage.isEmpty ? "This may take a moment\u{2026}" : viewModel.modelLoadingMessage)
+                        Text(viewModel.modelLoadingMessage.isEmpty ? "Almost ready\u{2026}" : viewModel.modelLoadingMessage)
                             .font(Typography.onboardingBody)
                             .foregroundStyle(ColorTokens.textSecondary)
                             .contentTransition(.opacity)
@@ -220,13 +220,13 @@ struct TryItPage: View {
             Spacer()
 
             VStack(spacing: Spacing.sm) {
-                Text("Use thinkur wherever you are")
+                Text("Try thinkur in real apps")
                     .font(Typography.onboardingTitle)
                     .foregroundStyle(ColorTokens.textPrimary)
 
                 Text(messages.isEmpty
-                     ? "Press \(hotkeyLabel) and say something to continue"
-                     : "Press your hotkey or tap the mic below to dictate")
+                     ? "Press \(hotkeyLabel) and speak."
+                     : "Press your hotkey or tap mic.")
                     .font(Typography.onboardingBody)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .contentTransition(.opacity)
@@ -1068,11 +1068,11 @@ struct QuickSettingsPage: View {
             Spacer()
 
             VStack(spacing: Spacing.sm) {
-                Text("Almost there")
+                Text("Quick settings")
                     .font(Typography.onboardingTitle)
                     .foregroundStyle(ColorTokens.textPrimary)
 
-                Text("Customize your experience. You can always change these later in Settings.")
+                Text("Choose your shortcut and recording style.")
                     .font(Typography.onboardingBody)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .multilineTextAlignment(.center)
@@ -1181,7 +1181,7 @@ private struct ROICalculatorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            Text("YOUR SAVINGS")
+            Text("VALUE")
                 .font(Typography.caption)
                 .foregroundStyle(ColorTokens.textSecondary)
                 .textCase(.uppercase)
@@ -1200,7 +1200,7 @@ private struct ROICalculatorView: View {
     private var resultCard: some View {
         VStack(spacing: Spacing.md) {
             VStack(spacing: Spacing.xxs) {
-                Text("Your monthly upside")
+                Text("Monthly upside")
                     .font(Typography.callout)
                     .foregroundStyle(ColorTokens.textSecondary)
 
@@ -1247,7 +1247,7 @@ private struct ROICalculatorView: View {
         VStack(alignment: .leading, spacing: Spacing.lg) {
             VStack(alignment: .leading, spacing: Spacing.xs) {
                 HStack {
-                    Text("How long you spend typing per day")
+                    Text("Typing time per day")
                         .font(Typography.body)
                         .foregroundStyle(ColorTokens.textPrimary)
                     Spacer()
@@ -1261,7 +1261,7 @@ private struct ROICalculatorView: View {
             }
 
             VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text("Hourly value of your time")
+                Text("Your hourly value")
                     .font(Typography.body)
                     .foregroundStyle(ColorTokens.textPrimary)
 
