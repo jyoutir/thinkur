@@ -82,7 +82,7 @@ final class AnalyticsService: AnalyticsRecording {
         descriptor.fetchLimit = 365
         guard let records = try? context.fetch(descriptor) else { return 0 }
         let totalDuration = records.reduce(0.0) { $0 + $1.totalDuration }
-        return totalDuration * 2.3 // typing multiplier
+        return totalDuration * 0.65 // typing at 80 wpm vs ~130 wpm dictation
     }
 
     func fetchTotalWords() async -> Int {

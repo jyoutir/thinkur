@@ -1165,7 +1165,7 @@ private struct ROICalculatorView: View {
     }
 
     private var dailyHoursSaved: Double {
-        typingHoursPerDay * 0.75 // 75% savings at 4x speed
+        typingHoursPerDay * 0.5 // 50% savings at 2x speed (80 wpm typing vs ~160 wpm dictation)
     }
 
     private var monthlyHoursSaved: Double {
@@ -1177,7 +1177,7 @@ private struct ROICalculatorView: View {
     }
 
     private var wordsPerDay: Int {
-        Int(typingHoursPerDay * 60 * 40)
+        Int(typingHoursPerDay * 60 * 80)
     }
 
     var body: some View {
