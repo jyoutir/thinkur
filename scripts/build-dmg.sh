@@ -103,7 +103,7 @@ fi
 
 # ─── Sign DMG ──────────────────────────────────────────────────────────────────
 echo "→ Signing DMG..."
-codesign --sign "Developer ID Application: $(security find-identity -v -p codesigning | grep 'Developer ID Application' | head -1 | sed 's/.*"\(.*\)"/\1/')" \
+codesign --sign "Developer ID Application" \
     --timestamp \
     "${DMG_PATH}"
 echo "  ✓ DMG signed"
