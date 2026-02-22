@@ -45,6 +45,10 @@ final class OnboardingViewModel {
     }
 
     func nextStep() {
+        if currentStep == 0 && isComplete {
+            // Returning user just needed to re-grant permissions — skip remaining steps
+            return
+        }
         if currentStep < totalSteps - 1 {
             currentStep += 1
         } else {

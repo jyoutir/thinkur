@@ -37,7 +37,16 @@ final class PermissionManager: PermissionChecking {
     }
 
     func requestMicrophone() async {
+        let alreadyDetermined = AVCaptureDevice.authorizationStatus(for: .audio) != .notDetermined
+        if alreadyDetermined {
+            // User already denied — re-requesting won't show a dialog, open Settings instead
+            openMicrophoneSettings()
+            return
+        }
         microphoneGranted = await AVCaptureDevice.requestAccess(for: .audio)
+        if !microphoneGranted {
+            openMicrophoneSettings()
+        }
     }
 
     // MARK: - Input Monitoring
@@ -52,6 +61,12 @@ final class PermissionManager: PermissionChecking {
     }
 
     // MARK: - Open System Settings
+
+    func openMicrophoneSettings() {
+        NSWorkspace.shared.open(
+            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!
+        )
+    }
 
     func openAccessibilitySettings() {
         NSWorkspace.shared.open(
