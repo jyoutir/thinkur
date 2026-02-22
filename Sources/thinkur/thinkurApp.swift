@@ -40,7 +40,7 @@ private struct RootView: View {
 
     var body: some View {
         Group {
-            if !coordinator.onboardingViewModel.isComplete {
+            if !coordinator.onboardingViewModel.isComplete || !coordinator.permissionManager.allGranted {
                 OnboardingFlow()
             } else if licenseManager.status == .validating {
                 ProgressView()
