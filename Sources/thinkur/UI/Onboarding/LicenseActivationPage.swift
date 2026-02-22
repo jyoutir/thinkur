@@ -13,11 +13,11 @@ struct LicenseActivationPage: View {
             Spacer()
 
             VStack(spacing: Spacing.sm) {
-                Text("Activate thinkur")
+                Text("Choose your plan")
                     .font(Typography.onboardingTitle)
                     .foregroundStyle(ColorTokens.textPrimary)
 
-                Text("Choose a plan to unlock thinkur. Your license key will be emailed after purchase.")
+                Text("Unlock thinkur, then enter your key to finish.")
                     .font(Typography.onboardingBody)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .multilineTextAlignment(.center)

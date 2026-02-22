@@ -5,6 +5,7 @@ struct StatCardView: View {
     let value: String
     let unit: String
     var change: String? = nil
+    @Environment(SettingsManager.self) private var settings
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -15,7 +16,7 @@ struct StatCardView: View {
             HStack(alignment: .firstTextBaseline, spacing: Spacing.xxs) {
                 Text(value)
                     .font(Typography.statValue)
-                    .foregroundStyle(ColorTokens.textPrimary)
+                    .foregroundStyle(settings.accentUITint)
 
                 Text(unit)
                     .font(Typography.statUnit)

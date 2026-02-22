@@ -5,6 +5,7 @@ struct ToggleRow: View {
     let title: String
     var subtitle: String? = nil
     @Binding var isOn: Bool
+    @Environment(SettingsManager.self) private var settings
 
     var body: some View {
         SettingsRowView(icon: icon, title: title, subtitle: subtitle) {
@@ -12,6 +13,7 @@ struct ToggleRow: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .tint(settings.accentUITint)
         }
     }
 }

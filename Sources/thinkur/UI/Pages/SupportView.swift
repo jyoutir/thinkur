@@ -94,7 +94,7 @@ struct SupportView: View {
             HStack(spacing: Spacing.sm) {
                 Image(systemName: "envelope.open")
                     .font(.system(size: 14))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(settings.accentUITint)
                     .frame(width: 20)
 
                 Text("Send Feedback")

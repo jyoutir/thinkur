@@ -80,7 +80,7 @@ struct SystemSettingsView: View {
                     } label: {
                         HStack {
                             Image(systemName: "arrow.counterclockwise")
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(settings.accentUITint)
                                 .frame(width: 20)
                             Text("Replay Onboarding")
                                 .foregroundStyle(ColorTokens.textPrimary)
@@ -132,6 +132,7 @@ struct SystemSettingsView: View {
 
 struct AccentColorPicker: View {
     @Binding var selectedColor: String
+    @Environment(SettingsManager.self) private var settings
 
     private var currentColor: Color {
         (AccentColor(rawValue: selectedColor) ?? .defaultGreen).color
@@ -141,7 +142,7 @@ struct AccentColorPicker: View {
         HStack(spacing: Spacing.sm) {
             Image(systemName: "paintpalette")
                 .font(.system(size: 14))
-                .foregroundStyle(.primary)
+                .foregroundStyle(settings.accentUITint)
                 .frame(width: 20)
 
             Text("Accent Color")
@@ -234,7 +235,7 @@ struct SoundStylePicker: View {
         HStack(spacing: Spacing.sm) {
             Image(systemName: "music.note")
                 .font(.system(size: 14))
-                .foregroundStyle(.primary)
+                .foregroundStyle(settings.accentUITint)
                 .frame(width: 20)
 
             Text("Sound Style")
