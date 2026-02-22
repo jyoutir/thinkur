@@ -18,6 +18,7 @@ struct PermissionsView: View {
                             name: "Microphone",
                             description: "Required to capture your voice for transcription",
                             isGranted: viewModel.microphoneGranted,
+                            helpText: "Audio input for on-device speech processing.",
                             action: { Task { await viewModel.requestMicrophone() } }
                         )
 
@@ -28,6 +29,7 @@ struct PermissionsView: View {
                             name: "Accessibility",
                             description: "Required to insert text into other applications",
                             isGranted: viewModel.accessibilityGranted,
+                            helpText: "Injects transcribed text into the active app.",
                             action: { viewModel.openAccessibilitySettings() }
                         )
 
@@ -38,6 +40,7 @@ struct PermissionsView: View {
                             name: "Input Monitoring",
                             description: "Required to detect the hotkey for activating voice typing",
                             isGranted: viewModel.inputMonitoringGranted,
+                            helpText: "Detects your hotkey to activate listening mode.",
                             action: { viewModel.openInputMonitoringSettings() }
                         )
                     }

@@ -31,7 +31,7 @@ struct PermissionsPage: View {
                         name: "Microphone",
                         description: "To hear your voice",
                         isGranted: permissionManager.microphoneGranted,
-                        helpText: "A system dialog will appear — click Allow. If nothing happens, open System Settings → Privacy & Security → Microphone and toggle thinkur on."
+                        helpText: "Audio input for on-device speech processing."
                     ) {
                         Task { await viewModel.requestMicrophone() }
                     }
@@ -43,7 +43,7 @@ struct PermissionsPage: View {
                         name: "Accessibility",
                         description: "To type into any app",
                         isGranted: permissionManager.accessibilityGranted,
-                        helpText: "System Settings will open. Click the + button, select thinkur from Applications, then toggle it on. You may need to unlock the padlock first."
+                        helpText: "Injects transcribed text into the active app."
                     ) {
                         viewModel.openAccessibilitySettings()
                     }
@@ -55,7 +55,7 @@ struct PermissionsPage: View {
                         name: "Input Monitoring",
                         description: "To detect your hotkey",
                         isGranted: permissionManager.inputMonitoringGranted,
-                        helpText: "System Settings will open. Find thinkur in the list and toggle it on. If thinkur isn't listed, try relaunching the app."
+                        helpText: "Detects your hotkey to activate listening mode."
                     ) {
                         viewModel.openInputMonitoringSettings()
                     }
