@@ -1,9 +1,11 @@
 import SwiftUI
+import Sparkle
 
 @main
 struct thinkurApp: App {
     @State private var coordinator = AppCoordinator()
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    private let updaterService = UpdaterService()
 
     var body: some Scene {
         Window("thinkur", id: "main") {

@@ -40,5 +40,9 @@
     <array>
         <string>_hue._tcp</string>
     </array>
+    <key>SUFeedURL</key>
+    <string>https://thinkur.app/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>PLACEHOLDER_RUN_GENERATE_KEYS</string>
 </dict>
 </plist>

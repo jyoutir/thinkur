@@ -10,6 +10,9 @@ packages:
   WhisperKit:
     url: https://github.com/argmaxinc/WhisperKit.git
     from: "0.9.0"
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle.git
+    from: "2.8.0"
 
 targets:
   thinkur:
@@ -19,6 +22,7 @@ targets:
       - Sources/thinkur
     dependencies:
       - package: WhisperKit
+      - package: Sparkle
     settings:
       base:
         INFOPLIST_FILE: Sources/thinkur/Resources/Info.plist
@@ -28,11 +32,17 @@ targets:
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: false
-        CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: YZ9FFMX8QS
-        CODE_SIGN_IDENTITY: "Apple Development"
         ENABLE_HARDENED_RUNTIME: true
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        debug:
+          CODE_SIGN_STYLE: Automatic
+          CODE_SIGN_IDENTITY: "Apple Development"
+        release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+          OTHER_CODE_SIGN_FLAGS: "--timestamp --options runtime"
     entitlements:
       path: Sources/thinkur/Resources/thinkur.entitlements
 
@@ -56,14 +66,15 @@ schemes:
         thinkurTests: [test]
       postActions:
         - script: |
-            # Kill running instance so copy doesn't fail on locked binary
-            killall thinkur 2>/dev/null || true
-            # Clean old copy (removes stale files inside .app bundle)
-            rm -rf "/Applications/thinkur.app"
-            # Copy fresh (signed) build
-            cp -R "${BUILT_PRODUCTS_DIR}/thinkur.app" "/Applications/thinkur.app"
-          name: "Copy thinkur.app to /Applications"
+            if [ "${CONFIGURATION}" = "Debug" ]; then
+              killall thinkur 2>/dev/null || true
+              rm -rf "/Applications/thinkur.app"
+              cp -R "${BUILT_PRODUCTS_DIR}/thinkur.app" "/Applications/thinkur.app"
+            fi
+          name: "Copy to /Applications (Debug only)"
           settingsTarget: thinkur
     test:
       targets:
         - thinkurTests
+    archive:
+      config: Release
