@@ -6,6 +6,7 @@ struct MiniCalendarView: View {
     @Binding var rangeEnd: Date?
     @Binding var displayedMonth: Date
     let onSelectDate: (Date) -> Void
+    var accentColor: Color = .blue
 
     private let calendar = Calendar.current
     private let dateFormatter: DateFormatter = {
@@ -61,7 +62,8 @@ struct MiniCalendarView: View {
                             hasActivity: activeDateStrings.contains(dateFormatter.string(from: date)),
                             isSelected: isSelectedBound(date),
                             isInRange: isInRange(date),
-                            isToday: calendar.isDateInToday(date)
+                            isToday: calendar.isDateInToday(date),
+                            accentColor: accentColor
                         )
                         .onTapGesture {
                             onSelectDate(date)
@@ -130,25 +132,26 @@ private struct DayCellView: View {
     let isSelected: Bool
     let isInRange: Bool
     let isToday: Bool
+    var accentColor: Color = .blue
 
     var body: some View {
         VStack(spacing: 1) {
             Text("\(Calendar.current.component(.day, from: date))")
                 .font(Typography.caption2)
-                .foregroundStyle(isSelected ? .white : isToday ? .blue : ColorTokens.textPrimary)
+                .foregroundStyle(isSelected ? .white : isToday ? accentColor : ColorTokens.textPrimary)
                 .frame(width: 22, height: 22)
                 .background {
                     if isSelected {
-                        Circle().fill(.blue)
+                        Circle().fill(accentColor)
                     } else if isInRange {
-                        Circle().fill(.blue.opacity(0.15))
+                        Circle().fill(accentColor.opacity(0.15))
                     } else if isToday {
-                        Circle().strokeBorder(.blue, lineWidth: 1)
+                        Circle().strokeBorder(accentColor, lineWidth: 1)
                     }
                 }
 
             Circle()
-                .fill(.blue)
+                .fill(accentColor)
                 .frame(width: 4, height: 4)
                 .opacity(hasActivity ? 1 : 0)
         }

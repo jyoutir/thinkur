@@ -97,6 +97,10 @@ final class SettingsManager {
         (AccentColor(rawValue: accentColorName) ?? .defaultGreen).color
     }
 
+    var accentUITint: Color {
+        (AccentColor(rawValue: accentColorName) ?? .defaultGreen).uiTintColor
+    }
+
     // Onboarding
     var hasCompletedOnboarding: Bool {
         didSet { defaults.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding") }

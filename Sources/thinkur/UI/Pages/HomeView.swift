@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(HomeViewModel.self) private var viewModel
+    @Environment(SettingsManager.self) private var settings
     @State private var appeared = false
     @State private var calendarExpanded = false
 
@@ -88,7 +89,8 @@ struct HomeView: View {
                             get: { viewModel.displayedMonth },
                             set: { viewModel.displayedMonth = $0 }
                         ),
-                        onSelectDate: { viewModel.selectDate($0) }
+                        onSelectDate: { viewModel.selectDate($0) },
+                        accentColor: settings.accentUITint
                     )
                     .frame(maxWidth: 240)
                     .onChange(of: viewModel.displayedMonth) {

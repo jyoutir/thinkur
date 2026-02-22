@@ -144,7 +144,7 @@ struct AccentColorPicker: View {
                 .foregroundStyle(.primary)
                 .frame(width: 20)
 
-            Text("Indicator Color")
+            Text("Accent Color")
                 .font(Typography.body)
                 .foregroundStyle(ColorTokens.textPrimary)
                 .fixedSize()
@@ -228,6 +228,7 @@ private struct IndicatorPreview: View {
 
 struct SoundStylePicker: View {
     @Binding var selectedStyle: String
+    @Environment(SettingsManager.self) private var settings
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
@@ -261,17 +262,17 @@ struct SoundStylePicker: View {
                         .padding(.horizontal, Spacing.xs)
                         .padding(.vertical, Spacing.xxs)
                         .background(
-                            isSelected ? Color.accentColor.opacity(0.2) : Color.clear,
+                            isSelected ? settings.accentUITint.opacity(0.2) : Color.clear,
                             in: .capsule
                         )
                         .overlay(
                             Capsule()
                                 .strokeBorder(
-                                    isSelected ? Color.accentColor : ColorTokens.border,
+                                    isSelected ? settings.accentUITint : ColorTokens.border,
                                     lineWidth: 1
                                 )
                         )
-                        .foregroundStyle(isSelected ? Color.accentColor : ColorTokens.textSecondary)
+                        .foregroundStyle(isSelected ? settings.accentUITint : ColorTokens.textSecondary)
                     }
                     .buttonStyle(.plain)
                 }

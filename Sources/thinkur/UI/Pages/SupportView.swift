@@ -20,6 +20,7 @@ private class SharingDelegate: NSObject, NSSharingServiceDelegate {
 }
 
 struct SupportView: View {
+    @Environment(SettingsManager.self) private var settings
     @State private var appeared = false
     @State private var showForm = false
     @State private var selectedCategory: FeedbackCategory = .bug
@@ -49,7 +50,7 @@ struct SupportView: View {
                         SettingsRowView(icon: "envelope", title: "Contact") {
                             Link("jyo@thinkur.app", destination: URL(string: "mailto:jyo@thinkur.app")!)
                                 .font(Typography.body)
-                                .foregroundStyle(Color.accentColor)
+                                .foregroundStyle(settings.accentUITint)
                         }
                     }
                 }
