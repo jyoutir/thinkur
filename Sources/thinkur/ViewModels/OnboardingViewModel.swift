@@ -52,6 +52,12 @@ final class OnboardingViewModel {
         }
     }
 
+    func previousStep() {
+        if currentStep > 0 {
+            currentStep -= 1
+        }
+    }
+
     // MARK: - Model State
 
     var isModelReady: Bool {

@@ -218,16 +218,19 @@ struct TryItPage: View {
     var body: some View {
         VStack(spacing: Spacing.lg) {
             Spacer()
-                .frame(height: Spacing.sm)
 
             VStack(spacing: Spacing.sm) {
                 Text("Use thinkur wherever you are")
                     .font(Typography.onboardingTitle)
                     .foregroundStyle(ColorTokens.textPrimary)
 
-                Text("Press your hotkey or tap the mic below to dictate")
+                Text(messages.isEmpty
+                     ? "Press \(hotkeyLabel) and say something to continue"
+                     : "Press your hotkey or tap the mic below to dictate")
                     .font(Typography.onboardingBody)
                     .foregroundStyle(ColorTokens.textSecondary)
+                    .contentTransition(.opacity)
+                    .animation(.easeInOut(duration: 0.3), value: messages.isEmpty)
             }
 
             // Context selector
@@ -247,7 +250,7 @@ struct TryItPage: View {
             Button {
                 viewModel.nextStep()
             } label: {
-                Text("Continue")
+                Text(messages.isEmpty ? "Dictate something to continue" : "Continue")
                     .font(Typography.headline)
                     .frame(maxWidth: 280)
                     .padding(.vertical, Spacing.sm)
@@ -255,6 +258,7 @@ struct TryItPage: View {
             .buttonStyle(.glassProminent)
             .controlSize(.large)
             .tint(.primary)
+            .disabled(messages.isEmpty)
 
             Spacer()
                 .frame(height: Spacing.xl)
@@ -390,6 +394,13 @@ struct TryItPage: View {
     }
 
     // MARK: - Helpers
+
+    private var hotkeyLabel: String {
+        HotkeyDisplayHelper.displayName(
+            keyCode: settings.hotkeyCode,
+            modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.hotkeyModifiers))
+        )
+    }
 
     private func selectPrevious() {
         withAnimation(.spring(duration: 0.25)) {
@@ -1069,7 +1080,7 @@ struct QuickSettingsPage: View {
                     .frame(maxWidth: 420)
             }
 
-            VStack(spacing: Spacing.sm) {
+            VStack(spacing: Spacing.md) {
                 GroupedSettingsSection {
                     VStack(spacing: 0) {
                         // Hotkey recorder
@@ -1101,7 +1112,13 @@ struct QuickSettingsPage: View {
                 }
 
                 GroupedSettingsSection {
-                    SoundStylePicker(selectedStyle: $s.soundStyle)
+                    VStack(spacing: 0) {
+                        SoundStylePicker(selectedStyle: $s.soundStyle)
+
+                        Divider()
+
+                        AccentColorPicker(selectedColor: $s.accentColorName)
+                    }
                 }
             }
             .frame(maxWidth: 420)

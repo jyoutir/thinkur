@@ -106,6 +106,11 @@ struct LicenseActivationPage: View {
                 .frame(height: Spacing.xl)
         }
         .padding(.horizontal, Spacing.xl)
+        .onAppear {
+            if licenseManager.isLicensed {
+                viewModel.nextStep()
+            }
+        }
         .onChange(of: licenseManager.isLicensed) { _, isLicensed in
             if isLicensed {
                 viewModel.nextStep()

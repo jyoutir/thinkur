@@ -145,8 +145,9 @@ final class SettingsManager {
         // Theme
         self.themeMode = ThemeMode(rawValue: defaults.string(forKey: "themeMode") ?? "") ?? .dark
 
-        // Accent color
-        self.accentColorName = defaults.string(forKey: "accentColorName") ?? AccentColor.defaultGreen.rawValue
+        // Accent color (migrate removed "black" to green)
+        let storedColor = defaults.string(forKey: "accentColorName") ?? AccentColor.defaultGreen.rawValue
+        self.accentColorName = AccentColor(rawValue: storedColor) != nil ? storedColor : AccentColor.defaultGreen.rawValue
 
         // Onboarding
         self.hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
