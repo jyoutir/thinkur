@@ -11,30 +11,59 @@ NOTARIZE_PROFILE="thinkur-notarize"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="${PROJECT_DIR}/build"
-ARCHIVE_PATH="${BUILD_DIR}/${APP_NAME}.xcarchive"
-EXPORT_DIR="${BUILD_DIR}/export"
-APP_PATH="${EXPORT_DIR}/${APP_NAME}.app"
 
-# Read version from project.yml
+# Read version from project.yml (safe read-only access to source tree)
 VERSION=$(grep 'MARKETING_VERSION:' "${PROJECT_DIR}/project.yml" | head -1 | sed 's/.*"\(.*\)"/\1/')
 BUILD_NUM=$(grep 'CURRENT_PROJECT_VERSION:' "${PROJECT_DIR}/project.yml" | head -1 | sed 's/.*"\(.*\)"/\1/')
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
-DMG_PATH="${BUILD_DIR}/${DMG_NAME}"
 
 echo "=== Building ${APP_NAME} v${VERSION} (${BUILD_NUM}) ==="
 
-# ─── Clean ──────────────────────────────────────────────────────────────────────
-echo "→ Cleaning build directory..."
-rm -rf "${BUILD_DIR}"
-mkdir -p "${BUILD_DIR}"
-
-# ─── Generate Xcode project ────────────────────────────────────────────────────
+# ─── Generate Xcode project (in source tree — writes .xcodeproj, safe) ────────
 echo "→ Running xcodegen..."
 cd "${PROJECT_DIR}"
 xcodegen generate
 
+# ─── Create isolated build environment ─────────────────────────────────────────
+# Copy the project to /tmp so xcodebuild/codesign never touch the source tree.
+# macOS Sequoia adds com.apple.macl and com.apple.provenance xattrs when
+# xcodebuild reads files, which locks out Terminal, editors, git, etc.
+# Building from /tmp avoids this entirely.
+TEMP_DIR=$(mktemp -d /tmp/thinkur-release-XXXX)
+echo "→ Copying project to isolated build dir: ${TEMP_DIR}"
+
+rsync -a \
+    --exclude '.git' \
+    --exclude '.build' \
+    --exclude 'build' \
+    --exclude '.claude' \
+    --exclude 'DerivedData' \
+    --exclude 'docs' \
+    --exclude 'Tests' \
+    "${PROJECT_DIR}/" "${TEMP_DIR}/"
+
+# Strip any existing xattrs from the copy (provenance from ~/Downloads)
+xattr -cr "${TEMP_DIR}" 2>/dev/null || true
+
+# All paths for the build now point to the temp copy
+TEMP_BUILD_DIR="${TEMP_DIR}/build"
+ARCHIVE_PATH="${TEMP_BUILD_DIR}/${APP_NAME}.xcarchive"
+EXPORT_DIR="${TEMP_BUILD_DIR}/export"
+APP_PATH="${EXPORT_DIR}/${APP_NAME}.app"
+DMG_PATH="${TEMP_BUILD_DIR}/${DMG_NAME}"
+DERIVED_DATA="${TEMP_DIR}/DerivedData"
+EXPORT_OPTIONS="${TEMP_BUILD_DIR}/ExportOptions.plist"
+
+# Always clean up the temp directory, even on failure
+cleanup() {
+    echo "→ Cleaning up temp directory..."
+    rm -rf "${TEMP_DIR}"
+}
+trap cleanup EXIT
+
+mkdir -p "${TEMP_BUILD_DIR}"
+
 # ─── Create export options plist ────────────────────────────────────────────────
-EXPORT_OPTIONS="${BUILD_DIR}/ExportOptions.plist"
 cat > "${EXPORT_OPTIONS}" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -52,12 +81,14 @@ cat > "${EXPORT_OPTIONS}" << 'PLIST'
 </plist>
 PLIST
 
-# ─── Archive ────────────────────────────────────────────────────────────────────
+# ─── Archive (from temp copy) ──────────────────────────────────────────────────
 echo "→ Archiving (Release)..."
+cd "${TEMP_DIR}"
 xcodebuild archive \
     -scheme "${SCHEME}" \
     -configuration Release \
     -archivePath "${ARCHIVE_PATH}" \
+    -derivedDataPath "${DERIVED_DATA}" \
     -destination "generic/platform=macOS" \
     DEVELOPMENT_TEAM="${TEAM_ID}" \
     CODE_SIGN_STYLE=Manual \
@@ -80,7 +111,6 @@ echo "  ✓ Code signature valid"
 
 # ─── Create DMG ─────────────────────────────────────────────────────────────────
 echo "→ Creating DMG..."
-# Remove any existing DMG first
 rm -f "${DMG_PATH}"
 
 create-dmg \
@@ -122,7 +152,14 @@ xcrun stapler staple "${DMG_PATH}"
 echo "→ Final Gatekeeper check..."
 spctl --assess --type open --context context:primary-signature -v "${DMG_PATH}"
 
+# ─── Copy DMG back to source tree ─────────────────────────────────────────────
+echo "→ Copying DMG to ${BUILD_DIR}..."
+mkdir -p "${BUILD_DIR}"
+cp "${DMG_PATH}" "${BUILD_DIR}/${DMG_NAME}"
+
+# Temp directory is cleaned up by the EXIT trap
+
 echo ""
 echo "=== Done ==="
-echo "DMG: ${DMG_PATH}"
-echo "Size: $(du -h "${DMG_PATH}" | cut -f1)"
+echo "DMG: ${BUILD_DIR}/${DMG_NAME}"
+echo "Size: $(du -h "${BUILD_DIR}/${DMG_NAME}" | cut -f1)"
