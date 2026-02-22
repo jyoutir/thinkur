@@ -16,5 +16,5 @@ Package.resolved
 *~
 
 # WhisperKit models (large binaries, downloaded at runtime)
-Models/
+/Models/
 docs/
