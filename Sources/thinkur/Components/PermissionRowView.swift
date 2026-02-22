@@ -31,23 +31,23 @@ struct PermissionRowView: View {
 
                 Spacer()
 
+                if !helpText.isEmpty {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showHelp.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "questionmark.circle")
+                            .foregroundStyle(ColorTokens.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 if isGranted {
                     Label("Granted", systemImage: "checkmark.circle.fill")
                         .font(Typography.caption)
                         .foregroundStyle(ColorTokens.success)
                 } else {
-                    if !helpText.isEmpty {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                showHelp.toggle()
-                            }
-                        } label: {
-                            Image(systemName: "questionmark.circle")
-                                .foregroundStyle(ColorTokens.textTertiary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-
                     Button("Grant", action: action)
                         .controlSize(.small)
                 }
@@ -55,7 +55,7 @@ struct PermissionRowView: View {
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, Spacing.sm)
 
-            if showHelp && !isGranted {
+            if showHelp {
                 Text(helpText)
                     .font(Typography.caption)
                     .foregroundStyle(ColorTokens.textSecondary)
