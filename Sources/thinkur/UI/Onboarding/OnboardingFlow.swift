@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OnboardingFlow: View {
     @Environment(OnboardingViewModel.self) private var viewModel
+    @Environment(SettingsManager.self) private var settings
 
     var body: some View {
         ZStack {
@@ -61,7 +62,7 @@ struct OnboardingFlow: View {
                         HStack(spacing: Spacing.xs) {
                             ForEach(0..<stepItems.count, id: \.self) { index in
                                 Capsule()
-                                    .fill(index == viewModel.currentStep ? ColorTokens.textPrimary : ColorTokens.textTertiary)
+                                    .fill(index == viewModel.currentStep ? settings.accentUITint : ColorTokens.textTertiary)
                                     .frame(width: index == viewModel.currentStep ? 24 : 8, height: 8)
                                     .animation(Animations.springBounce, value: viewModel.currentStep)
                             }
@@ -99,7 +100,7 @@ struct OnboardingFlow: View {
                 ForEach(Array(stepItems.enumerated()), id: \.offset) { index, step in
                     HStack(spacing: Spacing.xs) {
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(index == viewModel.currentStep ? ColorTokens.textPrimary : ColorTokens.textTertiary.opacity(0.35))
+                            .fill(index == viewModel.currentStep ? settings.accentUITint : ColorTokens.textTertiary.opacity(0.35))
                             .frame(width: 3, height: 26)
 
                         VStack(alignment: .leading, spacing: 1) {

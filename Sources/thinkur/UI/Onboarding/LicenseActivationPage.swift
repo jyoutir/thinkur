@@ -3,6 +3,7 @@ import SwiftUI
 struct LicenseActivationPage: View {
     @Environment(OnboardingViewModel.self) private var viewModel
     @Environment(LicenseManager.self) private var licenseManager
+    @Environment(SettingsManager.self) private var settings
 
     @State private var licenseKey = ""
     @State private var isActivating = false
@@ -79,7 +80,7 @@ struct LicenseActivationPage: View {
                             .padding(.vertical, Spacing.xs)
                         }
                         .buttonStyle(.glassProminent)
-                        .tint(.primary)
+                        .tint(settings.accentUITint)
                         .disabled(licenseKey.trimmingCharacters(in: .whitespaces).isEmpty || isActivating)
                     }
                     .padding(.horizontal, Spacing.md)
@@ -138,6 +139,7 @@ struct LicenseActivationPage: View {
 // MARK: - Plan Card
 
 private struct PlanCard: View {
+    @Environment(SettingsManager.self) private var settings
     let title: String
     let price: String
     let period: String
@@ -175,7 +177,7 @@ private struct PlanCard: View {
                     .padding(.vertical, Spacing.xs)
             }
             .buttonStyle(.glassProminent)
-            .tint(.primary)
+            .tint(settings.accentUITint)
         }
         .padding(Spacing.lg)
         .frame(maxWidth: .infinity)
@@ -183,7 +185,7 @@ private struct PlanCard: View {
         .overlay(
             RoundedRectangle(cornerRadius: CornerRadius.card)
                 .strokeBorder(
-                    highlighted ? ColorTokens.textPrimary.opacity(0.3) : Color.clear,
+                    highlighted ? settings.accentUITint.opacity(0.3) : Color.clear,
                     lineWidth: 1
                 )
         )
