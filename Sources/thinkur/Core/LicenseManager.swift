@@ -219,6 +219,8 @@ final class LicenseManager {
         }
         applyLicenseData(json)
         // Don't set active yet — validateOnLaunch will confirm
+        // But mark as validating so the paywall doesn't flash
+        status = .validating
     }
 
     private func applyLicenseData(_ json: [String: Any]) {
