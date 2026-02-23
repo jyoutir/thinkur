@@ -33,17 +33,22 @@ final class PermissionManager: PermissionChecking {
     // MARK: - Microphone
 
     func checkMicrophone() {
-        microphoneGranted = AVAudioApplication.shared.recordPermission == .granted
+        let status = AVAudioApplication.shared.recordPermission
+        microphoneGranted = status == .granted
+        Logger.permissions.info("checkMicrophone: recordPermission = \(status.rawValue, privacy: .public), granted = \(self.microphoneGranted)")
     }
 
     func requestMicrophone() async {
         let status = AVAudioApplication.shared.recordPermission
+        Logger.permissions.info("requestMicrophone: current recordPermission = \(status.rawValue, privacy: .public)")
         if status != .undetermined {
             // User already decided — re-requesting won't show a dialog, open Settings instead
+            Logger.permissions.info("requestMicrophone: permission already determined, opening Settings")
             openMicrophoneSettings()
             return
         }
         microphoneGranted = await AVAudioApplication.requestRecordPermission()
+        Logger.permissions.info("requestMicrophone: after request, granted = \(self.microphoneGranted)")
         if !microphoneGranted {
             openMicrophoneSettings()
         }

@@ -24,6 +24,7 @@ final class ViewModelFactory {
             sharedState: services.sharedState,
             shortcutService: services.shortcutService,
             stylePreferenceService: services.stylePreferenceService,
+            permissionManager: services.permissionManager,
             smartHomeService: services.smartHomeService
         )
         self.recordingViewModel = RecordingViewModel(
