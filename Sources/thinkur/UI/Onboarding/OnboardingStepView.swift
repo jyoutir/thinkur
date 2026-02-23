@@ -31,7 +31,7 @@ struct PermissionsPage: View {
                         name: "Microphone",
                         description: "To hear your voice",
                         isGranted: permissionManager.microphoneGranted,
-                        helpText: "Audio input for on-device speech processing."
+                        helpText: "If the prompt doesn\u{2019}t appear: System Settings \u{2192} Privacy & Security \u{2192} Microphone \u{2192} Enable thinkur"
                     ) {
                         Task { await viewModel.requestMicrophone() }
                     }
@@ -43,7 +43,7 @@ struct PermissionsPage: View {
                         name: "Accessibility",
                         description: "To type into any app",
                         isGranted: permissionManager.accessibilityGranted,
-                        helpText: "Injects transcribed text into the active app."
+                        helpText: "System Settings \u{2192} Privacy & Security \u{2192} Accessibility \u{2192} Enable thinkur"
                     ) {
                         viewModel.openAccessibilitySettings()
                     }
@@ -55,7 +55,7 @@ struct PermissionsPage: View {
                         name: "Input Monitoring",
                         description: "To detect your hotkey",
                         isGranted: permissionManager.inputMonitoringGranted,
-                        helpText: "Detects your hotkey to activate listening mode."
+                        helpText: "System Settings \u{2192} Privacy & Security \u{2192} Input Monitoring \u{2192} Enable thinkur"
                     ) {
                         viewModel.openInputMonitoringSettings()
                     }
@@ -66,9 +66,13 @@ struct PermissionsPage: View {
             Spacer()
 
             Button {
-                viewModel.nextStep()
+                if viewModel.allPermissionsGranted {
+                    viewModel.nextStep()
+                } else {
+                    Task { await viewModel.grantNextPermission() }
+                }
             } label: {
-                Text(viewModel.allPermissionsGranted ? "Continue" : "Grant required permissions")
+                Text(viewModel.allPermissionsGranted ? "Continue" : "Grant next permission")
                     .font(Typography.headline)
                     .frame(maxWidth: 280)
                     .padding(.vertical, Spacing.sm)
@@ -76,7 +80,6 @@ struct PermissionsPage: View {
             .buttonStyle(.glassProminent)
             .controlSize(.large)
             .tint(settings.accentUITint)
-            .disabled(!viewModel.allPermissionsGranted)
 
             Spacer()
                 .frame(height: Spacing.xl)

@@ -98,6 +98,16 @@ final class OnboardingViewModel {
         permissionManager.openInputMonitoringSettings()
     }
 
+    func grantNextPermission() async {
+        if !permissionManager.microphoneGranted {
+            await requestMicrophone()
+        } else if !permissionManager.accessibilityGranted {
+            openAccessibilitySettings()
+        } else if !permissionManager.inputMonitoringGranted {
+            openInputMonitoringSettings()
+        }
+    }
+
     // MARK: - Permission Polling
 
     func startPermissionPolling() {
