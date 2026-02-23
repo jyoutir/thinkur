@@ -3,7 +3,6 @@ import SwiftUI
 struct BillingView: View {
     @Environment(LicenseManager.self) private var licenseManager
     @State private var appeared = false
-    @State private var isDeactivating = false
 
     var body: some View {
         ScrollView {
@@ -61,27 +60,12 @@ struct BillingView: View {
                     }
                 }
 
-                HStack(spacing: Spacing.sm) {
-                    Button("Manage Subscription") {
-                        if let url = URL(string: Constants.customerPortalURL) {
-                            NSWorkspace.shared.open(url)
-                        }
+                Button("Manage Subscription") {
+                    if let url = URL(string: Constants.customerPortalURL) {
+                        NSWorkspace.shared.open(url)
                     }
-                    .controlSize(.regular)
-
-                    Spacer()
-
-                    Button("Deactivate License") {
-                        Task {
-                            isDeactivating = true
-                            await licenseManager.deactivate()
-                            isDeactivating = false
-                        }
-                    }
-                    .controlSize(.regular)
-                    .disabled(isDeactivating)
-                    .foregroundStyle(.red)
                 }
+                .controlSize(.regular)
             }
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.lg)

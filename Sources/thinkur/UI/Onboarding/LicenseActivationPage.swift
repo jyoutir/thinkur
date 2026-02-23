@@ -101,6 +101,15 @@ struct LicenseActivationPage: View {
             }
             .frame(maxWidth: 460)
 
+            VStack(spacing: Spacing.xxs) {
+                Text("Already purchased? Check [your account](\(Constants.customerPortalURL)) for your key.")
+                Text("Need help? [jyo@thinkur.app](mailto:jyo@thinkur.app)")
+            }
+            .font(Typography.caption)
+            .foregroundStyle(ColorTokens.textTertiary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: 460)
+
             Spacer()
 
             Spacer()
