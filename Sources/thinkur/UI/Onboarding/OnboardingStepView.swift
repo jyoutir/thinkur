@@ -124,6 +124,13 @@ struct ModelLoadingPage: View {
 
             Spacer()
 
+            if !viewModel.isModelReady {
+                ProgressView(value: viewModel.modelDownloadProgress)
+                    .tint(settings.accentUITint)
+                    .frame(maxWidth: 280)
+                    .animation(.easeInOut(duration: 0.3), value: viewModel.modelDownloadProgress)
+            }
+
             Button {
                 viewModel.nextStep()
             } label: {
