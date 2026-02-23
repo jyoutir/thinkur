@@ -9,8 +9,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="${PROJECT_DIR}/build"
 
-# Paths — customize if thinkur-web is elsewhere
-THINKUR_WEB_DIR="${THINKUR_WEB_DIR:-${PROJECT_DIR}/../thinkur-web}"
+# Prevent stale GITHUB_TOKEN from blocking gh CLI keyring auth
+unset GITHUB_TOKEN 2>/dev/null || true
+
+# Paths — customize if thinkur-web is elsewhere (resolve to absolute path)
+THINKUR_WEB_DIR="${THINKUR_WEB_DIR:-$(cd "${PROJECT_DIR}/.." && pwd)/thinkur-web}"
 
 # Read version from project.yml
 VERSION=$(grep 'MARKETING_VERSION:' "${PROJECT_DIR}/project.yml" | head -1 | sed 's/.*"\(.*\)"/\1/')
