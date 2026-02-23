@@ -17,16 +17,32 @@ struct ShortcutsView: View {
                 // Add shortcut form
                 GroupedSettingsSection(title: "Add Shortcut") {
                     VStack(spacing: Spacing.sm) {
-                        HStack(spacing: Spacing.sm) {
+                        HStack(alignment: .top, spacing: Spacing.sm) {
                             TextField("When I say…", text: $vm.newTrigger)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 160)
 
                             Image(systemName: "arrow.right")
                                 .foregroundStyle(ColorTokens.textTertiary)
+                                .padding(.top, 6)
 
-                            TextField("thinkur types…", text: $vm.newExpansion)
-                                .textFieldStyle(.roundedBorder)
+                            TextEditor(text: $vm.newExpansion)
+                                .font(Typography.body)
+                                .scrollContentBackground(.hidden)
+                                .padding(4)
+                                .frame(minHeight: 32, maxHeight: 120)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .glassClear(cornerRadius: CornerRadius.field)
+                                .overlay(alignment: .topLeading) {
+                                    if vm.newExpansion.isEmpty {
+                                        Text("thinkur types…")
+                                            .font(Typography.body)
+                                            .foregroundStyle(ColorTokens.textTertiary)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 6)
+                                            .allowsHitTesting(false)
+                                    }
+                                }
 
                             Button("Add") {
                                 Task { await viewModel.addShortcut() }
