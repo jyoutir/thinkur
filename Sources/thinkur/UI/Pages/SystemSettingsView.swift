@@ -3,6 +3,7 @@ import SwiftUI
 struct SystemSettingsView: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(AppCoordinator.self) private var coordinator
+    @Environment(SharedAppState.self) private var sharedState
     @State private var showClearConfirmation = false
     @State private var appeared = false
 
@@ -65,6 +66,21 @@ struct SystemSettingsView: View {
                             subtitle: "Keep thinkur up to date automatically",
                             isOn: $s.automaticUpdates
                         )
+                    }
+                }
+
+                if sharedState.isUpgradingModel {
+                    GroupedSettingsSection(title: "Voice Model") {
+                        HStack(spacing: Spacing.sm) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Upgrading to \(Constants.whisperModel)\u{2026}")
+                                .font(Typography.callout)
+                                .foregroundStyle(ColorTokens.textSecondary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.sm)
                     }
                 }
 
