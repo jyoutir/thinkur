@@ -10,6 +10,9 @@ build/
 .swiftpm/
 Package.resolved
 
+# Secrets
+.env
+
 # macOS
 .DS_Store
 *.swp
