@@ -5,12 +5,12 @@ set -euo pipefail
 APP_NAME="thinkur"
 GITHUB_REPO="jyoutir/thinkur-web"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="${PROJECT_DIR}/build"
 
 # Paths — customize if thinkur-web is elsewhere
-THINKUR_WEB_DIR="${PROJECT_DIR}/../thinkur-web"
+THINKUR_WEB_DIR="${THINKUR_WEB_DIR:-${PROJECT_DIR}/../thinkur-web}"
 
 # Read version from project.yml
 VERSION=$(grep 'MARKETING_VERSION:' "${PROJECT_DIR}/project.yml" | head -1 | sed 's/.*"\(.*\)"/\1/')
