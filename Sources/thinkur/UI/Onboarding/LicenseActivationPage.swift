@@ -102,8 +102,8 @@ struct LicenseActivationPage: View {
             .frame(maxWidth: 460)
 
             VStack(spacing: Spacing.xxs) {
-                Text("Already purchased? Check [your account](\(Constants.customerPortalURL)) for your key.")
-                Text("Need help? [jyo@thinkur.app](mailto:jyo@thinkur.app)")
+                Text((try? AttributedString(markdown: "Already purchased? Check [your account](\(Constants.customerPortalURL)) for your key.")) ?? AttributedString())
+                Text((try? AttributedString(markdown: "Need help? [jyo@thinkur.app](mailto:jyo@thinkur.app)")) ?? AttributedString())
             }
             .font(Typography.caption)
             .foregroundStyle(ColorTokens.textTertiary)
