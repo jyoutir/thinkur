@@ -99,7 +99,7 @@ struct PaywallView: View {
                 .frame(maxWidth: 460)
 
                 VStack(spacing: Spacing.xxs) {
-                    Text((try? AttributedString(markdown: "Already purchased? Check [your account](\(Constants.customerPortalURL)) for your key.")) ?? AttributedString())
+                    Text((try? AttributedString(markdown: "Already purchased? Check [your orders](https://app.lemonsqueezy.com/my-orders) for your key.")) ?? AttributedString())
                     Text((try? AttributedString(markdown: "Need help? [jyo@thinkur.app](mailto:jyo@thinkur.app)")) ?? AttributedString())
                 }
                 .font(Typography.caption)
