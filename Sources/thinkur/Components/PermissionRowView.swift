@@ -48,8 +48,11 @@ struct PermissionRowView: View {
                         .font(Typography.caption)
                         .foregroundStyle(ColorTokens.success)
                 } else {
-                    Button("Grant", action: action)
-                        .controlSize(.small)
+                    Button("Grant") {
+                        action()
+                        withAnimation(.easeInOut(duration: 0.2)) { showHelp = true }
+                    }
+                    .controlSize(.small)
                 }
             }
             .padding(.horizontal, Spacing.md)

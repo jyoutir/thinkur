@@ -1,4 +1,4 @@
-import AVFoundation
+import AVFAudio
 import Cocoa
 import os
 
@@ -33,17 +33,17 @@ final class PermissionManager: PermissionChecking {
     // MARK: - Microphone
 
     func checkMicrophone() {
-        microphoneGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+        microphoneGranted = AVAudioApplication.shared.recordPermission == .granted
     }
 
     func requestMicrophone() async {
-        let alreadyDetermined = AVCaptureDevice.authorizationStatus(for: .audio) != .notDetermined
-        if alreadyDetermined {
-            // User already denied — re-requesting won't show a dialog, open Settings instead
+        let status = AVAudioApplication.shared.recordPermission
+        if status != .undetermined {
+            // User already decided — re-requesting won't show a dialog, open Settings instead
             openMicrophoneSettings()
             return
         }
-        microphoneGranted = await AVCaptureDevice.requestAccess(for: .audio)
+        microphoneGranted = await AVAudioApplication.requestRecordPermission()
         if !microphoneGranted {
             openMicrophoneSettings()
         }
