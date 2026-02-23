@@ -61,6 +61,7 @@ final class ModelLoadCoordinator {
             sharedState.isModelLoading = false
             sharedState.modelLoadingMessage = ""
             sharedState.modelDownloadProgress = 1.0
+            sharedState.currentModelName = transcriptionEngine.currentModel
             Logger.app.info("thinkur ready with model: \(self.transcriptionEngine.currentModel)")
 
             // Background upgrade if we loaded the quick-start model
@@ -95,6 +96,7 @@ final class ModelLoadCoordinator {
 
                 self.transcriptionEngine.swapModel(to: newKit, name: model, folder: folder)
                 self.cacheModelFolder(folder, for: model)
+                self.sharedState.currentModelName = model
                 self.sharedState.isUpgradingModel = false
                 Logger.app.info("Background upgrade to \(model) complete")
             } catch {
