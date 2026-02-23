@@ -1,4 +1,5 @@
 import Accelerate
+import AVFAudio
 import AVFoundation
 import os
 
@@ -25,6 +26,13 @@ final class AudioCaptureManager: AudioCapturing {
 
     func startCapture() throws {
         guard !isCapturing else { return }
+
+        // Defense-in-depth: refuse to start if microphone permission is not granted,
+        // even if callers forgot to check.
+        guard AVAudioApplication.shared.recordPermission == .granted else {
+            Logger.audio.error("Microphone permission not granted — refusing to start capture")
+            throw AudioCaptureError.microphonePermissionDenied
+        }
 
         let inputNode = audioEngine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
@@ -118,11 +126,14 @@ final class AudioCaptureManager: AudioCapturing {
 }
 
 enum AudioCaptureError: Error, LocalizedError {
+    case microphonePermissionDenied
     case invalidInputFormat
     case converterCreationFailed
 
     var errorDescription: String? {
         switch self {
+        case .microphonePermissionDenied:
+            return "Microphone permission is required to record audio"
         case .invalidInputFormat:
             return "Microphone input format is invalid"
         case .converterCreationFailed:

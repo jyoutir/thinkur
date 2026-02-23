@@ -15,6 +15,7 @@ final class RecordingCoordinator {
     private let frontmostAppDetector: FrontmostAppDetector
     private let analyticsService: any AnalyticsRecording
     private let shortcutService: any ShortcutLookup
+    private let permissionManager: any PermissionChecking
     private let smartHomeService: SmartHomeService?
     private let amplitudeProvider: AudioAmplitudeProvider
     private let stylePreferenceService: StylePreferenceService
@@ -36,6 +37,7 @@ final class RecordingCoordinator {
         sharedState: SharedAppState,
         shortcutService: any ShortcutLookup,
         stylePreferenceService: StylePreferenceService,
+        permissionManager: any PermissionChecking,
         smartHomeService: SmartHomeService? = nil,
         createFloatingPanel: Bool = true
     ) {
@@ -47,6 +49,7 @@ final class RecordingCoordinator {
         self.frontmostAppDetector = frontmostAppDetector
         self.analyticsService = analyticsService
         self.shortcutService = shortcutService
+        self.permissionManager = permissionManager
         self.smartHomeService = smartHomeService
         self.amplitudeProvider = amplitudeProvider
         self.settings = settings
@@ -84,6 +87,17 @@ final class RecordingCoordinator {
 
     func startRecording() {
         guard state == .idle else { return }
+
+        // Guard: check permission before touching the audio engine
+        permissionManager.checkMicrophone()
+        guard permissionManager.microphoneGranted else {
+            Logger.permissions.error("startRecording: microphone permission not granted — requesting permission")
+            Task {
+                await permissionManager.requestMicrophone()
+            }
+            return
+        }
+
         let previousState = state
         do {
             try audioCaptureManager.startCapture()

@@ -7,6 +7,7 @@ protocol PermissionChecking: AnyObject {
     var inputMonitoringGranted: Bool { get }
     var allGranted: Bool { get }
     func checkAll()
+    func checkMicrophone()
     func requestAccessibility()
     func requestMicrophone() async
     func requestInputMonitoring()
