@@ -7,6 +7,7 @@ enum Constants {
     static let vKeyCode: CGKeyCode = 9
     static let clipboardRestoreDelay: TimeInterval = 0.15
     static let pasteDelay: TimeInterval = 0.05
+    static let quickStartModel = "small.en"
     static let whisperModel: String = {
         let ramGB = ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024)
         switch ramGB {

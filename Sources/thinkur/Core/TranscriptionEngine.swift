@@ -9,11 +9,14 @@ final class TranscriptionEngine: Transcribing {
     var isLoading = false
     var loadingMessage = ""
     var errorMessage: String?
+    var downloadProgress: Double = 0.0
     private(set) var lastWordTimings: [WordTimingInfo] = []
 
     private var whisperKit: WhisperKit?
     private(set) var currentModel: String = ""
+    private(set) var currentModelFolder: String?
 
+    /// Two-phase model load: download (with progress), then init with prewarm.
     func loadModel(name: String? = nil) async {
         let modelName = name ?? Constants.whisperModel
 
@@ -29,23 +32,44 @@ final class TranscriptionEngine: Transcribing {
         guard !isLoading else { return }
 
         isLoading = true
+        downloadProgress = 0.0
         errorMessage = nil
 
         do {
-            let config = WhisperKitConfig(
-                model: modelName,
-                downloadBase: Constants.appSupportDirectory,
-                verbose: false,
-                logLevel: .none
-            )
-            Logger.transcription.info("Loading WhisperKit model: \(modelName)")
+            // Phase 1: Download with progress tracking
+            loadingMessage = "Downloading model\u{2026}"
+            Logger.transcription.info("Downloading WhisperKit model: \(modelName)")
 
-            loadingMessage = "Downloading model..."
+            let modelFolder = try await WhisperKit.download(
+                variant: modelName,
+                downloadBase: Constants.appSupportDirectory,
+                progressCallback: { [weak self] progress in
+                    let fraction = progress.fractionCompleted
+                    Task { @MainActor [weak self] in
+                        self?.downloadProgress = fraction
+                    }
+                }
+            )
+
+            downloadProgress = 1.0
+
+            // Phase 2: Init from local folder with prewarm (Neural Engine compile)
+            loadingMessage = "Preparing model\u{2026}"
+            Logger.transcription.info("Loading WhisperKit model from: \(modelFolder.path)")
+
+            let config = WhisperKitConfig(
+                modelFolder: modelFolder.path,
+                verbose: false,
+                logLevel: .none,
+                prewarm: true,
+                load: true,
+                download: false
+            )
             whisperKit = try await WhisperKit(config)
-            loadingMessage = "Loading model..."
 
             isLoaded = true
             currentModel = modelName
+            currentModelFolder = modelFolder.path
             loadingMessage = ""
             Logger.transcription.info("WhisperKit model loaded successfully")
         } catch {
@@ -55,6 +79,47 @@ final class TranscriptionEngine: Transcribing {
         }
 
         isLoading = false
+    }
+
+    /// Download and prepare a model without setting it as active.
+    /// Returns the WhisperKit instance and model folder path.
+    func prepareModel(name: String) async throws -> (WhisperKit, String) {
+        Logger.transcription.info("Background: downloading model \(name)")
+        let modelFolder = try await WhisperKit.download(
+            variant: name,
+            downloadBase: Constants.appSupportDirectory
+        )
+
+        Logger.transcription.info("Background: loading and prewarming model \(name)")
+        let config = WhisperKitConfig(
+            modelFolder: modelFolder.path,
+            verbose: false,
+            logLevel: .none,
+            prewarm: true,
+            load: true,
+            download: false
+        )
+        let newKit = try await WhisperKit(config)
+        return (newKit, modelFolder.path)
+    }
+
+    /// Hot-swap to a prepared model instance, cleaning up the old model folder.
+    func swapModel(to newKit: WhisperKit, name: String, folder: String) {
+        let oldFolder = currentModelFolder
+        whisperKit = newKit
+        currentModel = name
+        currentModelFolder = folder
+        isLoaded = true
+        Logger.transcription.info("Swapped to model: \(name)")
+
+        if let old = oldFolder, old != folder {
+            do {
+                try FileManager.default.removeItem(atPath: old)
+                Logger.transcription.info("Cleaned up old model folder: \(old)")
+            } catch {
+                Logger.transcription.warning("Failed to clean up old model: \(error)")
+            }
+        }
     }
 
     func transcribe(audioSamples: [Float]) async -> String? {
@@ -90,7 +155,7 @@ final class TranscriptionEngine: Transcribing {
 
             // Filter noise tokens from text; return nil if nothing remains
             guard let text = WhisperArtifactFilter.strip(rawText), !text.isEmpty else {
-                Logger.transcription.info("Transcription suppressed — only noise tokens detected")
+                Logger.transcription.info("Transcription suppressed \u{2014} only noise tokens detected")
                 return nil
             }
 

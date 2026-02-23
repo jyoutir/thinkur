@@ -76,6 +76,10 @@ final class OnboardingViewModel {
         sharedState.modelLoadingMessage
     }
 
+    var modelDownloadProgress: Double {
+        sharedState.modelDownloadProgress
+    }
+
     // MARK: - Permissions
 
     var allPermissionsGranted: Bool {
