@@ -5,7 +5,7 @@ final class ServiceContainer {
     let settings: SettingsManager
     let sharedState: SharedAppState
     let permissionManager: PermissionManager
-    let transcriptionEngine: TranscriptionEngine
+    let transcriptionEngine: ParakeetTranscriptionEngine
     let audioCaptureManager: AudioCaptureManager
     let hotkeyManager: HotkeyManager
     let textInsertionService: TextInsertionService
@@ -23,7 +23,7 @@ final class ServiceContainer {
         self.settings = .shared
         self.sharedState = SharedAppState()
         self.permissionManager = PermissionManager()
-        self.transcriptionEngine = TranscriptionEngine()
+        self.transcriptionEngine = ParakeetTranscriptionEngine()
         self.audioCaptureManager = AudioCaptureManager()
         self.hotkeyManager = HotkeyManager()
         self.textInsertionService = TextInsertionService()
@@ -33,16 +33,13 @@ final class ServiceContainer {
         self.shortcutService = ShortcutService()
         self.smartHomeService = SmartHomeService()
         self.licenseManager = LicenseManager()
-        self.telemetryService = TelemetryService(settings: .shared)
+        self.telemetryService = TelemetryService(settings: self.settings)
         self.licenseManager.telemetryService = self.telemetryService
         self.stylePreferenceService = StylePreferenceService()
         self.textPostProcessor = TextPostProcessor(processors: [
             SelfCorrectionProcessor(),
             FillerRemovalProcessor(),
-            SpokenPunctuationProcessor(),
             SmartFormattingProcessor(),
-            PausePunctuationProcessor(),
-            CapitalizationProcessor(),
             StyleAdaptationProcessor(),
             ListDetectionProcessor(),
             CodeContextProcessor(),
@@ -54,7 +51,7 @@ final class ServiceContainer {
         settings: SettingsManager,
         sharedState: SharedAppState,
         permissionManager: PermissionManager,
-        transcriptionEngine: TranscriptionEngine,
+        transcriptionEngine: ParakeetTranscriptionEngine,
         audioCaptureManager: AudioCaptureManager,
         hotkeyManager: HotkeyManager,
         textInsertionService: TextInsertionService,

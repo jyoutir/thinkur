@@ -8,15 +8,17 @@ let package = Package(
         .macOS("26.0")
     ],
     dependencies: [
-        .package(url: "https://github.com/argmaxinc/WhisperKit.git", from: "0.9.0"),
+        .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.12.1"),
         .package(url: "https://github.com/TelemetryDeck/SwiftSDK.git", from: "2.0.0"),
+        .package(url: "https://github.com/sparkle-project/Sparkle.git", from: "2.6.0"),
     ],
     targets: [
         .executableTarget(
             name: "thinkur",
             dependencies: [
-                .product(name: "WhisperKit", package: "WhisperKit"),
+                .product(name: "FluidAudio", package: "FluidAudio"),
                 .product(name: "TelemetryDeck", package: "SwiftSDK"),
+                .product(name: "Sparkle", package: "Sparkle"),
             ],
             path: "Sources/thinkur",
             swiftSettings: [

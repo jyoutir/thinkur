@@ -316,7 +316,7 @@ struct SupportView: View {
             "System Info (auto-generated)",
             "App Version: 1.0.0",
             "macOS: \(osVersion)",
-            "Model: \(Constants.whisperModel)",
+            "Model: Parakeet TDT 0.6B",
             "RAM: \(ramGB) GB",
         ]
 

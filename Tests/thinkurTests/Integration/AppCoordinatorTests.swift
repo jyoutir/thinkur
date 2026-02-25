@@ -24,10 +24,10 @@ struct AppCoordinatorTests {
 
     @Test @MainActor func modelLoadCoordinatorUpdatesSharedState() async {
         let sharedState = SharedAppState()
-        let engine = TranscriptionEngine()
+        let engine = ParakeetTranscriptionEngine()
         let settings = SettingsManager(defaults: UserDefaults(suiteName: "com.thinkur.test.\(UUID().uuidString)")!)
         let coordinator = ModelLoadCoordinator(
-            transcriptionEngine: engine,
+            engine: engine,
             sharedState: sharedState,
             telemetryService: TelemetryService(settings: settings)
         )

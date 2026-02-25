@@ -3,122 +3,78 @@ import os
 
 @MainActor
 final class ModelLoadCoordinator {
-    private let transcriptionEngine: TranscriptionEngine
+    private let engine: ParakeetTranscriptionEngine
     private let sharedState: SharedAppState
     private let telemetryService: TelemetryService
-    private var upgradeTask: Task<Void, Never>?
 
-    private static let modelFolderKeyPrefix = "com.thinkur.modelFolder."
-
-    init(transcriptionEngine: TranscriptionEngine, sharedState: SharedAppState, telemetryService: TelemetryService) {
-        self.transcriptionEngine = transcriptionEngine
+    init(engine: ParakeetTranscriptionEngine, sharedState: SharedAppState, telemetryService: TelemetryService) {
+        self.engine = engine
         self.sharedState = sharedState
         self.telemetryService = telemetryService
     }
 
     func loadModel() async {
         sharedState.appState = .loading
+        sharedState.isModelReady = false
         sharedState.isModelLoading = true
-        sharedState.modelLoadingMessage = "Preparing your voice model\u{2026}"
+        sharedState.modelLoadingMessage = "Loading voice model\u{2026}"
         sharedState.modelDownloadProgress = 0.0
 
-        // Poll TranscriptionEngine state and forward to SharedAppState
         let pollingTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { break }
-                let message = self.transcriptionEngine.loadingMessage
+                let message = self.engine.loadingMessage
                 if !message.isEmpty {
                     self.sharedState.modelLoadingMessage = message
                 }
-                self.sharedState.modelDownloadProgress = self.transcriptionEngine.downloadProgress
                 try? await Task.sleep(for: .milliseconds(200))
             }
         }
 
-        let preferredModel = Constants.whisperModel
-        let quickModel = Constants.quickStartModel
-
-        // If preferred model is cached from a previous session, load it directly.
-        // Otherwise, load the quick-start model first for instant readiness.
-        let useQuickStart = preferredModel != quickModel && !isModelCached(preferredModel)
-        let modelToLoad = useQuickStart ? quickModel : preferredModel
-
-        await transcriptionEngine.loadModel(name: modelToLoad)
-
-        // Fallback if primary load fails
-        if !transcriptionEngine.isLoaded && modelToLoad != quickModel {
-            Logger.app.warning("Model '\(modelToLoad)' failed, falling back to \(quickModel)")
-            await transcriptionEngine.loadModel(name: quickModel)
-        }
+        await engine.loadModel(name: nil)
 
         pollingTask.cancel()
 
-        if transcriptionEngine.isLoaded {
-            if let folder = transcriptionEngine.currentModelFolder {
-                cacheModelFolder(folder, for: transcriptionEngine.currentModel)
-            }
-
+        if engine.isLoaded {
             sharedState.appState = .idle
             sharedState.isModelReady = true
             sharedState.isModelLoading = false
             sharedState.modelLoadingMessage = ""
             sharedState.modelDownloadProgress = 1.0
-            sharedState.currentModelName = transcriptionEngine.currentModel
-            Logger.app.info("thinkur ready with model: \(self.transcriptionEngine.currentModel)")
-
-            // Background upgrade if we loaded the quick-start model
-            if transcriptionEngine.currentModel != preferredModel {
-                upgradeModelInBackground(to: preferredModel)
-            }
+            sharedState.currentModelName = "Parakeet"
+            Logger.app.info("thinkur ready with Parakeet")
+            cleanupLegacyWhisperKitModels()
         } else {
-            let message = transcriptionEngine.errorMessage ?? "Model failed to load"
+            let message = engine.errorMessage ?? "Model failed to load"
             sharedState.appState = .error(message)
+            sharedState.isModelReady = false
             sharedState.isModelLoading = false
             sharedState.modelLoadingMessage = ""
-            telemetryService.trackModelLoadError(modelName: modelToLoad, errorMessage: message)
-            Logger.app.error("Failed to load transcription model: \(message)")
+            telemetryService.trackModelLoadError(modelName: "Parakeet", errorMessage: message)
+            Logger.app.error("Failed to load Parakeet: \(message)")
         }
     }
 
-    // MARK: - Background Upgrade
+    /// Remove legacy WhisperKit model files from app support directory.
+    /// Called once after Parakeet loads successfully to reclaim disk space.
+    private func cleanupLegacyWhisperKitModels() {
+        let key = "hasCleanedWhisperKitModels"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
 
-    private func upgradeModelInBackground(to model: String) {
-        sharedState.isUpgradingModel = true
-        Logger.app.info("Starting background upgrade to \(model)")
+        let fm = FileManager.default
+        let appSupport = Constants.appSupportDirectory
 
-        upgradeTask = Task { [weak self] in
-            guard let self else { return }
+        // WhisperKit stored models under models/argmaxinc/ and models/openai/
+        let modelsDir = appSupport.appendingPathComponent("models", isDirectory: true)
+        if fm.fileExists(atPath: modelsDir.path) {
             do {
-                let (newKit, folder) = try await self.transcriptionEngine.prepareModel(name: model)
-
-                // Wait for idle state before swapping (don't interrupt active transcription)
-                while self.sharedState.appState != .idle {
-                    if Task.isCancelled { return }
-                    try? await Task.sleep(for: .milliseconds(200))
-                }
-
-                self.transcriptionEngine.swapModel(to: newKit, name: model, folder: folder)
-                self.cacheModelFolder(folder, for: model)
-                self.sharedState.currentModelName = model
-                self.sharedState.isUpgradingModel = false
-                Logger.app.info("Background upgrade to \(model) complete")
+                try fm.removeItem(at: modelsDir)
+                Logger.app.info("Removed legacy WhisperKit models directory")
             } catch {
-                self.sharedState.isUpgradingModel = false
-                Logger.app.error("Background upgrade to \(model) failed: \(error)")
+                Logger.app.warning("Failed to remove legacy WhisperKit models: \(error)")
             }
         }
-    }
 
-    // MARK: - Model Cache
-
-    private func isModelCached(_ model: String) -> Bool {
-        guard let path = UserDefaults.standard.string(forKey: Self.modelFolderKeyPrefix + model) else {
-            return false
-        }
-        return FileManager.default.fileExists(atPath: path)
-    }
-
-    private func cacheModelFolder(_ path: String, for model: String) {
-        UserDefaults.standard.set(path, forKey: Self.modelFolderKeyPrefix + model)
+        UserDefaults.standard.set(true, forKey: key)
     }
 }
