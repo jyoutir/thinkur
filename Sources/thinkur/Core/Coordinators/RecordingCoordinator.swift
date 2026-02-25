@@ -144,7 +144,9 @@ final class RecordingCoordinator {
             return
         }
 
-        let trimmedSamples = trimSilence(from: samples)
+        let trimmedSamples = await Task.detached(priority: .userInitiated) {
+            Self.trimSilence(from: samples)
+        }.value
 
         // Pad short audio with trailing silence — very short clips may produce empty results.
         let minSamples = Int(1.5 * Constants.sampleRate)
@@ -262,10 +264,9 @@ final class RecordingCoordinator {
     }
 
     /// Trim leading/trailing silence using adaptive energy detection.
-    /// Uses a relative threshold (10% of peak RMS) so it works regardless of mic gain.
-    /// Trim leading/trailing silence using adaptive energy detection.
     /// Uses vDSP for vectorized RMS per frame — ~10x faster than scalar loop on 30s audio.
-    private func trimSilence(from samples: [Float]) -> [Float] {
+    /// `nonisolated static` so it can run off the main actor via Task.detached.
+    private nonisolated static func trimSilence(from samples: [Float]) -> [Float] {
         // Skip trimming for short recordings — every sample matters
         let totalDuration = Double(samples.count) / Constants.sampleRate
         guard totalDuration >= 2.0 else { return samples }
