@@ -36,6 +36,12 @@ final class UpdaterService {
             Logger.app.error("Sparkle updater failed to start: \(error.localizedDescription)")
         }
 
+        // Check shortly after launch so the sidebar button appears without waiting for the 4hr schedule
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            self?.updater.checkForUpdatesInBackground()
+        }
+
         observeSettings(settings)
     }
 
