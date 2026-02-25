@@ -7,6 +7,7 @@ final class AppCoordinator {
     let services: ServiceContainer
     private let viewModels: ViewModelFactory
     private let modelLoadCoordinator: ModelLoadCoordinator
+    let updaterService: UpdaterService
 
     private var hasSetup = false
 
@@ -34,6 +35,7 @@ final class AppCoordinator {
             sharedState: services.sharedState,
             telemetryService: services.telemetryService
         )
+        self.updaterService = UpdaterService(settings: services.settings)
 
         Task { [weak self] in
             await self?.setup()

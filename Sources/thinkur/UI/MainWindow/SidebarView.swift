@@ -6,6 +6,7 @@ struct SidebarView: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(SharedAppState.self) private var sharedState
     @Environment(LicenseManager.self) private var licenseManager
+    @Environment(UpdaterService.self) private var updaterService
     @State private var settingsExpanded = false
 
     // Rolling greeting state
@@ -60,6 +61,34 @@ struct SidebarView: View {
             .padding(.horizontal, Spacing.xs)
 
             Spacer(minLength: 0)
+
+            if updaterService.updateAvailable {
+                Button {
+                    updaterService.checkForUpdates()
+                } label: {
+                    HStack(spacing: Spacing.xs) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 13))
+                        if let version = updaterService.availableVersion {
+                            Text("Update to v\(version)")
+                                .font(Typography.caption)
+                                .fontWeight(.medium)
+                        } else {
+                            Text("Update Available")
+                                .font(Typography.caption)
+                                .fontWeight(.medium)
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xs)
+                    .background(settings.accentUITint, in: RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.sm)
+                .transition(.blurReplace)
+            }
 
             Divider()
 
