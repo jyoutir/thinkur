@@ -15,6 +15,9 @@ enum Constants {
         default:     return "medium.en"  // 16GB+
         }
     }()
+    // MARK: - TelemetryDeck
+    static let telemetryDeckAppID = "YOUR-TELEMETRYDECK-APP-ID"  // Replace with real ID from TelemetryDeck dashboard
+
     // MARK: - LemonSqueezy
     static let lemonSqueezyAPIBase = "https://api.lemonsqueezy.com"
     static let checkoutURLMonthly = "https://thinkur.lemonsqueezy.com/checkout/buy/f178ac35-e7b6-4db2-bb75-e7fd4d4e7981"

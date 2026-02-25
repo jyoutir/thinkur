@@ -7,6 +7,10 @@ struct thinkurApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let updaterService = UpdaterService()
 
+    init() {
+        appDelegate.telemetryService = coordinator.services.telemetryService
+    }
+
     var body: some Scene {
         Window("thinkur", id: "main") {
             RootView()
@@ -22,6 +26,7 @@ struct thinkurApp: App {
                 .environment(coordinator.settings)
                 .environment(coordinator.sharedState)
                 .environment(coordinator.licenseManager)
+                .environment(coordinator.telemetryService)
                 .tint(coordinator.settings.accentUITint)
         }
         .defaultSize(width: 920, height: 620)
@@ -66,6 +71,8 @@ private struct RootView: View {
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem!
+    private weak var mainWindow: NSWindow?
+    var telemetryService: TelemetryService?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Ensure only one instance runs — kill duplicates
@@ -76,26 +83,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return
         }
 
-        // LSUIElement=true in Info.plist keeps us out of the dock.
-        // Do NOT set .regular — that would override LSUIElement.
+        // LSUIElement=true in Info.plist defaults to accessory (no dock icon).
+        // Override at runtime if the user enabled "Show in Dock".
+        if UserDefaults.standard.bool(forKey: "showInDock") {
+            NSApp.setActivationPolicy(.regular)
+        }
 
         // Create persistent menu bar icon
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "thinkur")
+            let icon = Self.makeMenuBarIcon()
+            icon.accessibilityDescription = "thinkur"
+            button.image = icon
             button.action = #selector(statusItemClicked)
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
-        // Intercept window close so it hides instead of destroying
-        DispatchQueue.main.async {
-            if let window = NSApp.windows.first(where: { $0.title == "thinkur" }) {
-                window.delegate = self
-            }
-        }
+        // Intercept window close so it hides instead of destroying.
+        // SwiftUI may create the window after this method returns, so observe
+        // didBecomeMainNotification to catch it whenever it first appears.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleWindowBecameMain(_:)),
+            name: NSWindow.didBecomeMainNotification,
+            object: nil
+        )
 
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    // MARK: - Window Discovery
+
+    @objc private func handleWindowBecameMain(_ notification: Notification) {
+        captureMainWindow()
+    }
+
+    private func captureMainWindow() {
+        if mainWindow != nil { return }  // already have it
+        if let window = NSApp.windows.first(where: { $0.title == "thinkur" }) {
+            window.delegate = self
+            mainWindow = window
+        }
     }
 
     // MARK: - Status Item Actions
@@ -114,13 +143,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func toggleWindow() {
-        guard let window = NSApp.windows.first(where: { $0.title == "thinkur" }) else { return }
-        if window.isVisible && window.isKeyWindow {
-            window.orderOut(nil)
+        captureMainWindow()
+
+        if let window = mainWindow {
+            window.delegate = self  // Re-assert in case SwiftUI reset it
+            if window.isVisible && window.isKeyWindow {
+                window.orderOut(nil)
+            } else {
+                window.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }
         } else {
-            window.makeKeyAndOrderFront(nil)
+            // Window was destroyed by SwiftUI — activate to trigger recreation
             NSApp.activate(ignoringOtherApps: true)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.mainWindow = nil  // Clear stale ref so captureMainWindow re-searches
+                self?.captureMainWindow()
+                self?.mainWindow?.makeKeyAndOrderFront(nil)
+            }
         }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        telemetryService?.sendPendingDigest()
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false  // Menu bar app — stay running when window closes
     }
 
     // MARK: - NSWindowDelegate
@@ -128,5 +177,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         sender.orderOut(nil)  // Hide, don't destroy
         return false
+    }
+
+    // MARK: - Menu Bar Icon
+
+    /// Draws a 3×3 grid of rounded squares matching the app icon.
+    private static func makeMenuBarIcon() -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        let image = NSImage(size: size, flipped: false) { bounds in
+            let gridCount = 3
+            let squareSize: CGFloat = 4.0
+            let gap: CGFloat = 1.5
+            let pitch = squareSize + gap
+
+            let totalSpan = CGFloat(gridCount) * squareSize + CGFloat(gridCount - 1) * gap
+            let origin = (bounds.width - totalSpan) / 2
+
+            NSColor.black.setFill()
+            let radius: CGFloat = 0.8
+
+            for row in 0..<gridCount {
+                for col in 0..<gridCount {
+                    let x = origin + CGFloat(col) * pitch
+                    let y = origin + CGFloat(row) * pitch
+                    let rect = NSRect(x: x, y: y, width: squareSize, height: squareSize)
+                    NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
+                }
+            }
+            return true
+        }
+        image.isTemplate = true
+        return image
     }
 }

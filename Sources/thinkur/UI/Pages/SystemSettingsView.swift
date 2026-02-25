@@ -61,6 +61,15 @@ struct SystemSettingsView: View {
                         Divider()
 
                         ToggleRow(
+                            icon: "dock.rectangle",
+                            title: "Show in Dock",
+                            subtitle: "Display thinkur in the Dock alongside other apps",
+                            isOn: $s.showInDock
+                        )
+
+                        Divider()
+
+                        ToggleRow(
                             icon: "arrow.triangle.2.circlepath",
                             title: "Automatic Updates",
                             subtitle: "Keep thinkur up to date automatically",
@@ -106,6 +115,15 @@ struct SystemSettingsView: View {
                         .padding(.vertical, Spacing.sm)
                     }
                     .buttonStyle(.plain)
+                }
+
+                GroupedSettingsSection(title: "Privacy") {
+                    ToggleRow(
+                        icon: "chart.bar",
+                        title: "Share Anonymous Usage Data",
+                        subtitle: "Help improve thinkur by sharing anonymous, aggregated analytics. No personal data is collected.",
+                        isOn: $s.analyticsEnabled
+                    )
                 }
 
                 GroupedSettingsSection(title: "Data") {

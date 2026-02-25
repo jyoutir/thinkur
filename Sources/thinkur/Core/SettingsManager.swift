@@ -62,6 +62,17 @@ final class SettingsManager {
         didSet { defaults.set(automaticUpdates, forKey: "automaticUpdates") }
     }
 
+    var showInDock: Bool {
+        didSet {
+            defaults.set(showInDock, forKey: "showInDock")
+            NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
+        }
+    }
+
+    var analyticsEnabled: Bool {
+        didSet { defaults.set(analyticsEnabled, forKey: "analyticsEnabled") }
+    }
+
     // Dictation settings
     var removeFillerWords: Bool {
         didSet { defaults.set(removeFillerWords, forKey: "removeFillerWords") }
@@ -138,6 +149,8 @@ final class SettingsManager {
         self.floatingIndicator = defaults.object(forKey: "floatingIndicator") != nil ? defaults.bool(forKey: "floatingIndicator") : true
         self.launchAtLogin = defaults.bool(forKey: "launchAtLogin")
         self.automaticUpdates = defaults.object(forKey: "automaticUpdates") != nil ? defaults.bool(forKey: "automaticUpdates") : true
+        self.showInDock = defaults.bool(forKey: "showInDock")
+        self.analyticsEnabled = defaults.object(forKey: "analyticsEnabled") != nil ? defaults.bool(forKey: "analyticsEnabled") : true
 
         // Dictation - defaults true
         self.removeFillerWords = defaults.object(forKey: "removeFillerWords") != nil ? defaults.bool(forKey: "removeFillerWords") : true
