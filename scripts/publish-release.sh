@@ -38,11 +38,23 @@ fi
 
 # ─── Create GitHub Release ─────────────────────────────────────────────────────
 echo "→ Creating GitHub Release ${TAG}..."
-gh release create "${TAG}" \
-    --repo "${GITHUB_REPO}" \
-    --title "${APP_NAME} ${TAG}" \
-    --notes "Release ${TAG}" \
-    "${DMG_PATH}"
+
+RELEASE_NOTES_FILE="${PROJECT_DIR}/RELEASE_NOTES.md"
+if [ -f "${RELEASE_NOTES_FILE}" ]; then
+    echo "  Using RELEASE_NOTES.md"
+    gh release create "${TAG}" \
+        --repo "${GITHUB_REPO}" \
+        --title "${APP_NAME} ${TAG}" \
+        --notes-file "${RELEASE_NOTES_FILE}" \
+        "${DMG_PATH}"
+else
+    echo "  No RELEASE_NOTES.md found, using generic notes"
+    gh release create "${TAG}" \
+        --repo "${GITHUB_REPO}" \
+        --title "${APP_NAME} ${TAG}" \
+        --notes "Release ${TAG}" \
+        "${DMG_PATH}"
+fi
 
 echo "  ✓ Release created with DMG attached"
 
@@ -63,6 +75,26 @@ APPCAST_STAGING="${BUILD_DIR}/appcast_staging"
 rm -rf "${APPCAST_STAGING}"
 mkdir -p "${APPCAST_STAGING}"
 cp "${DMG_PATH}" "${APPCAST_STAGING}/"
+
+# If RELEASE_NOTES.md exists, convert to HTML for Sparkle release notes.
+# Sparkle's generate_appcast picks up *.html files named to match the DMG.
+if [ -f "${RELEASE_NOTES_FILE}" ]; then
+    SPARKLE_NOTES_NAME="${DMG_NAME%.dmg}.html"
+    echo "  Creating Sparkle release notes: ${SPARKLE_NOTES_NAME}"
+    # Simple Markdown→HTML conversion (handles headers, bold, lists)
+    sed -E \
+        -e 's/^## (.+)/<h2>\1<\/h2>/' \
+        -e 's/\*\*([^*]+)\*\*/<strong>\1<\/strong>/g' \
+        -e 's/^- (.+)/<li>\1<\/li>/' \
+        "${RELEASE_NOTES_FILE}" \
+        | awk '
+            BEGIN { in_list=0 }
+            /<li>/ { if (!in_list) { print "<ul>"; in_list=1 } }
+            !/<li>/ && !/<\/li>/ && in_list { print "</ul>"; in_list=0 }
+            { print }
+            END { if (in_list) print "</ul>" }
+        ' > "${APPCAST_STAGING}/${SPARKLE_NOTES_NAME}"
+fi
 
 # Generate appcast — this reads the DMG and creates/updates appcast.xml
 # The download URL should point to the GitHub Release asset
