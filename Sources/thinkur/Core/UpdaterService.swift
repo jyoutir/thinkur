@@ -79,10 +79,20 @@ private final class UpdaterDelegate: NSObject, SPUUpdaterDelegate {
     var onUpdateFound: ((_ version: String) -> Void)?
 
     func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        Logger.app.info("Sparkle: found valid update — v\(item.displayVersionString) (build \(item.versionString))")
         let version = item.displayVersionString
         Task { @MainActor [onUpdateFound] in
             onUpdateFound?(version)
         }
+    }
+
+    func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        Logger.app.info("Sparkle: no update found (current build: \(build))")
+    }
+
+    func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+        Logger.app.error("Sparkle: aborted — \(error.localizedDescription)")
     }
 }
 
