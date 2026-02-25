@@ -27,6 +27,7 @@ final class ModelLoadCoordinator {
                 if !message.isEmpty {
                     self.sharedState.modelLoadingMessage = message
                 }
+                self.sharedState.modelDownloadProgress = self.engine.downloadProgress
                 try? await Task.sleep(for: .milliseconds(200))
             }
         }
@@ -41,7 +42,6 @@ final class ModelLoadCoordinator {
             sharedState.isModelLoading = false
             sharedState.modelLoadingMessage = ""
             sharedState.modelDownloadProgress = 1.0
-            sharedState.currentModelName = "Parakeet"
             Logger.app.info("thinkur ready with Parakeet")
             cleanupLegacyWhisperKitModels()
         } else {
@@ -50,7 +50,7 @@ final class ModelLoadCoordinator {
             sharedState.isModelReady = false
             sharedState.isModelLoading = false
             sharedState.modelLoadingMessage = ""
-            telemetryService.trackModelLoadError(modelName: "Parakeet", errorMessage: message)
+            telemetryService.trackModelLoadError(modelName: "voice-engine", errorMessage: message)
             Logger.app.error("Failed to load Parakeet: \(message)")
         }
     }

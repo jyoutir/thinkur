@@ -128,7 +128,7 @@ struct ModelLoadingPage: View {
                 ClaudePixelSpinner(state: viewModel.isModelReady ? .success : .connecting)
 
                 VStack(spacing: Spacing.xs) {
-                    Text(viewModel.isModelReady ? "Model ready" : "Preparing voice model")
+                    Text(viewModel.isModelReady ? "Ready to go" : "Setting up")
                         .font(Typography.onboardingTitle)
                         .foregroundStyle(ColorTokens.textPrimary)
                         .contentTransition(.opacity)

@@ -9,7 +9,6 @@ final class SharedAppState {
     var isModelLoading: Bool = false
     var modelLoadingMessage: String = ""
     var modelDownloadProgress: Double = 0.0
-    var currentModelName: String = ""
     var transcriptionVersion: Int = 0
     var lastSmartHomeAction: String?
 }
