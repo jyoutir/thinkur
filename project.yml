@@ -13,6 +13,9 @@ packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle.git
     from: "2.8.0"
+  TelemetryDeck:
+    url: https://github.com/TelemetryDeck/SwiftSDK.git
+    from: "2.0.0"
 
 targets:
   thinkur:
@@ -23,6 +26,8 @@ targets:
     dependencies:
       - package: WhisperKit
       - package: Sparkle
+      - package: TelemetryDeck
+        product: TelemetryDeck
     settings:
       base:
         INFOPLIST_FILE: Sources/thinkur/Resources/Info.plist
