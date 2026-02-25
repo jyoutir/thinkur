@@ -140,7 +140,7 @@ final class SettingsManager {
         // System - with sensible defaults
         self.soundEffects = defaults.object(forKey: "soundEffects") != nil ? defaults.bool(forKey: "soundEffects") : true
         self.soundStyle = defaults.string(forKey: "soundStyle") ?? "chime"
-        self.dimMusicWhileRecording = defaults.bool(forKey: "pauseMusicWhileRecording")
+        self.dimMusicWhileRecording = defaults.object(forKey: "pauseMusicWhileRecording") != nil ? defaults.bool(forKey: "pauseMusicWhileRecording") : true
         self.floatingIndicator = defaults.object(forKey: "floatingIndicator") != nil ? defaults.bool(forKey: "floatingIndicator") : true
         self.launchAtLogin = defaults.bool(forKey: "launchAtLogin")
         self.automaticUpdates = defaults.object(forKey: "automaticUpdates") != nil ? defaults.bool(forKey: "automaticUpdates") : true

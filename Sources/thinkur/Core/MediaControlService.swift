@@ -4,23 +4,31 @@ import os
 enum MediaControlService {
     private static var savedVolume: Float = -1
     private static var didDim = false
+    /// Serial queue for CoreAudio volume calls — AudioObjectSetPropertyData blocks 10-100ms.
+    private static let audioQueue = DispatchQueue(label: "com.thinkur.mediaControl", qos: .userInitiated)
 
     /// Dims system volume to 40% of its current level.
+    /// Dispatches to background queue so CoreAudio calls don't block the main thread.
     static func dimPlayback() {
-        guard let volume = getSystemVolume(), volume > 0 else { return }
-        savedVolume = volume
-        setSystemVolume(volume * 0.4)
-        didDim = true
+        audioQueue.async {
+            guard let volume = getSystemVolume(), volume > 0 else { return }
+            savedVolume = volume
+            setSystemVolume(volume * 0.4)
+            didDim = true
+        }
     }
 
     /// Restores system volume to saved level if we dimmed it.
+    /// Dispatches to background queue so CoreAudio calls don't block the main thread.
     static func restorePlayback() {
-        guard didDim else { return }
-        didDim = false
-        let volume = savedVolume
-        savedVolume = -1
-        guard volume >= 0 else { return }
-        setSystemVolume(volume)
+        audioQueue.async {
+            guard didDim else { return }
+            didDim = false
+            let volume = savedVolume
+            savedVolume = -1
+            guard volume >= 0 else { return }
+            setSystemVolume(volume)
+        }
     }
 
     // MARK: - CoreAudio Helpers
