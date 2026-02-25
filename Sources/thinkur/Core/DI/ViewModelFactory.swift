@@ -24,6 +24,7 @@ final class ViewModelFactory {
             sharedState: services.sharedState,
             shortcutService: services.shortcutService,
             stylePreferenceService: services.stylePreferenceService,
+            telemetryService: services.telemetryService,
             permissionManager: services.permissionManager,
             smartHomeService: services.smartHomeService
         )
@@ -37,7 +38,7 @@ final class ViewModelFactory {
         self.shortcutsViewModel = ShortcutsViewModel(shortcutService: services.shortcutService)
         self.styleViewModel = StyleViewModel(stylePreferenceService: services.stylePreferenceService, analyticsService: services.analyticsService)
         self.insightsViewModel = InsightsViewModel(analyticsService: services.analyticsService)
-        self.onboardingViewModel = OnboardingViewModel(permissionManager: services.permissionManager, settings: services.settings, sharedState: services.sharedState, licenseManager: services.licenseManager)
+        self.onboardingViewModel = OnboardingViewModel(permissionManager: services.permissionManager, settings: services.settings, sharedState: services.sharedState, licenseManager: services.licenseManager, telemetryService: services.telemetryService)
         self.integrationsViewModel = IntegrationsViewModel(smartHomeService: services.smartHomeService)
     }
 }

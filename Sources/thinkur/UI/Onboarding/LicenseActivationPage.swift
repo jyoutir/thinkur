@@ -4,6 +4,7 @@ struct LicenseActivationPage: View {
     @Environment(OnboardingViewModel.self) private var viewModel
     @Environment(LicenseManager.self) private var licenseManager
     @Environment(SettingsManager.self) private var settings
+    @Environment(TelemetryService.self) private var telemetryService
 
     @State private var licenseKey = ""
     @State private var isActivating = false
@@ -37,6 +38,7 @@ struct LicenseActivationPage: View {
                     detail: "Cancel anytime",
                     action: "Subscribe"
                 ) {
+                    telemetryService.trackCheckoutOpened(planType: "monthly", source: "onboarding")
                     checkoutURL = URL(string: Constants.checkoutURLMonthly)
                 }
 
@@ -49,6 +51,7 @@ struct LicenseActivationPage: View {
                     highlighted: true,
                     badge: "Best value"
                 ) {
+                    telemetryService.trackCheckoutOpened(planType: "lifetime", source: "onboarding")
                     checkoutURL = URL(string: Constants.checkoutURLLifetime)
                 }
             }

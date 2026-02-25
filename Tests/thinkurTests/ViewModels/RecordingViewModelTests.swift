@@ -36,6 +36,8 @@ struct RecordingViewModelTests {
 
         let postProcessor = TextPostProcessor(processors: [])
 
+        let telemetry = TelemetryService(settings: settings)
+
         let coordinator = RecordingCoordinator(
             audioCaptureManager: audio,
             transcriptionEngine: transcription,
@@ -48,6 +50,7 @@ struct RecordingViewModelTests {
             sharedState: sharedState,
             shortcutService: shortcuts,
             stylePreferenceService: StylePreferenceService(container: SwiftDataContainerFactory.createInMemory(schema: Schema([AppStylePreference.self]))),
+            telemetryService: telemetry,
             permissionManager: MockPermissionChecking(),
             createFloatingPanel: false
         )

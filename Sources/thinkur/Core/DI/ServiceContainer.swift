@@ -17,6 +17,7 @@ final class ServiceContainer {
     let textPostProcessor: TextPostProcessor
     let smartHomeService: SmartHomeService
     let licenseManager: LicenseManager
+    let telemetryService: TelemetryService
 
     init() {
         self.settings = .shared
@@ -32,6 +33,8 @@ final class ServiceContainer {
         self.shortcutService = ShortcutService()
         self.smartHomeService = SmartHomeService()
         self.licenseManager = LicenseManager()
+        self.telemetryService = TelemetryService(settings: .shared)
+        self.licenseManager.telemetryService = self.telemetryService
         self.stylePreferenceService = StylePreferenceService()
         self.textPostProcessor = TextPostProcessor(processors: [
             SelfCorrectionProcessor(),
@@ -62,7 +65,8 @@ final class ServiceContainer {
         stylePreferenceService: StylePreferenceService,
         textPostProcessor: TextPostProcessor,
         smartHomeService: SmartHomeService,
-        licenseManager: LicenseManager
+        licenseManager: LicenseManager,
+        telemetryService: TelemetryService
     ) {
         self.settings = settings
         self.sharedState = sharedState
@@ -79,5 +83,6 @@ final class ServiceContainer {
         self.textPostProcessor = textPostProcessor
         self.smartHomeService = smartHomeService
         self.licenseManager = licenseManager
+        self.telemetryService = telemetryService
     }
 }

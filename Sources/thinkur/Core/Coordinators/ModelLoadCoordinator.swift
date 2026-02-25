@@ -5,13 +5,15 @@ import os
 final class ModelLoadCoordinator {
     private let transcriptionEngine: TranscriptionEngine
     private let sharedState: SharedAppState
+    private let telemetryService: TelemetryService
     private var upgradeTask: Task<Void, Never>?
 
     private static let modelFolderKeyPrefix = "com.thinkur.modelFolder."
 
-    init(transcriptionEngine: TranscriptionEngine, sharedState: SharedAppState) {
+    init(transcriptionEngine: TranscriptionEngine, sharedState: SharedAppState, telemetryService: TelemetryService) {
         self.transcriptionEngine = transcriptionEngine
         self.sharedState = sharedState
+        self.telemetryService = telemetryService
     }
 
     func loadModel() async {
@@ -73,6 +75,7 @@ final class ModelLoadCoordinator {
             sharedState.appState = .error(message)
             sharedState.isModelLoading = false
             sharedState.modelLoadingMessage = ""
+            telemetryService.trackModelLoadError(modelName: modelToLoad, errorMessage: message)
             Logger.app.error("Failed to load transcription model: \(message)")
         }
     }

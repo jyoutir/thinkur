@@ -19,6 +19,7 @@ final class RecordingCoordinator {
     private let smartHomeService: SmartHomeService?
     private let amplitudeProvider: AudioAmplitudeProvider
     private let stylePreferenceService: StylePreferenceService
+    private let telemetryService: TelemetryService
     private let settings: SettingsManager
     private let sharedState: SharedAppState
     private var floatingPanel: FloatingIndicatorPanel?
@@ -36,6 +37,7 @@ final class RecordingCoordinator {
         sharedState: SharedAppState,
         shortcutService: any ShortcutLookup,
         stylePreferenceService: StylePreferenceService,
+        telemetryService: TelemetryService,
         permissionManager: any PermissionChecking,
         smartHomeService: SmartHomeService? = nil,
         createFloatingPanel: Bool = true
@@ -54,6 +56,7 @@ final class RecordingCoordinator {
         self.settings = settings
         self.sharedState = sharedState
         self.stylePreferenceService = stylePreferenceService
+        self.telemetryService = telemetryService
         if createFloatingPanel {
             self.floatingPanel = FloatingIndicatorPanel(amplitudeProvider: amplitudeProvider, settings: settings, themeMode: settings.themeMode)
             floatingPanel?.onTap = { [weak self] in
@@ -112,6 +115,7 @@ final class RecordingCoordinator {
             Logger.app.info("Listening started")
         } catch {
             updateState(previousState)
+            telemetryService.trackAudioCaptureError(errorType: String(describing: error))
             Logger.app.error("Failed to start audio capture: \(error)")
         }
     }
@@ -182,6 +186,8 @@ final class RecordingCoordinator {
             )
             let text: String
             let correctionCount: Int
+            var fillerWordsRemoved = 0
+            var selfCorrectionsUsed = 0
             if settings.postProcessingEnabled {
                 var disabled = Set<String>()
                 if !settings.removeFillerWords { disabled.insert("FillerRemoval") }
@@ -193,6 +199,8 @@ final class RecordingCoordinator {
                 let result = await postProcessingActor.process(rawText, context: context, disabledProcessors: disabled)
                 text = result.text
                 correctionCount = result.corrections.count
+                fillerWordsRemoved = result.corrections.filter { $0.processorName == "FillerRemoval" }.count
+                selfCorrectionsUsed = result.corrections.filter { $0.processorName == "SelfCorrection" }.count
             } else {
                 text = rawText
                 correctionCount = 0
@@ -210,6 +218,13 @@ final class RecordingCoordinator {
                     appBundleID: frontmostAppDetector.bundleID,
                     appName: frontmostAppDetector.appName,
                     correctionCount: correctionCount
+                )
+                telemetryService.recordTranscription(
+                    wordCount: text.split(separator: " ").count,
+                    durationSeconds: duration,
+                    correctionCount: correctionCount,
+                    fillerWordsRemoved: fillerWordsRemoved,
+                    selfCorrectionsUsed: selfCorrectionsUsed
                 )
                 sharedState.transcriptionVersion += 1
                 updateState(.idle)
@@ -231,8 +246,16 @@ final class RecordingCoordinator {
                 appName: frontmostAppDetector.appName,
                 correctionCount: correctionCount
             )
+            telemetryService.recordTranscription(
+                wordCount: text.split(separator: " ").count,
+                durationSeconds: duration,
+                correctionCount: correctionCount,
+                fillerWordsRemoved: fillerWordsRemoved,
+                selfCorrectionsUsed: selfCorrectionsUsed
+            )
             sharedState.transcriptionVersion += 1
         } else {
+            telemetryService.trackTranscriptionEmpty(durationSeconds: duration)
             Logger.app.info("No transcription result")
         }
 
