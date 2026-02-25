@@ -31,7 +31,7 @@ final class FloatingIndicatorPanel: NSPanel {
         // Fall back to primary display if NSScreen.main is nil (no key window yet at launch).
         let screenFrame = (NSScreen.main ?? NSScreen.screens.first)?.frame ?? .zero
         let originX = screenFrame.midX - size.width / 2
-        let originY = screenFrame.minY
+        let originY = screenFrame.minY + 8
 
         super.init(
             contentRect: NSRect(x: originX, y: originY, width: size.width, height: size.height),
@@ -98,7 +98,7 @@ final class FloatingIndicatorPanel: NSPanel {
         // Prefer the screen with keyboard focus; fall back to the primary display.
         let screenFrame = (NSScreen.main ?? NSScreen.screens.first)?.frame ?? .zero
         let originX = screenFrame.midX - size.width / 2
-        let originY = screenFrame.minY
+        let originY = screenFrame.minY + 8
         setFrame(NSRect(x: originX, y: originY, width: size.width, height: size.height), display: true)
     }
 }

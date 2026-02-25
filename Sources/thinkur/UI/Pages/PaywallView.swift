@@ -8,6 +8,7 @@ struct PaywallView: View {
     @State private var errorMessage: String?
     @State private var checkoutURL: URL?
     @State private var showCheckoutNudge = false
+    @State private var reachedReceipt = false
 
     var body: some View {
         ZStack {
@@ -23,7 +24,7 @@ struct PaywallView: View {
                         .font(Typography.onboardingTitle)
                         .foregroundStyle(ColorTokens.textPrimary)
 
-                    Text("Renew your subscription or enter a new license key to continue using thinkur.")
+                    Text("Pick a plan to keep using thinkur.")
                         .font(Typography.onboardingBody)
                         .foregroundStyle(ColorTokens.textSecondary)
                         .multilineTextAlignment(.center)
@@ -43,7 +44,8 @@ struct PaywallView: View {
                         title: "Lifetime",
                         price: "£28",
                         action: "Purchase",
-                        highlighted: true
+                        highlighted: true,
+                        badge: "Best value"
                     ) {
                         checkoutURL = URL(string: Constants.checkoutURLLifetime)
                     }
@@ -127,7 +129,12 @@ struct PaywallView: View {
         .sheet(isPresented: Binding(
             get: { checkoutURL != nil },
             set: { if !$0 { checkoutURL = nil } }
-        )) {
+        ), onDismiss: {
+            if reachedReceipt {
+                withAnimation { showCheckoutNudge = true }
+                reachedReceipt = false
+            }
+        }) {
             if let url = checkoutURL {
                 CheckoutWebView(
                     url: url,
@@ -136,12 +143,8 @@ struct PaywallView: View {
                         licenseKey = key
                         Task { await activateLicense() }
                     },
-                    onDismiss: { reachedReceipt in
-                        checkoutURL = nil
-                        if reachedReceipt {
-                            withAnimation { showCheckoutNudge = true }
-                        }
-                    }
+                    onDismiss: { checkoutURL = nil },
+                    onReachedReceipt: { reachedReceipt = true }
                 )
             }
         }
@@ -171,6 +174,7 @@ private struct PlanCardCompact: View {
     let price: String
     let action: String
     var highlighted: Bool = false
+    var badge: String? = nil
     let onTap: () -> Void
 
     var body: some View {
@@ -197,6 +201,17 @@ private struct PlanCardCompact: View {
         .padding(Spacing.md)
         .frame(maxWidth: .infinity)
         .glassCard()
+        .overlay(alignment: .top) {
+            if let badge {
+                Text(badge)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, Spacing.sm)
+                    .padding(.vertical, 2)
+                    .background(Color.accentColor, in: Capsule())
+                    .offset(y: -10)
+            }
+        }
         .overlay(
             RoundedRectangle(cornerRadius: CornerRadius.card)
                 .strokeBorder(

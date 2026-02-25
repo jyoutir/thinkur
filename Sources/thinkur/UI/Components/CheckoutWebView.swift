@@ -5,18 +5,15 @@ import IOKit
 struct CheckoutWebView: View {
     let url: URL
     let onLicenseKey: (String) -> Void
-    let onDismiss: (_ reachedReceipt: Bool) -> Void
-
-    @State private var reachedReceipt = false
+    let onDismiss: () -> Void
+    let onReachedReceipt: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header with close button
+            // Close button header
             HStack {
                 Spacer()
-                Button {
-                    onDismiss(reachedReceipt)
-                } label: {
+                Button(action: onDismiss) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 20))
                         .foregroundStyle(ColorTokens.textTertiary)
@@ -26,23 +23,24 @@ struct CheckoutWebView: View {
             }
 
             CheckoutWebViewRepresentable(
-                url: embeddedURL,
+                url: checkoutURL,
                 onLicenseKey: onLicenseKey,
-                onReachedReceipt: { reachedReceipt = true }
+                onReachedReceipt: onReachedReceipt
             )
         }
-        .frame(minWidth: 480, idealWidth: 500, minHeight: 640, idealHeight: 720)
+        .frame(minWidth: 580, idealWidth: 620, minHeight: 700, idealHeight: 780)
         .background(Color.white)
     }
 
-    private var embeddedURL: URL {
+    /// Build the checkout URL with machine ID but WITHOUT embed=1,
+    /// so LemonSqueezy renders a full-page checkout (no overlay chrome / broken X).
+    private var checkoutURL: URL {
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
         var queryItems = components.queryItems ?? []
-        queryItems.append(URLQueryItem(name: "embed", value: "1"))
         if let machineID = Self.machineID {
             queryItems.append(URLQueryItem(name: "checkout[custom][machine_id]", value: machineID))
         }
-        components.queryItems = queryItems
+        components.queryItems = queryItems.isEmpty ? nil : queryItems
         return components.url ?? url
     }
 
@@ -81,32 +79,6 @@ private struct CheckoutWebViewRepresentable: NSViewRepresentable {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
 
-        // Hide LemonSqueezy embed's built-in close button via CSS injection
-        let hideCloseCSS = """
-        (function() {
-            var style = document.createElement('style');
-            style.textContent = `
-                button[aria-label="Close"],
-                button[aria-label="close"],
-                .close-button,
-                .modal-close,
-                [data-testid="close-button"],
-                .lemonsqueezy-close {
-                    display: none !important;
-                    visibility: hidden !important;
-                    pointer-events: none !important;
-                }
-            `;
-            (document.head || document.documentElement).appendChild(style);
-        })();
-        """
-        let script = WKUserScript(
-            source: hideCloseCSS,
-            injectionTime: .atDocumentEnd,
-            forMainFrameOnly: false
-        )
-        config.userContentController.addUserScript(script)
-
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
         webView.load(URLRequest(url: url))
@@ -137,12 +109,8 @@ private final class Coordinator: NSObject, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        // Re-inject CSS to hide embed close button on every navigation
-        hideEmbedCloseButton(in: webView)
-
         guard !hasExtractedKey else { return }
 
-        // Check if we're on a receipt/confirmation page
         guard let url = webView.url?.absoluteString else { return }
 
         let isReceipt = url.contains("/receipt")
@@ -153,51 +121,21 @@ private final class Coordinator: NSObject, WKNavigationDelegate {
             Task { @MainActor in onReachedReceipt() }
         }
 
-        // Also try on any page after the initial checkout — LemonSqueezy may
-        // redirect to a success page without "receipt" in the URL
         let isCheckoutBuy = url.contains("/checkout/buy/")
         guard isReceipt || !isCheckoutBuy else { return }
 
         extractLicenseKey(from: webView)
     }
 
-    private func hideEmbedCloseButton(in webView: WKWebView) {
-        let js = """
-        (function() {
-            var id = 'thinkur-hide-close';
-            if (document.getElementById(id)) return;
-            var style = document.createElement('style');
-            style.id = id;
-            style.textContent = `
-                button[aria-label="Close"],
-                button[aria-label="close"],
-                .close-button,
-                .modal-close,
-                [data-testid="close-button"],
-                .lemonsqueezy-close {
-                    display: none !important;
-                    visibility: hidden !important;
-                    pointer-events: none !important;
-                }
-            `;
-            (document.head || document.documentElement).appendChild(style);
-        })();
-        """
-        webView.evaluateJavaScript(js, completionHandler: nil)
-    }
-
     private func extractLicenseKey(from webView: WKWebView) {
         let js = """
         (function() {
-            // Try data attribute first
             var el = document.querySelector('[data-testid="license-key"]');
             if (el && el.textContent.trim()) return el.textContent.trim();
 
-            // Try class name
             el = document.querySelector('.license-key');
             if (el && el.textContent.trim()) return el.textContent.trim();
 
-            // Regex fallback: XXXXX-XXXXX-XXXXX-XXXXX pattern
             var match = document.body.innerText.match(/[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}/);
             if (match) return match[0];
 
