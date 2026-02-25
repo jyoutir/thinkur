@@ -25,10 +25,13 @@ final class FloatingIndicatorPanel: NSPanel {
 
         let size = Self.fixedSize
 
-        // Position at bottom center of user's main screen
-        let screenFrame = NSScreen.main?.visibleFrame ?? .zero
+        // Position at absolute bottom center of the screen, ignoring Dock/menu bar insets.
+        // Using .frame (not .visibleFrame) so the bar hugs the screen edge even when
+        // the Dock is at the bottom — the .floating window level renders above the Dock.
+        // Fall back to primary display if NSScreen.main is nil (no key window yet at launch).
+        let screenFrame = (NSScreen.main ?? NSScreen.screens.first)?.frame ?? .zero
         let originX = screenFrame.midX - size.width / 2
-        let originY = screenFrame.minY + 6
+        let originY = screenFrame.minY
 
         super.init(
             contentRect: NSRect(x: originX, y: originY, width: size.width, height: size.height),
@@ -92,9 +95,10 @@ final class FloatingIndicatorPanel: NSPanel {
 
     private func recenter() {
         let size = Self.fixedSize
-        let screenFrame = NSScreen.main?.visibleFrame ?? .zero
+        // Prefer the screen with keyboard focus; fall back to the primary display.
+        let screenFrame = (NSScreen.main ?? NSScreen.screens.first)?.frame ?? .zero
         let originX = screenFrame.midX - size.width / 2
-        let originY = screenFrame.minY + 6
+        let originY = screenFrame.minY
         setFrame(NSRect(x: originX, y: originY, width: size.width, height: size.height), display: true)
     }
 }

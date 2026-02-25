@@ -64,20 +64,69 @@ private struct RootView: View {
     }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    private var statusItem: NSStatusItem!
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Ensure only one instance runs — kill duplicates
         let bundleID = Bundle.main.bundleIdentifier ?? "com.jyo.thinkur"
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
         if runningApps.count > 1 {
-            // Another instance is already running — quit this one
             NSApplication.shared.terminate(nil)
             return
         }
 
-        // Always show in dock (no menu bar extra)
-        NSApplication.shared.setActivationPolicy(.regular)
+        // LSUIElement=true in Info.plist keeps us out of the dock.
+        // Do NOT set .regular — that would override LSUIElement.
 
-        NSApplication.shared.activate(ignoringOtherApps: true)
+        // Create persistent menu bar icon
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "thinkur")
+            button.action = #selector(statusItemClicked)
+            button.target = self
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
+
+        // Intercept window close so it hides instead of destroying
+        DispatchQueue.main.async {
+            if let window = NSApp.windows.first(where: { $0.title == "thinkur" }) {
+                window.delegate = self
+            }
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    // MARK: - Status Item Actions
+
+    @objc private func statusItemClicked() {
+        guard let event = NSApp.currentEvent else { return }
+        if event.type == .rightMouseUp {
+            let menu = NSMenu()
+            menu.addItem(NSMenuItem(title: "Quit thinkur", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+            statusItem.menu = menu
+            statusItem.button?.performClick(nil)
+            statusItem.menu = nil  // Reset so next left-click goes to action
+        } else {
+            toggleWindow()
+        }
+    }
+
+    private func toggleWindow() {
+        guard let window = NSApp.windows.first(where: { $0.title == "thinkur" }) else { return }
+        if window.isVisible && window.isKeyWindow {
+            window.orderOut(nil)
+        } else {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    // MARK: - NSWindowDelegate
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        sender.orderOut(nil)  // Hide, don't destroy
+        return false
     }
 }
