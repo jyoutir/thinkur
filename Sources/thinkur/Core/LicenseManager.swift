@@ -19,6 +19,7 @@ final class LicenseManager {
 
     private let logger = Logger(subsystem: "com.jyo.thinkur", category: "LicenseManager")
     private let session: URLSession
+    var telemetryService: TelemetryService?
 
     init(session: URLSession = .shared) {
         self.session = session
@@ -45,11 +46,13 @@ final class LicenseManager {
 
         guard let httpResponse = response as? HTTPURLResponse else {
             status = .invalid
+            telemetryService?.trackLicenseActivationFailed(reason: "invalid_response")
             return false
         }
 
         guard httpResponse.statusCode == 200 else {
             status = .invalid
+            telemetryService?.trackLicenseActivationFailed(reason: "invalid_key")
             return false
         }
 
@@ -59,6 +62,7 @@ final class LicenseManager {
               let statusString = licenseKey["status"] as? String,
               statusString == "active" else {
             status = .invalid
+            telemetryService?.trackLicenseActivationFailed(reason: "invalid_key")
             return false
         }
 
@@ -66,6 +70,7 @@ final class LicenseManager {
         cacheValidationDate(Date())
         applyLicenseData(json)
         status = .active
+        telemetryService?.trackLicenseActivated(planType: planName ?? "unknown", source: "manual_entry")
         logger.info("License activated successfully")
         return true
     }

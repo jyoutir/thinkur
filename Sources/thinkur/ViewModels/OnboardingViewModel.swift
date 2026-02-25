@@ -16,13 +16,17 @@ final class OnboardingViewModel {
     private let settings: SettingsManager
     private let sharedState: SharedAppState
     let licenseManager: LicenseManager
+    private let telemetryService: TelemetryService
     private var pollingTimer: Timer?
+    private var stepEnteredAt: Date?
+    private var onboardingStartedAt: Date?
 
-    init(permissionManager: PermissionManager, settings: SettingsManager, sharedState: SharedAppState, licenseManager: LicenseManager) {
+    init(permissionManager: PermissionManager, settings: SettingsManager, sharedState: SharedAppState, licenseManager: LicenseManager, telemetryService: TelemetryService) {
         self.permissionManager = permissionManager
         self.settings = settings
         self.sharedState = sharedState
         self.licenseManager = licenseManager
+        self.telemetryService = telemetryService
     }
 
     // MARK: - Navigation
@@ -49,11 +53,28 @@ final class OnboardingViewModel {
             // Returning user just needed to re-grant permissions — skip remaining steps
             return
         }
+
+        let stepNames = ["Permissions", "Model", "QuickSettings", "TryIt", "Activate"]
+        let durationOnStep = Int(Date().timeIntervalSince(stepEnteredAt ?? Date()))
+        telemetryService.trackOnboardingStep(
+            step: currentStep,
+            stepName: stepNames[currentStep],
+            durationOnStepSeconds: durationOnStep
+        )
+
         if currentStep < totalSteps - 1 {
             currentStep += 1
+            stepEnteredAt = Date()
         } else {
+            let totalDuration = Int(Date().timeIntervalSince(onboardingStartedAt ?? Date()))
+            telemetryService.trackOnboardingCompleted(totalDurationSeconds: totalDuration)
             completeOnboarding()
         }
+    }
+
+    func trackOnboardingStarted() {
+        onboardingStartedAt = Date()
+        stepEnteredAt = Date()
     }
 
     func previousStep() {

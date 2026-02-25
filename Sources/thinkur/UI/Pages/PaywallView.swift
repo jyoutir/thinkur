@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PaywallView: View {
     @Environment(LicenseManager.self) private var licenseManager
+    @Environment(TelemetryService.self) private var telemetryService
 
     @State private var licenseKey = ""
     @State private var isActivating = false
@@ -37,6 +38,7 @@ struct PaywallView: View {
                         price: "£5/mo",
                         action: "Subscribe"
                     ) {
+                        telemetryService.trackCheckoutOpened(planType: "monthly", source: "paywall")
                         checkoutURL = URL(string: Constants.checkoutURLMonthly)
                     }
 
@@ -47,6 +49,7 @@ struct PaywallView: View {
                         highlighted: true,
                         badge: "Best value"
                     ) {
+                        telemetryService.trackCheckoutOpened(planType: "lifetime", source: "paywall")
                         checkoutURL = URL(string: Constants.checkoutURLLifetime)
                     }
                 }

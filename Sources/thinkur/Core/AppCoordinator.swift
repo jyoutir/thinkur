@@ -15,6 +15,7 @@ final class AppCoordinator {
     var sharedState: SharedAppState { services.sharedState }
     var permissionManager: PermissionManager { services.permissionManager }
     var licenseManager: LicenseManager { services.licenseManager }
+    var telemetryService: TelemetryService { services.telemetryService }
 
     var recordingViewModel: RecordingViewModel { viewModels.recordingViewModel }
     var homeViewModel: HomeViewModel { viewModels.homeViewModel }
@@ -30,7 +31,8 @@ final class AppCoordinator {
         self.viewModels = ViewModelFactory(services: services)
         self.modelLoadCoordinator = ModelLoadCoordinator(
             transcriptionEngine: services.transcriptionEngine,
-            sharedState: services.sharedState
+            sharedState: services.sharedState,
+            telemetryService: services.telemetryService
         )
 
         Task { [weak self] in
@@ -57,6 +59,7 @@ final class AppCoordinator {
             permissionManager.checkAll()
         }
 
+        services.telemetryService.initialize()
         services.frontmostAppDetector.startObserving()
         recordingViewModel.setupHotkey()
 

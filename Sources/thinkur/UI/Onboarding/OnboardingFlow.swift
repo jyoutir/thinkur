@@ -78,6 +78,7 @@ struct OnboardingFlow: View {
             .padding(.vertical, Spacing.lg)
         }
         .frame(minWidth: 760, minHeight: 650)
+        .onAppear { viewModel.trackOnboardingStarted() }
     }
 
     private var stepItems: [String] {

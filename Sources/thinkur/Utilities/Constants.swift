@@ -16,7 +16,7 @@ enum Constants {
         }
     }()
     // MARK: - TelemetryDeck
-    static let telemetryDeckAppID = "YOUR-TELEMETRYDECK-APP-ID"  // Replace with real ID from TelemetryDeck dashboard
+    static let telemetryDeckAppID = "1116AAF3-E84E-4353-9024-46C5E05DAB7C"
 
     // MARK: - LemonSqueezy
     static let lemonSqueezyAPIBase = "https://api.lemonsqueezy.com"

@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import thinkur
 
 @Suite("AppCoordinator Integration")
@@ -24,9 +25,11 @@ struct AppCoordinatorTests {
     @Test @MainActor func modelLoadCoordinatorUpdatesSharedState() async {
         let sharedState = SharedAppState()
         let engine = TranscriptionEngine()
+        let settings = SettingsManager(defaults: UserDefaults(suiteName: "com.thinkur.test.\(UUID().uuidString)")!)
         let coordinator = ModelLoadCoordinator(
             transcriptionEngine: engine,
-            sharedState: sharedState
+            sharedState: sharedState,
+            telemetryService: TelemetryService(settings: settings)
         )
         // Just verify it doesn't crash — actual model loading would require resources
         #expect(sharedState.appState == .idle)
