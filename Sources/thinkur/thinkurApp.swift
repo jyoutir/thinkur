@@ -1,11 +1,9 @@
 import SwiftUI
-import Sparkle
 
 @main
 struct thinkurApp: App {
     @State private var coordinator = AppCoordinator()
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    private let updaterService = UpdaterService()
 
     init() {
         appDelegate.telemetryService = coordinator.services.telemetryService
@@ -27,6 +25,7 @@ struct thinkurApp: App {
                 .environment(coordinator.sharedState)
                 .environment(coordinator.licenseManager)
                 .environment(coordinator.telemetryService)
+                .environment(coordinator.updaterService)
                 .tint(coordinator.settings.accentUITint)
         }
         .defaultSize(width: 920, height: 620)
