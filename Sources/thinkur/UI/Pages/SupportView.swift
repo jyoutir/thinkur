@@ -40,7 +40,7 @@ struct SupportView: View {
                 GroupedSettingsSection(title: "About") {
                     VStack(spacing: 0) {
                         SettingsRowView(icon: "info.circle", title: "Version") {
-                            Text("1.0.0")
+                            Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown")
                                 .font(Typography.body)
                                 .foregroundStyle(ColorTokens.textSecondary)
                         }
@@ -314,7 +314,7 @@ struct SupportView: View {
             "",
             "---",
             "System Info (auto-generated)",
-            "App Version: 1.0.0",
+            "App Version: \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown")",
             "macOS: \(osVersion)",
             "Model: Parakeet TDT 0.6B",
             "RAM: \(ramGB) GB",
