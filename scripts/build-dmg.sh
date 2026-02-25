@@ -94,6 +94,7 @@ xcodebuild archive \
     CODE_SIGN_STYLE=Manual \
     CODE_SIGN_IDENTITY="Developer ID Application" \
     OTHER_CODE_SIGN_FLAGS="--timestamp --options runtime" \
+    ARCHS=arm64 \
     -quiet
 
 # ─── Export ─────────────────────────────────────────────────────────────────────
