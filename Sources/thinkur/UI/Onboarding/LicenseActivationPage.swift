@@ -151,10 +151,9 @@ struct LicenseActivationPage: View {
                         licenseKey = key
                         Task { await activateLicense() }
                     },
-                    onDismiss: {
-                        let hadURL = checkoutURL != nil
+                    onDismiss: { reachedReceipt in
                         checkoutURL = nil
-                        if hadURL {
+                        if reachedReceipt {
                             withAnimation { showCheckoutNudge = true }
                         }
                     }
