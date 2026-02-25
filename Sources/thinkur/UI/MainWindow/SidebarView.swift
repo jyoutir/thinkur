@@ -8,7 +8,6 @@ struct SidebarView: View {
     @Environment(LicenseManager.self) private var licenseManager
     @Environment(UpdaterService.self) private var updaterService
     @State private var settingsExpanded = false
-    @State private var showReleaseNotes = false
 
     // Rolling greeting state
     @State private var phrases = GreetingProvider.phrases()
@@ -64,7 +63,31 @@ struct SidebarView: View {
             Spacer(minLength: 0)
 
             if updaterService.updateAvailable {
-                updateBanner
+                Button {
+                    updaterService.checkForUpdates()
+                } label: {
+                    HStack(spacing: Spacing.xs) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 13))
+                        if let version = updaterService.availableVersion {
+                            Text("Update to v\(version)")
+                                .font(Typography.caption)
+                                .fontWeight(.medium)
+                        } else {
+                            Text("Update Available")
+                                .font(Typography.caption)
+                                .fontWeight(.medium)
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xs)
+                    .background(settings.accentUITint, in: RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.sm)
+                .transition(.blurReplace)
             }
 
             Divider()
@@ -187,80 +210,6 @@ struct SidebarView: View {
                 .transition(.blurReplace)
             }
         }
-    }
-
-    // MARK: - Update Banner
-
-    @ViewBuilder
-    private var updateBanner: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            HStack(spacing: Spacing.xs) {
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(.system(size: 13))
-                    .foregroundStyle(settings.accentUITint)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Update Available")
-                        .font(Typography.caption)
-                        .foregroundStyle(ColorTokens.textPrimary)
-
-                    if let version = updaterService.availableVersion {
-                        Text("v\(version)")
-                            .font(Typography.caption2)
-                            .foregroundStyle(ColorTokens.textTertiary)
-                    }
-                }
-            }
-
-            if updaterService.releaseNotesHTML != nil {
-                Button {
-                    withAnimation(Animations.glassMorph) {
-                        showReleaseNotes.toggle()
-                    }
-                } label: {
-                    HStack(spacing: Spacing.xxs) {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(ColorTokens.textTertiary)
-                            .rotationEffect(showReleaseNotes ? .degrees(90) : .zero)
-                            .animation(Animations.glassMorph, value: showReleaseNotes)
-
-                        Text("View release notes")
-                            .font(Typography.caption2)
-                            .foregroundStyle(ColorTokens.textSecondary)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-
-                if showReleaseNotes, let notes = updaterService.releaseNotes {
-                    ScrollView {
-                        Text(notes)
-                            .font(Typography.caption2)
-                            .foregroundStyle(ColorTokens.textTertiary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .frame(maxHeight: 120)
-                    .transition(.blurReplace)
-                }
-            }
-
-            Button {
-                updaterService.checkForUpdates()
-            } label: {
-                Text("Update Now")
-                    .font(Typography.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Spacing.xxs)
-                    .background(settings.accentUITint, in: RoundedRectangle(cornerRadius: 5))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.sm)
-        .transition(.blurReplace)
     }
 
     // MARK: - Row Builders
