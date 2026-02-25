@@ -2,6 +2,7 @@ import SwiftUI
 
 struct BillingView: View {
     @Environment(LicenseManager.self) private var licenseManager
+    @Environment(SettingsManager.self) private var settings
     @State private var appeared = false
 
     var body: some View {
@@ -68,8 +69,11 @@ struct BillingView: View {
                 .controlSize(.regular)
 
                 #if DEBUG
-                Button("Reset License (Debug)") {
-                    Task { await licenseManager.deactivate() }
+                Button("Reset to Onboarding (Debug)") {
+                    Task {
+                        await licenseManager.deactivate()
+                        settings.hasCompletedOnboarding = false
+                    }
                 }
                 .foregroundStyle(.red)
                 .controlSize(.regular)

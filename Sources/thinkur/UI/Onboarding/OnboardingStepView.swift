@@ -1198,7 +1198,7 @@ private struct ROICalculatorView: View {
     @State private var hourlyRate: String = "25"
 
     private var rate: Double {
-        Double(hourlyRate) ?? 25
+        min(Double(hourlyRate) ?? 25, 99999)
     }
 
     private var dailyHoursSaved: Double {

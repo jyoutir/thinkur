@@ -5,7 +5,9 @@ import IOKit
 struct CheckoutWebView: View {
     let url: URL
     let onLicenseKey: (String) -> Void
-    let onDismiss: () -> Void
+    let onDismiss: (_ reachedReceipt: Bool) -> Void
+
+    @State private var reachedReceipt = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -13,7 +15,7 @@ struct CheckoutWebView: View {
             HStack {
                 Spacer()
                 Button {
-                    onDismiss()
+                    onDismiss(reachedReceipt)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 20))
@@ -25,18 +27,18 @@ struct CheckoutWebView: View {
 
             CheckoutWebViewRepresentable(
                 url: embeddedURL,
-                onLicenseKey: onLicenseKey
+                onLicenseKey: onLicenseKey,
+                onReachedReceipt: { reachedReceipt = true }
             )
         }
-        .frame(minWidth: 480, idealWidth: 520, minHeight: 600, idealHeight: 700)
-        .background(.background)
+        .frame(minWidth: 480, idealWidth: 500, minHeight: 640, idealHeight: 720)
+        .background(Color.white)
     }
 
     private var embeddedURL: URL {
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
         var queryItems = components.queryItems ?? []
         queryItems.append(URLQueryItem(name: "embed", value: "1"))
-        queryItems.append(URLQueryItem(name: "dark", value: "1"))
         if let machineID = Self.machineID {
             queryItems.append(URLQueryItem(name: "checkout[custom][machine_id]", value: machineID))
         }
@@ -69,14 +71,41 @@ struct CheckoutWebView: View {
 private struct CheckoutWebViewRepresentable: NSViewRepresentable {
     let url: URL
     let onLicenseKey: (String) -> Void
+    let onReachedReceipt: () -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onLicenseKey: onLicenseKey)
+        Coordinator(onLicenseKey: onLicenseKey, onReachedReceipt: onReachedReceipt)
     }
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
+
+        // Hide LemonSqueezy embed's built-in close button via CSS injection
+        let hideCloseCSS = """
+        (function() {
+            var style = document.createElement('style');
+            style.textContent = `
+                button[aria-label="Close"],
+                button[aria-label="close"],
+                .close-button,
+                .modal-close,
+                [data-testid="close-button"],
+                .lemonsqueezy-close {
+                    display: none !important;
+                    visibility: hidden !important;
+                    pointer-events: none !important;
+                }
+            `;
+            (document.head || document.documentElement).appendChild(style);
+        })();
+        """
+        let script = WKUserScript(
+            source: hideCloseCSS,
+            injectionTime: .atDocumentEnd,
+            forMainFrameOnly: false
+        )
+        config.userContentController.addUserScript(script)
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -91,10 +120,12 @@ private struct CheckoutWebViewRepresentable: NSViewRepresentable {
 
 private final class Coordinator: NSObject, WKNavigationDelegate {
     let onLicenseKey: (String) -> Void
+    let onReachedReceipt: () -> Void
     private var hasExtractedKey = false
 
-    init(onLicenseKey: @escaping (String) -> Void) {
+    init(onLicenseKey: @escaping (String) -> Void, onReachedReceipt: @escaping () -> Void) {
         self.onLicenseKey = onLicenseKey
+        self.onReachedReceipt = onReachedReceipt
     }
 
     func webView(
@@ -106,6 +137,9 @@ private final class Coordinator: NSObject, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        // Re-inject CSS to hide embed close button on every navigation
+        hideEmbedCloseButton(in: webView)
+
         guard !hasExtractedKey else { return }
 
         // Check if we're on a receipt/confirmation page
@@ -115,12 +149,41 @@ private final class Coordinator: NSObject, WKNavigationDelegate {
             || url.contains("order-confirmation")
             || url.contains("/thank")
 
+        if isReceipt {
+            Task { @MainActor in onReachedReceipt() }
+        }
+
         // Also try on any page after the initial checkout — LemonSqueezy may
         // redirect to a success page without "receipt" in the URL
         let isCheckoutBuy = url.contains("/checkout/buy/")
         guard isReceipt || !isCheckoutBuy else { return }
 
         extractLicenseKey(from: webView)
+    }
+
+    private func hideEmbedCloseButton(in webView: WKWebView) {
+        let js = """
+        (function() {
+            var id = 'thinkur-hide-close';
+            if (document.getElementById(id)) return;
+            var style = document.createElement('style');
+            style.id = id;
+            style.textContent = `
+                button[aria-label="Close"],
+                button[aria-label="close"],
+                .close-button,
+                .modal-close,
+                [data-testid="close-button"],
+                .lemonsqueezy-close {
+                    display: none !important;
+                    visibility: hidden !important;
+                    pointer-events: none !important;
+                }
+            `;
+            (document.head || document.documentElement).appendChild(style);
+        })();
+        """
+        webView.evaluateJavaScript(js, completionHandler: nil)
     }
 
     private func extractLicenseKey(from webView: WKWebView) {
