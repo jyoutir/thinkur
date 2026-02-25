@@ -22,7 +22,6 @@ final class RecordingCoordinator {
     private let settings: SettingsManager
     private let sharedState: SharedAppState
     private var floatingPanel: FloatingIndicatorPanel?
-    private var notchPanels: NotchIndicatorPanels?
     private var stopAndTranscribeTask: Task<Void, Never>?
 
     init(
@@ -60,12 +59,6 @@ final class RecordingCoordinator {
             floatingPanel?.onTap = { [weak self] in
                 self?.toggleListening()
             }
-            let notch = NotchIndicatorPanels(amplitudeProvider: amplitudeProvider, settings: settings)
-            notch.onLeftWingTapped = { [weak self] in
-                self?.toggleListening()
-            }
-            self.notchPanels = notch
-            notch.showLeftWing()
             // Show persistent bottom bar in idle state
             floatingPanel?.show()
         }
@@ -307,7 +300,6 @@ final class RecordingCoordinator {
             sharedState.appState = newState
         }
         let spinnerState = SpinnerState(from: newState)
-        notchPanels?.setState(spinnerState)
         floatingPanel?.setState(spinnerState)
     }
 }

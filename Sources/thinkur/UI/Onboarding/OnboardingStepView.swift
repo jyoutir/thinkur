@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 import Cocoa
 
 // MARK: - Page 1: Permissions
@@ -22,6 +23,21 @@ struct PermissionsPage: View {
                     .foregroundStyle(ColorTokens.textSecondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 420)
+            }
+
+            // Tutorial video — shows the video for the NEXT permission to grant
+            if let videoName = currentTutorialVideo,
+               let url = Bundle.main.url(forResource: videoName, withExtension: "mp4") {
+                TutorialVideoPlayer(url: url)
+                    .frame(maxWidth: 400, maxHeight: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: CornerRadius.card)
+                            .strokeBorder(ColorTokens.border, lineWidth: 1)
+                    )
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                    .animation(.easeInOut(duration: 0.4), value: currentTutorialVideo)
+                    .id(videoName)
             }
 
             GroupedSettingsSection {
@@ -87,6 +103,13 @@ struct PermissionsPage: View {
         .padding(.horizontal, Spacing.xl)
         .onAppear { viewModel.startPermissionPolling() }
         .onDisappear { viewModel.stopPermissionPolling() }
+    }
+
+    private var currentTutorialVideo: String? {
+        if !permissionManager.microphoneGranted { return "grant-microphone" }
+        if !permissionManager.accessibilityGranted { return "grant-accessibility" }
+        if !permissionManager.inputMonitoringGranted { return "grant-input-monitoring" }
+        return nil
     }
 }
 

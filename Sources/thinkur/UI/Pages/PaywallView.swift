@@ -6,6 +6,8 @@ struct PaywallView: View {
     @State private var licenseKey = ""
     @State private var isActivating = false
     @State private var errorMessage: String?
+    @State private var checkoutURL: URL?
+    @State private var showCheckoutNudge = false
 
     var body: some View {
         ZStack {
@@ -34,9 +36,7 @@ struct PaywallView: View {
                         price: "£5/mo",
                         action: "Subscribe"
                     ) {
-                        if let url = URL(string: Constants.checkoutURLMonthly) {
-                            NSWorkspace.shared.open(url)
-                        }
+                        checkoutURL = URL(string: Constants.checkoutURLMonthly)
                     }
 
                     PlanCardCompact(
@@ -45,12 +45,24 @@ struct PaywallView: View {
                         action: "Purchase",
                         highlighted: true
                     ) {
-                        if let url = URL(string: Constants.checkoutURLLifetime) {
-                            NSWorkspace.shared.open(url)
-                        }
+                        checkoutURL = URL(string: Constants.checkoutURLLifetime)
                     }
                 }
                 .frame(maxWidth: 460)
+
+                if showCheckoutNudge {
+                    HStack(spacing: Spacing.xs) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text("Purchase complete! Check your email for your license key.")
+                            .font(Typography.callout)
+                            .foregroundStyle(ColorTokens.textSecondary)
+                    }
+                    .padding(Spacing.sm)
+                    .frame(maxWidth: 460)
+                    .glassCard()
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
 
                 GroupedSettingsSection(title: "Already have a key?") {
                     VStack(spacing: 0) {
@@ -112,6 +124,28 @@ struct PaywallView: View {
             .padding(.horizontal, Spacing.xl)
         }
         .frame(minWidth: 920, minHeight: 620)
+        .sheet(isPresented: Binding(
+            get: { checkoutURL != nil },
+            set: { if !$0 { checkoutURL = nil } }
+        )) {
+            if let url = checkoutURL {
+                CheckoutWebView(
+                    url: url,
+                    onLicenseKey: { key in
+                        checkoutURL = nil
+                        licenseKey = key
+                        Task { await activateLicense() }
+                    },
+                    onDismiss: {
+                        let hadURL = checkoutURL != nil
+                        checkoutURL = nil
+                        if hadURL {
+                            withAnimation { showCheckoutNudge = true }
+                        }
+                    }
+                )
+            }
+        }
     }
 
     private func activateLicense() async {

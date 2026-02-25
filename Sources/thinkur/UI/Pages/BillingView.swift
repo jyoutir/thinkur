@@ -66,6 +66,14 @@ struct BillingView: View {
                     }
                 }
                 .controlSize(.regular)
+
+                #if DEBUG
+                Button("Reset License (Debug)") {
+                    Task { await licenseManager.deactivate() }
+                }
+                .foregroundStyle(.red)
+                .controlSize(.regular)
+                #endif
             }
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.lg)
