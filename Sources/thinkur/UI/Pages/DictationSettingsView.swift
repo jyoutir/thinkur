@@ -35,15 +35,6 @@ struct DictationSettingsView: View {
                             Divider()
 
                             ToggleRow(
-                                icon: "textformat.abc",
-                                title: "Auto Punctuation",
-                                subtitle: "Automatically adds periods, commas, and question marks",
-                                isOn: $s.autoPunctuation
-                            )
-
-                            Divider()
-
-                            ToggleRow(
                                 icon: "wand.and.stars",
                                 title: "Intent Correction",
                                 subtitle: "Fixes self-corrections like 'I went to the sto... restaurant'",

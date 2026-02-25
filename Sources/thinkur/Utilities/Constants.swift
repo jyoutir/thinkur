@@ -7,14 +7,6 @@ enum Constants {
     static let vKeyCode: CGKeyCode = 9
     static let clipboardRestoreDelay: TimeInterval = 0.15
     static let pasteDelay: TimeInterval = 0.05
-    static let quickStartModel = "small.en"
-    static let whisperModel: String = {
-        let ramGB = ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024)
-        switch ramGB {
-        case ..<12:  return "small.en"   // 8GB Macs
-        default:     return "medium.en"  // 16GB+
-        }
-    }()
     // MARK: - TelemetryDeck
     static let telemetryDeckAppID = "1116AAF3-E84E-4353-9024-46C5E05DAB7C"
 

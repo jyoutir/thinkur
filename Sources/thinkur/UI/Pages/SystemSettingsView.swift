@@ -78,21 +78,6 @@ struct SystemSettingsView: View {
                     }
                 }
 
-                if sharedState.isUpgradingModel {
-                    GroupedSettingsSection(title: "Voice Model") {
-                        HStack(spacing: Spacing.sm) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Upgrading to \(Constants.whisperModel)\u{2026}")
-                                .font(Typography.callout)
-                                .foregroundStyle(ColorTokens.textSecondary)
-                            Spacer()
-                        }
-                        .padding(.horizontal, Spacing.md)
-                        .padding(.vertical, Spacing.sm)
-                    }
-                }
-
                 GroupedSettingsSection(title: "Aesthetics") {
                     AccentColorPicker(selectedColor: $s.accentColorName)
                 }

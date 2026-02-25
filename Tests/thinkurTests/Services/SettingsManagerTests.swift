@@ -19,7 +19,6 @@ struct SettingsManagerTests {
         #expect(settings.floatingIndicator == true)
         #expect(settings.automaticUpdates == true)
         #expect(settings.removeFillerWords == true)
-        #expect(settings.autoPunctuation == true)
         #expect(settings.intentCorrection == true)
         #expect(settings.smartFormatting == true)
         #expect(settings.themeMode == .dark)

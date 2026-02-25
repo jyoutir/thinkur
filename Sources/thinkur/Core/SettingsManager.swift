@@ -78,10 +78,6 @@ final class SettingsManager {
         didSet { defaults.set(removeFillerWords, forKey: "removeFillerWords") }
     }
 
-    var autoPunctuation: Bool {
-        didSet { defaults.set(autoPunctuation, forKey: "autoPunctuation") }
-    }
-
     var intentCorrection: Bool {
         didSet { defaults.set(intentCorrection, forKey: "intentCorrection") }
     }
@@ -138,7 +134,6 @@ final class SettingsManager {
         self.hotkeyModifiers = UInt(defaults.integer(forKey: "hotkeyModifiers"))
         self.vadThreshold = defaults.float(forKey: "vadThreshold")
         self.postProcessingEnabled = defaults.bool(forKey: "postProcessingEnabled")
-
         // Hotkey
         self.hotkeyHoldMode = defaults.bool(forKey: "hotkeyHoldMode")
 
@@ -154,7 +149,6 @@ final class SettingsManager {
 
         // Dictation - defaults true
         self.removeFillerWords = defaults.object(forKey: "removeFillerWords") != nil ? defaults.bool(forKey: "removeFillerWords") : true
-        self.autoPunctuation = defaults.object(forKey: "autoPunctuation") != nil ? defaults.bool(forKey: "autoPunctuation") : true
         self.intentCorrection = defaults.object(forKey: "intentCorrection") != nil ? defaults.bool(forKey: "intentCorrection") : true
         self.smartFormatting = defaults.object(forKey: "smartFormatting") != nil ? defaults.bool(forKey: "smartFormatting") : true
         self.listFormatting = defaults.object(forKey: "listFormatting") != nil ? defaults.bool(forKey: "listFormatting") : true

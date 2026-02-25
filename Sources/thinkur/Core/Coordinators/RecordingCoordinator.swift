@@ -146,8 +146,7 @@ final class RecordingCoordinator {
 
         let trimmedSamples = trimSilence(from: samples)
 
-        // Pad short audio with trailing silence so WhisperKit has enough
-        // decoder context — clips under ~1.5s often produce only noise tokens.
+        // Pad short audio with trailing silence — very short clips may produce empty results.
         let minSamples = Int(1.5 * Constants.sampleRate)
         let paddedSamples: [Float]
         if trimmedSamples.count < minSamples {
@@ -160,13 +159,14 @@ final class RecordingCoordinator {
         if !transcriptionEngine.isLoaded {
             Logger.app.info("Waiting for model to finish loading...")
             let waitStart = ContinuousClock.now
+            let timeout: Duration = transcriptionEngine.isLoading ? .seconds(120) : .seconds(15)
             while !transcriptionEngine.isLoaded && transcriptionEngine.isLoading {
                 if Task.isCancelled {
                     updateState(.idle)
                     return
                 }
-                if waitStart.duration(to: .now) > .seconds(15) {
-                    Logger.app.warning("Model loading wait timed out after 15s")
+                if waitStart.duration(to: .now) > timeout {
+                    Logger.app.warning("Model loading wait timed out after \(Int(timeout.components.seconds))s")
                     break
                 }
                 try? await Task.sleep(for: .milliseconds(200))
@@ -191,7 +191,6 @@ final class RecordingCoordinator {
             if settings.postProcessingEnabled {
                 var disabled = Set<String>()
                 if !settings.removeFillerWords { disabled.insert("FillerRemoval") }
-                if !settings.autoPunctuation { disabled.insert("SpokenPunctuation"); disabled.insert("PausePunctuation") }
                 if !settings.intentCorrection { disabled.insert("SelfCorrection") }
                 if !settings.smartFormatting { disabled.insert("SmartFormatting") }
                 if !settings.listFormatting { disabled.insert("ListDetection") }

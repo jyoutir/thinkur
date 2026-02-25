@@ -30,7 +30,7 @@ final class AppCoordinator {
         self.services = services
         self.viewModels = ViewModelFactory(services: services)
         self.modelLoadCoordinator = ModelLoadCoordinator(
-            transcriptionEngine: services.transcriptionEngine,
+            engine: services.transcriptionEngine,
             sharedState: services.sharedState,
             telemetryService: services.telemetryService
         )

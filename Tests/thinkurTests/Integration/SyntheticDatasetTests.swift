@@ -7,10 +7,7 @@ struct SyntheticDatasetTests {
     private let pipeline = TextPostProcessor(processors: [
         SelfCorrectionProcessor(),
         FillerRemovalProcessor(),
-        SpokenPunctuationProcessor(),
         SmartFormattingProcessor(),
-        PausePunctuationProcessor(),
-        CapitalizationProcessor(),
         StyleAdaptationProcessor(),
         ListDetectionProcessor(),
         CodeContextProcessor(),
@@ -195,48 +192,6 @@ struct SyntheticDatasetTests {
     @Test func FR012_formal() { run("FR-012", style: .formal) { $0.expected_formal } }
     @Test func FR012_neutral() { run("FR-012", style: .standard) { $0.expected_neutral } }
 
-    // MARK: - Spoken Punctuation
-
-    @Test func SP001_casual() { run("SP-001", style: .casual) { $0.expected_casual } }
-    @Test func SP001_formal() { run("SP-001", style: .formal) { $0.expected_formal } }
-    @Test func SP001_neutral() { run("SP-001", style: .standard) { $0.expected_neutral } }
-
-    @Test func SP002_casual() { run("SP-002", style: .casual) { $0.expected_casual } }
-    @Test func SP002_formal() { run("SP-002", style: .formal) { $0.expected_formal } }
-    @Test func SP002_neutral() { run("SP-002", style: .standard) { $0.expected_neutral } }
-
-    @Test func SP003_casual() { run("SP-003", style: .casual) { $0.expected_casual } }
-    @Test func SP003_formal() { run("SP-003", style: .formal) { $0.expected_formal } }
-    @Test func SP003_neutral() { run("SP-003", style: .standard) { $0.expected_neutral } }
-
-    @Test func SP004_casual() { run("SP-004", style: .casual) { $0.expected_casual } }
-    @Test func SP004_formal() { run("SP-004", style: .formal) { $0.expected_formal } }
-    @Test func SP004_neutral() { run("SP-004", style: .standard) { $0.expected_neutral } }
-
-    @Test func SP005_casual() { run("SP-005", style: .casual) { $0.expected_casual } }
-    @Test func SP005_formal() { run("SP-005", style: .formal) { $0.expected_formal } }
-    @Test func SP005_neutral() { run("SP-005", style: .standard) { $0.expected_neutral } }
-
-    @Test func SP006_casual() { run("SP-006", style: .casual) { $0.expected_casual } }
-    @Test func SP006_formal() { run("SP-006", style: .formal) { $0.expected_formal } }
-    @Test func SP006_neutral() { run("SP-006", style: .standard) { $0.expected_neutral } }
-
-    @Test func SP007_casual() { run("SP-007", style: .casual) { $0.expected_casual } }
-    @Test func SP007_formal() { run("SP-007", style: .formal) { $0.expected_formal } }
-    @Test func SP007_neutral() { run("SP-007", style: .standard) { $0.expected_neutral } }
-
-    @Test func SP008_casual() { run("SP-008", style: .casual) { $0.expected_casual } }
-    @Test func SP008_formal() { run("SP-008", style: .formal) { $0.expected_formal } }
-    @Test func SP008_neutral() { run("SP-008", style: .standard) { $0.expected_neutral } }
-
-    @Test func SP009_casual() { run("SP-009", style: .casual) { $0.expected_casual } }
-    @Test func SP009_formal() { run("SP-009", style: .formal) { $0.expected_formal } }
-    @Test func SP009_neutral() { run("SP-009", style: .standard) { $0.expected_neutral } }
-
-    @Test func SP010_casual() { run("SP-010", style: .casual) { $0.expected_casual } }
-    @Test func SP010_formal() { run("SP-010", style: .formal) { $0.expected_formal } }
-    @Test func SP010_neutral() { run("SP-010", style: .standard) { $0.expected_neutral } }
-
     // MARK: - Number Conversion
 
     @Test func NC001_casual() { run("NC-001", style: .casual) { $0.expected_casual } }
@@ -310,32 +265,6 @@ struct SyntheticDatasetTests {
     @Test func NC018_casual() { run("NC-018", style: .casual) { $0.expected_casual } }
     @Test func NC018_formal() { run("NC-018", style: .formal) { $0.expected_formal } }
     @Test func NC018_neutral() { run("NC-018", style: .standard) { $0.expected_neutral } }
-
-    // MARK: - Capitalization
-
-    @Test func CAP001_casual() { run("CAP-001", style: .casual) { $0.expected_casual } }
-    @Test func CAP001_formal() { run("CAP-001", style: .formal) { $0.expected_formal } }
-    @Test func CAP001_neutral() { run("CAP-001", style: .standard) { $0.expected_neutral } }
-
-    @Test func CAP002_casual() { run("CAP-002", style: .casual) { $0.expected_casual } }
-    @Test func CAP002_formal() { run("CAP-002", style: .formal) { $0.expected_formal } }
-    @Test func CAP002_neutral() { run("CAP-002", style: .standard) { $0.expected_neutral } }
-
-    @Test func CAP003_casual() { run("CAP-003", style: .casual) { $0.expected_casual } }
-    @Test func CAP003_formal() { run("CAP-003", style: .formal) { $0.expected_formal } }
-    @Test func CAP003_neutral() { run("CAP-003", style: .standard) { $0.expected_neutral } }
-
-    @Test func CAP004_casual() { run("CAP-004", style: .casual) { $0.expected_casual } }
-    @Test func CAP004_formal() { run("CAP-004", style: .formal) { $0.expected_formal } }
-    @Test func CAP004_neutral() { run("CAP-004", style: .standard) { $0.expected_neutral } }
-
-    @Test func CAP005_casual() { run("CAP-005", style: .casual) { $0.expected_casual } }
-    @Test func CAP005_formal() { run("CAP-005", style: .formal) { $0.expected_formal } }
-    @Test func CAP005_neutral() { run("CAP-005", style: .standard) { $0.expected_neutral } }
-
-    @Test func CAP006_casual() { run("CAP-006", style: .casual) { $0.expected_casual } }
-    @Test func CAP006_formal() { run("CAP-006", style: .formal) { $0.expected_formal } }
-    @Test func CAP006_neutral() { run("CAP-006", style: .standard) { $0.expected_neutral } }
 
     // MARK: - List Detection
 

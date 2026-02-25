@@ -7,9 +7,9 @@ options:
   createIntermediateGroups: true
 
 packages:
-  WhisperKit:
-    url: https://github.com/argmaxinc/WhisperKit.git
-    from: "0.9.0"
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio.git
+    from: "0.12.1"
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle.git
     from: "2.8.0"
@@ -24,7 +24,7 @@ targets:
     sources:
       - Sources/thinkur
     dependencies:
-      - package: WhisperKit
+      - package: FluidAudio
       - package: Sparkle
       - package: TelemetryDeck
         product: TelemetryDeck

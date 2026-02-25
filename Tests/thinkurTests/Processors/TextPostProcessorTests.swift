@@ -17,43 +17,40 @@ struct TextPostProcessorTests {
     }
 
     @Test func singleProcessorApplied() {
-        let pipeline = TextPostProcessor(processors: [SpokenPunctuationProcessor()])
-        let result = pipeline.process("hello period", context: ctx).text
-        #expect(result == "hello.")
+        let pipeline = TextPostProcessor(processors: [FillerRemovalProcessor()])
+        let result = pipeline.process("um hello world", context: ctx).text
+        #expect(result == "hello world")
     }
 
     @Test func processorsApplyInOrder() {
-        // SpokenPunctuation first converts "period" to ".", then Capitalization capitalizes after "."
+        // FillerRemoval first removes "um", then SmartFormatting formats numbers
         let pipeline = TextPostProcessor(processors: [
-            SpokenPunctuationProcessor(),
-            CapitalizationProcessor(),
+            FillerRemovalProcessor(),
+            SmartFormattingProcessor(),
         ])
-        let result = pipeline.process("hello period world", context: ctx).text
-        #expect(result == "Hello. World")
+        let result = pipeline.process("um twenty three apples", context: ctx).text
+        #expect(result == "23 apples")
     }
 
     @Test func fullPipelineDoesNotCrash() {
         let pipeline = TextPostProcessor(processors: [
             SelfCorrectionProcessor(),
             FillerRemovalProcessor(),
-            SpokenPunctuationProcessor(),
             SmartFormattingProcessor(),
-            PausePunctuationProcessor(),
-            CapitalizationProcessor(),
             StyleAdaptationProcessor(),
             ListDetectionProcessor(),
             CodeContextProcessor(),
         ])
-        let result = pipeline.process("um hello period world", context: ctx).text
+        let result = pipeline.process("um hello world", context: ctx).text
         #expect(!result.isEmpty)
     }
 
-    @Test func pipelineWithFillerThenPunctuation() {
+    @Test func pipelineWithFillerThenFormatting() {
         let pipeline = TextPostProcessor(processors: [
             FillerRemovalProcessor(),
-            SpokenPunctuationProcessor(),
+            SmartFormattingProcessor(),
         ])
-        let result = pipeline.process("um hello period", context: ctx).text
-        #expect(result == "hello.")
+        let result = pipeline.process("um twenty three", context: ctx).text
+        #expect(result == "23")
     }
 }
