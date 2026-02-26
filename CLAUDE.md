@@ -1,5 +1,7 @@
 # thinkur
 
+> **NEVER run `xcodebuild`, `swift build`, or ANY build/compile command from `~/Downloads/thinkur`.** macOS Sequoia adds `com.apple.macl` + `com.apple.provenance` extended attributes when build tools touch files in `~/Downloads`. These xattrs are enforced at kernel level and **cannot be removed** — even `sudo xattr -cr` fails. The entire directory becomes permanently inaccessible to Terminal, editors, git, and all CLI tools. The only recovery is to delete the folder in Finder and re-clone. See `docs/building.md` for how to build safely.
+
 Offline macOS menu bar voice typing app. Tap a hotkey to start recording, tap again to stop, transcribed text pastes at cursor. 100% local — WhisperKit on CoreML, no cloud.
 
 ## Build

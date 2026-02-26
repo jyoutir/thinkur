@@ -172,7 +172,7 @@ final class LicenseManager {
 
     private var machineID: String {
         let platformExpert = IOServiceGetMatchingService(
-            kIOMasterPortDefault,
+            kIOMainPortDefault,
             IOServiceMatching("IOPlatformExpertDevice")
         )
         defer { IOObjectRelease(platformExpert) }
