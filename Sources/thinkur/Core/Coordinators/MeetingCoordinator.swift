@@ -307,6 +307,7 @@ final class MeetingCoordinator {
     private func stopAudioEngine() {
         audioEngine?.inputNode.removeTap(onBus: 0)
         audioEngine?.stop()
+        audioEngine?.reset()   // Release audio hardware before dealloc
         audioEngine = nil
         tapProcessor = nil
     }
