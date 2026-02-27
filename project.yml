@@ -75,8 +75,8 @@ schemes:
         - script: |
             if [ "${CONFIGURATION}" = "Debug" ]; then
               killall thinkur 2>/dev/null || true
-              rm -rf "/Applications/thinkur.app"
-              cp -R "${BUILT_PRODUCTS_DIR}/thinkur.app" "/Applications/thinkur.app"
+              mkdir -p "/Applications/thinkur.app"
+              rsync -a --delete "${BUILT_PRODUCTS_DIR}/thinkur.app/" "/Applications/thinkur.app/"
             fi
           name: "Copy to /Applications (Debug only)"
           settingsTarget: thinkur
