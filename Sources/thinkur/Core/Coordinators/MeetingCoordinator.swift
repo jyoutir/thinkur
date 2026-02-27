@@ -4,6 +4,7 @@ import AVFoundation
 import FluidAudio
 import Foundation
 import os
+import Synchronization
 
 @MainActor
 @Observable
@@ -29,6 +30,7 @@ final class MeetingCoordinator {
     // MARK: - Recording State
 
     private var audioEngine: AVAudioEngine?
+    private var configChangeObserver: NSObjectProtocol?
     private var audioWriter: MeetingAudioWriter?
     private var pipeline: MeetingTranscriptionPipeline?
     private let bufferQueue = DispatchQueue(label: "com.thinkur.meetingBuffer")
@@ -61,6 +63,17 @@ final class MeetingCoordinator {
         self.meetingService = meetingService
         self.permissionManager = permissionManager
         self.sharedState = sharedState
+    }
+
+    deinit {
+        if let observer = configChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        timerTask?.cancel()
+        chunkTask?.cancel()
+        audioEngine?.inputNode.removeTap(onBus: 0)
+        audioEngine?.stop()
+        audioEngine?.reset()
     }
 
     // MARK: - Public API
@@ -300,11 +313,32 @@ final class MeetingCoordinator {
         }
 
         engine.prepare()
-        try engine.start()
+        do {
+            try engine.start()
+        } catch {
+            inputNode.removeTap(onBus: 0)
+            tapProcessor = nil
+            throw error
+        }
         audioEngine = engine
+
+        // Handle audio device changes (headphones plugged/unplugged, device switch)
+        configChangeObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine,
+            queue: nil
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.handleConfigurationChange()
+            }
+        }
     }
 
     private func stopAudioEngine() {
+        if let observer = configChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
+            configChangeObserver = nil
+        }
         audioEngine?.inputNode.removeTap(onBus: 0)
         audioEngine?.stop()
         audioEngine?.reset()   // Release audio hardware before dealloc
@@ -320,7 +354,8 @@ final class MeetingCoordinator {
         let audioWriter: MeetingAudioWriter
         let bufferQueue: DispatchQueue
         var chunkBuffer: [Float] = []
-        var currentAudioLevel: Float = 0
+        private let _audioLevel = Mutex<Float>(0)
+        var currentAudioLevel: Float { _audioLevel.withLock { $0 } }
 
         init(converter: AVAudioConverter, targetFormat: AVAudioFormat, audioWriter: MeetingAudioWriter, bufferQueue: DispatchQueue) {
             self.converter = converter
@@ -358,7 +393,7 @@ final class MeetingCoordinator {
             // Compute RMS audio level
             var rms: Float = 0
             vDSP_rmsqv(channelData[0], 1, &rms, vDSP_Length(frameLength))
-            currentAudioLevel = min(rms * 12.0, 1.0)
+            _audioLevel.withLock { $0 = min(rms * 12.0, 1.0) }
 
             let samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
 
@@ -381,6 +416,49 @@ final class MeetingCoordinator {
     }
 
     private var tapProcessor: AudioTapProcessor?
+
+    // MARK: - Configuration Change
+
+    private func handleConfigurationChange() {
+        guard isRecording, let engine = audioEngine else { return }
+        Logger.app.info("Meeting audio configuration changed — rebuilding pipeline")
+
+        engine.inputNode.removeTap(onBus: 0)
+
+        let inputNode = engine.inputNode
+        let inputFormat = inputNode.outputFormat(forBus: 0)
+
+        guard inputFormat.sampleRate > 0,
+              let conv = AVAudioConverter(from: inputFormat, to: targetFormat),
+              let writer = audioWriter else {
+            Logger.app.error("Meeting config change: invalid format — stopping meeting")
+            Task { await stopMeeting() }
+            return
+        }
+
+        let processor = AudioTapProcessor(
+            converter: conv,
+            targetFormat: targetFormat,
+            audioWriter: writer,
+            bufferQueue: bufferQueue
+        )
+        tapProcessor = processor
+
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { buffer, _ in
+            processor.process(buffer)
+        }
+
+        engine.prepare()
+        do {
+            try engine.start()
+            Logger.app.info("Meeting audio pipeline rebuilt at \(inputFormat.sampleRate)Hz after config change")
+        } catch {
+            Logger.app.error("Failed to restart meeting engine after config change: \(error)")
+            inputNode.removeTap(onBus: 0)
+            tapProcessor = nil
+            Task { await stopMeeting() }
+        }
+    }
 
     // MARK: - Chunk Processing
 

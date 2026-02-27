@@ -39,6 +39,11 @@ final class AppCoordinator {
         )
         self.updaterService = UpdaterService(settings: services.settings)
 
+        // Check permissions synchronously so RootView has correct state on first render.
+        // All three checks (AXIsProcessTrusted, recordPermission, CGPreflightListenEventAccess)
+        // are synchronous system calls — safe to call here.
+        services.permissionManager.checkAll()
+
         Task { [weak self] in
             await self?.setup()
         }
@@ -48,10 +53,12 @@ final class AppCoordinator {
         guard !hasSetup else { return }
         hasSetup = true
 
+        MediaControlService.restoreIfNeeded()
+
         // Start model loading concurrently — runs alongside permission setup
         async let modelLoad: () = modelLoadCoordinator.loadModel()
 
-        permissionManager.checkAll()   // Just check — don't request (onboarding owns TCC prompts)
+        // permissionManager.checkAll() already ran synchronously in init()
 
         services.telemetryService.initialize()
         services.frontmostAppDetector.startObserving()
