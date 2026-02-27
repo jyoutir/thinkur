@@ -68,6 +68,8 @@ final class AudioCaptureManager: AudioCapturing {
 
         audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
+        audioEngine.reset()   // Release audio hardware (audio units + aggregate device)
+        converter = nil       // Drop stale converter (will be recreated on next start)
         isCapturing = false
 
         let samples = bufferQueue.sync {
