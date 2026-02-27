@@ -22,12 +22,15 @@ final class PermissionManager: PermissionChecking {
     // MARK: - Accessibility
 
     func checkAccessibility() {
-        accessibilityGranted = AXIsProcessTrusted()
+        let trusted = AXIsProcessTrusted()
+        Logger.permissions.info("checkAccessibility: AXIsProcessTrusted = \(trusted)")
+        accessibilityGranted = trusted
     }
 
     func requestAccessibility() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
         accessibilityGranted = AXIsProcessTrustedWithOptions(options)
+        Logger.permissions.info("requestAccessibility: AXIsProcessTrustedWithOptions returned \(self.accessibilityGranted)")
     }
 
     // MARK: - Microphone
@@ -57,12 +60,15 @@ final class PermissionManager: PermissionChecking {
     // MARK: - Input Monitoring
 
     func checkInputMonitoring() {
-        inputMonitoringGranted = CGPreflightListenEventAccess()
+        let access = CGPreflightListenEventAccess()
+        Logger.permissions.info("checkInputMonitoring: CGPreflightListenEventAccess = \(access)")
+        inputMonitoringGranted = access
     }
 
     func requestInputMonitoring() {
         CGRequestListenEventAccess()
-        Logger.permissions.info("Requested Input Monitoring access — user must enable in System Settings")
+        Logger.permissions.info("Requested Input Monitoring access")
+        // Don't auto-open Settings — let callers decide
     }
 
     // MARK: - Open System Settings

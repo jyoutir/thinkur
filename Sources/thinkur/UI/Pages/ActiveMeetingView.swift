@@ -11,7 +11,9 @@ struct ActiveMeetingView: View {
                 Circle()
                     .fill(.red)
                     .frame(width: 10, height: 10)
-                    .opacity(pulseOpacity)
+                    .opacity(pulsePhase ? 0.3 : 1.0)
+                    .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: pulsePhase)
+                    .onAppear { pulsePhase = true }
 
                 Text(formatElapsedTime(viewModel.coordinator.elapsedTime))
                     .font(.system(size: 28, weight: .bold, design: .monospaced))
@@ -55,21 +57,8 @@ struct ActiveMeetingView: View {
 
             // Audio level bar
             AudioLevelBar(level: viewModel.coordinator.currentAudioLevel, accentColor: settings.accentUITint)
-                .frame(height: 4)
+                .frame(height: 6)
                 .padding(.horizontal, Spacing.md)
-
-            // Loading state
-            if viewModel.coordinator.isDiarizerLoading {
-                VStack(spacing: Spacing.sm) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text(viewModel.coordinator.diarizerLoadingMessage)
-                        .font(Typography.caption)
-                        .foregroundStyle(ColorTokens.textTertiary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, Spacing.xl)
-            }
 
             // Live transcript
             if !viewModel.coordinator.liveSegments.isEmpty {
@@ -98,32 +87,21 @@ struct ActiveMeetingView: View {
                         }
                     }
                 }
-            } else if !viewModel.coordinator.isDiarizerLoading {
-                VStack(spacing: Spacing.sm) {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 32))
-                        .foregroundStyle(settings.accentUITint.opacity(0.3))
-                    Text("Listening...")
-                        .font(Typography.headline)
-                        .foregroundStyle(ColorTokens.textSecondary)
-                    Text("Transcript will appear as people speak")
-                        .font(Typography.caption)
-                        .foregroundStyle(ColorTokens.textTertiary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .glassClear()
+            } else {
+                GlassEmptyState(
+                    icon: "waveform",
+                    title: "Listening...",
+                    subtitle: "Transcript will appear as people speak"
+                )
             }
+
+            Spacer()
         }
     }
 
     // MARK: - Helpers
 
     @State private var pulsePhase = false
-
-    private var pulseOpacity: Double {
-        // Simple alternating opacity for recording dot
-        1.0
-    }
 
     private func formatElapsedTime(_ seconds: TimeInterval) -> String {
         let hours = Int(seconds) / 3600
@@ -145,10 +123,10 @@ private struct AudioLevelBar: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: 3)
                     .fill(ColorTokens.border)
 
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: 3)
                     .fill(accentColor)
                     .frame(width: max(0, geo.size.width * CGFloat(level)))
                     .animation(.easeOut(duration: 0.08), value: level)
