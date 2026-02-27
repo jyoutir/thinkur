@@ -87,11 +87,24 @@ struct ActiveMeetingView: View {
                     }
                 }
             } else {
-                GlassEmptyState(
-                    icon: "waveform",
-                    title: "Listening...",
-                    subtitle: "Transcript will appear as people speak"
-                )
+                VStack(spacing: Spacing.sm) {
+                    HStack(spacing: Spacing.xs) {
+                        Circle()
+                            .fill(.red)
+                            .frame(width: 8, height: 8)
+                            .opacity(pulsePhase ? 0.3 : 1.0)
+
+                        Text("Recording")
+                            .font(Typography.caption)
+                            .foregroundStyle(ColorTokens.textSecondary)
+                    }
+
+                    Text("Transcript will appear as people speak")
+                        .font(Typography.caption)
+                        .foregroundStyle(ColorTokens.textTertiary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Spacing.lg)
             }
 
             Spacer()

@@ -10,6 +10,7 @@ struct MeetingDetailView: View {
     @State private var editingSpeakerId: String?
     @State private var editingSpeakerName: String = ""
     @State private var appeared = false
+    @State private var copied = false
 
     var body: some View {
         ScrollView {
@@ -62,12 +63,24 @@ struct MeetingDetailView: View {
     @ViewBuilder
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            TextField("Meeting title", text: $editingTitle)
-                .font(Typography.title2)
-                .textFieldStyle(.plain)
-                .onSubmit {
-                    viewModel.updateTitle(meeting: meeting, title: editingTitle)
-                }
+            HStack(spacing: Spacing.xs) {
+                TextField("Meeting title", text: $editingTitle)
+                    .font(Typography.title2)
+                    .textFieldStyle(.plain)
+                    .onSubmit {
+                        viewModel.updateTitle(meeting: meeting, title: editingTitle)
+                    }
+
+                Image(systemName: "pencil")
+                    .font(.system(size: 12))
+                    .foregroundStyle(ColorTokens.textTertiary)
+            }
+            .padding(.bottom, 4)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(ColorTokens.border)
+                    .frame(height: 1)
+            }
 
             Text(meeting.date, format: .dateTime.month().day().year().hour().minute())
                 .font(Typography.caption)
@@ -88,14 +101,20 @@ struct MeetingDetailView: View {
 
             Button {
                 copyTranscript()
+                copied = true
+                Task {
+                    try? await Task.sleep(for: .seconds(2))
+                    copied = false
+                }
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "doc.on.doc")
+                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
                         .font(.system(size: 11))
-                    Text("Copy Transcript")
+                    Text(copied ? "Copied!" : "Copy Transcript")
                         .font(Typography.caption)
                 }
-                .foregroundStyle(settings.accentUITint)
+                .foregroundStyle(copied ? .green : settings.accentUITint)
+                .animation(.easeInOut(duration: 0.2), value: copied)
             }
             .buttonStyle(.plain)
         }
@@ -109,7 +128,7 @@ struct MeetingDetailView: View {
             Text(value)
                 .font(Typography.caption)
         }
-        .foregroundStyle(ColorTokens.textSecondary)
+        .foregroundStyle(ColorTokens.textPrimary)
         .padding(.horizontal, Spacing.xs)
         .padding(.vertical, 4)
         .glassClear(cornerRadius: CornerRadius.button)

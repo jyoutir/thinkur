@@ -29,13 +29,15 @@ final class MeetingCoordinator {
 
     // MARK: - Recording State
 
-    private var audioEngine: AVAudioEngine?
-    private var configChangeObserver: NSObjectProtocol?
+    // nonisolated(unsafe) allows deinit cleanup — these are still only
+    // mutated from @MainActor contexts (startMeeting/stopAudioEngine).
+    nonisolated(unsafe) private var audioEngine: AVAudioEngine?
+    nonisolated(unsafe) private var configChangeObserver: NSObjectProtocol?
     private var audioWriter: MeetingAudioWriter?
     private var pipeline: MeetingTranscriptionPipeline?
     private let bufferQueue = DispatchQueue(label: "com.thinkur.meetingBuffer")
-    private var timerTask: Task<Void, Never>?
-    private var chunkTask: Task<Void, Never>?
+    nonisolated(unsafe) private var timerTask: Task<Void, Never>?
+    nonisolated(unsafe) private var chunkTask: Task<Void, Never>?
     private var recordingStartTime: Date?
 
     /// ~30 seconds of audio at 16kHz

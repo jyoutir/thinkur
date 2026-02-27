@@ -114,7 +114,17 @@ final class RecordingCoordinator {
             }
 
             amplitudeProvider.startPolling { [weak self] in
-                self?.audioCaptureManager.currentAudioLevel ?? 0
+                guard let self else { return 0 }
+                if !self.audioCaptureManager.isCapturing
+                    && self.state == .listening
+                    && self.stopAndTranscribeTask == nil {
+                    Logger.app.warning("Audio capture failed — recovering with partial audio")
+                    self.stopAndTranscribeTask = Task { [weak self] in
+                        await self?.stopAndTranscribe()
+                    }
+                    return 0
+                }
+                return self.audioCaptureManager.currentAudioLevel
             }
             floatingPanel?.updateAppearance(for: settings.themeMode)
             floatingPanel?.show()  // Recenter and ensure visible
