@@ -58,7 +58,6 @@ struct ActiveMeetingView: View {
             // Audio level bar
             AudioLevelBar(level: viewModel.coordinator.currentAudioLevel, accentColor: settings.accentUITint)
                 .frame(height: 6)
-                .padding(.horizontal, Spacing.md)
 
             // Live transcript
             if !viewModel.coordinator.liveSegments.isEmpty {
@@ -97,6 +96,7 @@ struct ActiveMeetingView: View {
 
             Spacer()
         }
+        .padding(Spacing.lg)
     }
 
     // MARK: - Helpers
