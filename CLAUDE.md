@@ -69,7 +69,8 @@ thinkur/
     ├── build-dmg.sh            ← archive → sign → notarize → DMG
     ├── publish-release.sh      ← GitHub Release + appcast
     ├── reset-for-testing.sh    ← wipe local state for testing
-    └── create-lifetime-key.sh  ← gift codes via LemonSqueezy
+    ├── create-lifetime-key.sh  ← gift codes via LemonSqueezy
+    └── dev-permissions.sh      ← reset TCC + open Settings panes for dev
 ```
 
 ## Architecture
@@ -103,8 +104,9 @@ Hotkey (CGEvent tap) → AudioCaptureManager (AVAudioEngine 16kHz)
 
 - **NEVER edit thinkur.xcodeproj directly.** Edit `project.yml` and run `xcodegen generate`.
 - **Run `xcodegen generate` after adding/removing/moving source files.** Then verify with `xcodebuild -quiet`. `swift build` won't catch missing xcodegen entries.
+- **Run `xcodegen generate` after editing schemes or build actions in `project.yml`.** Pre/post actions, test targets, and archive config all live in the `schemes:` section.
 - **Always use `-quiet` with xcodebuild.** Raw output floods context.
-- **Permissions are on `/Applications/thinkur.app`**, not the DerivedData build.
+- **Permissions are on the DerivedData build.** The post-build action resets stale TCC entries automatically.
 
 ## Gotchas
 
