@@ -86,7 +86,7 @@ final class AudioCaptureManager: AudioCapturing {
         configChangeObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange,
             object: audioEngine,
-            queue: nil
+            queue: .main
         ) { [weak self] _ in
             self?.handleConfigurationChange()
         }
@@ -95,19 +95,20 @@ final class AudioCaptureManager: AudioCapturing {
     }
 
     func stopCapture() -> [Float] {
-        guard isCapturing else { return [] }
-
-        if let observer = configChangeObserver {
-            NotificationCenter.default.removeObserver(observer)
-            configChangeObserver = nil
+        if isCapturing {
+            if let observer = configChangeObserver {
+                NotificationCenter.default.removeObserver(observer)
+                configChangeObserver = nil
+            }
+            audioEngine.inputNode.removeTap(onBus: 0)
+            audioEngine.stop()
+            audioEngine.reset()   // Release audio hardware (audio units + aggregate device)
+            converter = nil       // Drop stale converter (will be recreated on next start)
+            isCapturing = false
+            _audioLevel.withLock { $0 = 0 }
         }
-        audioEngine.inputNode.removeTap(onBus: 0)
-        audioEngine.stop()
-        audioEngine.reset()   // Release audio hardware (audio units + aggregate device)
-        converter = nil       // Drop stale converter (will be recreated on next start)
-        isCapturing = false
-        _audioLevel.withLock { $0 = 0 }
 
+        // Always drain — preserves partial audio after config change failures
         let samples = bufferQueue.sync {
             var result: [Float] = []
             swap(&result, &audioBuffer)

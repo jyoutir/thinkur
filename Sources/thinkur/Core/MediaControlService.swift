@@ -34,8 +34,8 @@ enum MediaControlService {
         audioQueue.async {
             guard let volume = getSystemVolume(), volume > 0 else { return }
             savedVolume = volume
-            setSystemVolume(volume * 0.4)
             didDim = true
+            setSystemVolume(volume * 0.4)
         }
     }
 
