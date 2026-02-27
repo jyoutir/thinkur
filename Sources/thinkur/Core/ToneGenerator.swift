@@ -199,10 +199,18 @@ final class ToneGenerator {
             return
         }
 
-        // Schedule engine stop after samples complete plus small buffer
+        // Schedule full engine teardown after samples complete — releases audio hardware
+        // so Bluetooth devices can return to high-quality playback codec
         let durationSeconds = Double(totalSamples) / sampleRate + 0.05
         let workItem = DispatchWorkItem { [weak self] in
-            self?.engine?.stop()
+            guard let self else { return }
+            if let node = self.currentSourceNode {
+                self.engine?.detach(node)
+                self.currentSourceNode = nil
+            }
+            self.engine?.stop()
+            self.engine?.reset()
+            self.engine = nil
         }
         stopWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + durationSeconds, execute: workItem)

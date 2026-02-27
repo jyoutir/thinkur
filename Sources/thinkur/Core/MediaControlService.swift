@@ -2,10 +2,31 @@ import CoreAudio
 import os
 
 enum MediaControlService {
-    private static var savedVolume: Float = -1
-    private static var didDim = false
+    private static let savedVolumeKey = "com.thinkur.mediaControl.savedVolume"
+    private static let didDimKey = "com.thinkur.mediaControl.didDim"
+
     /// Serial queue for CoreAudio volume calls — AudioObjectSetPropertyData blocks 10-100ms.
     private static let audioQueue = DispatchQueue(label: "com.thinkur.mediaControl", qos: .userInitiated)
+
+    /// Persisted so volume can be restored after a crash.
+    private static var savedVolume: Float? {
+        get {
+            guard UserDefaults.standard.object(forKey: savedVolumeKey) != nil else { return nil }
+            return UserDefaults.standard.float(forKey: savedVolumeKey)
+        }
+        set {
+            if let value = newValue {
+                UserDefaults.standard.set(value, forKey: savedVolumeKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: savedVolumeKey)
+            }
+        }
+    }
+
+    private static var didDim: Bool {
+        get { UserDefaults.standard.bool(forKey: didDimKey) }
+        set { UserDefaults.standard.set(newValue, forKey: didDimKey) }
+    }
 
     /// Dims system volume to 40% of its current level.
     /// Dispatches to background queue so CoreAudio calls don't block the main thread.
@@ -25,8 +46,19 @@ enum MediaControlService {
             guard didDim else { return }
             didDim = false
             let volume = savedVolume
-            savedVolume = -1
-            guard volume >= 0 else { return }
+            savedVolume = nil
+            guard let volume, volume >= 0 else { return }
+            setSystemVolume(volume)
+        }
+    }
+
+    /// Call on launch to restore volume if the app crashed while dimmed.
+    static func restoreIfNeeded() {
+        audioQueue.async {
+            guard didDim, let volume = savedVolume, volume >= 0 else { return }
+            Logger.app.info("Restoring volume after previous crash (saved: \(volume))")
+            didDim = false
+            savedVolume = nil
             setSystemVolume(volume)
         }
     }
