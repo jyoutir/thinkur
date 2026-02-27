@@ -83,7 +83,7 @@ final class MeetingCoordinator {
 
         error = nil
         isDiarizerLoading = true
-        diarizerLoadingMessage = "Preparing meeting\u{2026}"
+        diarizerLoadingMessage = "Preparing meeting models"
 
         // Load diarizer models if needed
         if diarizerManager == nil {

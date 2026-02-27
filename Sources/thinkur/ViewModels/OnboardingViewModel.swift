@@ -123,9 +123,10 @@ final class OnboardingViewModel {
         if !permissionManager.microphoneGranted {
             await requestMicrophone()
         } else if !permissionManager.accessibilityGranted {
-            openAccessibilitySettings()
+            permissionManager.requestAccessibility()
         } else if !permissionManager.inputMonitoringGranted {
-            openInputMonitoringSettings()
+            permissionManager.requestInputMonitoring()
+            permissionManager.openInputMonitoringSettings()
         }
     }
 

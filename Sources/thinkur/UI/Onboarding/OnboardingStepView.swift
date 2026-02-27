@@ -61,7 +61,7 @@ struct PermissionsPage: View {
                         isGranted: permissionManager.accessibilityGranted,
                         helpText: "System Settings \u{2192} Privacy & Security \u{2192} Accessibility \u{2192} Enable thinkur"
                     ) {
-                        viewModel.openAccessibilitySettings()
+                        permissionManager.requestAccessibility()
                     }
 
                     Divider()
@@ -73,7 +73,8 @@ struct PermissionsPage: View {
                         isGranted: permissionManager.inputMonitoringGranted,
                         helpText: "System Settings \u{2192} Privacy & Security \u{2192} Input Monitoring \u{2192} Enable thinkur"
                     ) {
-                        viewModel.openInputMonitoringSettings()
+                        permissionManager.requestInputMonitoring()
+                        permissionManager.openInputMonitoringSettings()
                     }
                 }
             }

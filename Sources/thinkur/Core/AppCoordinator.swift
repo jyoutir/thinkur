@@ -51,17 +51,7 @@ final class AppCoordinator {
         // Start model loading concurrently — runs alongside permission setup
         async let modelLoad: () = modelLoadCoordinator.loadModel()
 
-        permissionManager.checkAll()
-
-        if !permissionManager.microphoneGranted {
-            await permissionManager.requestMicrophone()
-            permissionManager.checkAll()
-        }
-
-        if !permissionManager.accessibilityGranted {
-            permissionManager.requestAccessibility()
-            permissionManager.checkAll()
-        }
+        permissionManager.checkAll()   // Just check — don't request (onboarding owns TCC prompts)
 
         services.telemetryService.initialize()
         services.frontmostAppDetector.startObserving()

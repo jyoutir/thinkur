@@ -6,6 +6,7 @@ final class HotkeyManager: HotkeyListening {
     private var runLoopSource: CFRunLoopSource?
     private var retainedSelf: Unmanaged<HotkeyManager>?
     private var isKeyDown = false
+    private var healthTimer: Timer?
 
     var onKeyDown: (() -> Void)?
     var onKeyUp: (() -> Void)?
@@ -50,6 +51,7 @@ final class HotkeyManager: HotkeyListening {
         CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: eventTap, enable: true)
         isRunning = true
+        startHealthMonitor()
         Logger.hotkey.info("Hotkey manager started — listening for Tab key")
         return true
     }
@@ -57,6 +59,7 @@ final class HotkeyManager: HotkeyListening {
     func stop() {
         guard isRunning else { return }
 
+        stopHealthMonitor()
         if let eventTap {
             CGEvent.tapEnable(tap: eventTap, enable: false)
         }
@@ -71,6 +74,21 @@ final class HotkeyManager: HotkeyListening {
         retainedSelf?.release()
         retainedSelf = nil
         Logger.hotkey.info("Hotkey manager stopped")
+    }
+
+    private func startHealthMonitor() {
+        healthTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            guard let self, let tap = self.eventTap else { return }
+            if !CGEvent.tapIsEnabled(tap: tap) {
+                Logger.hotkey.warning("Event tap was silently disabled — re-enabling")
+                CGEvent.tapEnable(tap: tap, enable: true)
+            }
+        }
+    }
+
+    private func stopHealthMonitor() {
+        healthTimer?.invalidate()
+        healthTimer = nil
     }
 
     fileprivate func handleEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {

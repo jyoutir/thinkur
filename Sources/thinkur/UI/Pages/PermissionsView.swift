@@ -30,7 +30,7 @@ struct PermissionsView: View {
                             description: "Required to insert text into other applications",
                             isGranted: viewModel.accessibilityGranted,
                             helpText: "Injects transcribed text into the active app.",
-                            action: { viewModel.openAccessibilitySettings() }
+                            action: { viewModel.requestAccessibility() }
                         )
 
                         Divider()
@@ -41,7 +41,10 @@ struct PermissionsView: View {
                             description: "Required to detect the hotkey for activating voice typing",
                             isGranted: viewModel.inputMonitoringGranted,
                             helpText: "Detects your hotkey to activate listening mode.",
-                            action: { viewModel.openInputMonitoringSettings() }
+                            action: {
+                                viewModel.requestInputMonitoring()
+                                viewModel.openInputMonitoringSettings()
+                            }
                         )
                     }
                 }
