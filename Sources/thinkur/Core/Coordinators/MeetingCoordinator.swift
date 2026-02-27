@@ -1,5 +1,5 @@
 import Accelerate
-import AVFAudio
+@preconcurrency import AVFAudio
 import AVFoundation
 import FluidAudio
 import Foundation
