@@ -84,6 +84,12 @@ final class RecordingCoordinator {
     func startRecording() {
         guard state == .idle else { return }
 
+        // Mutual exclusion: don't start dictation while a meeting is recording
+        guard !sharedState.isMeetingActive else {
+            Logger.app.info("Dictation ignored — meeting is active")
+            return
+        }
+
         // Guard: check permission before touching the audio engine
         permissionManager.checkMicrophone()
         guard permissionManager.microphoneGranted else {

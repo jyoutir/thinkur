@@ -10,6 +10,8 @@ final class ViewModelFactory {
     let insightsViewModel: InsightsViewModel
     let onboardingViewModel: OnboardingViewModel
     let integrationsViewModel: IntegrationsViewModel
+    let meetingCoordinator: MeetingCoordinator
+    let meetingViewModel: MeetingViewModel
 
     init(services: ServiceContainer) {
         self.recordingCoordinator = RecordingCoordinator(
@@ -40,5 +42,15 @@ final class ViewModelFactory {
         self.insightsViewModel = InsightsViewModel(analyticsService: services.analyticsService)
         self.onboardingViewModel = OnboardingViewModel(permissionManager: services.permissionManager, settings: services.settings, sharedState: services.sharedState, licenseManager: services.licenseManager, telemetryService: services.telemetryService)
         self.integrationsViewModel = IntegrationsViewModel(smartHomeService: services.smartHomeService)
+        self.meetingCoordinator = MeetingCoordinator(
+            transcriptionEngine: services.transcriptionEngine,
+            meetingService: services.meetingService,
+            permissionManager: services.permissionManager,
+            sharedState: services.sharedState
+        )
+        self.meetingViewModel = MeetingViewModel(
+            coordinator: self.meetingCoordinator,
+            meetingService: services.meetingService
+        )
     }
 }

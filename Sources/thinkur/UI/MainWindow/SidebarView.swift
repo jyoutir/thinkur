@@ -7,6 +7,7 @@ struct SidebarView: View {
     @Environment(SharedAppState.self) private var sharedState
     @Environment(LicenseManager.self) private var licenseManager
     @Environment(UpdaterService.self) private var updaterService
+    @Environment(MeetingViewModel.self) private var meetingVM
     @State private var settingsExpanded = false
 
     // Rolling greeting state
@@ -212,6 +213,43 @@ struct SidebarView: View {
         }
     }
 
+    // MARK: - Meeting Action Button
+
+    @ViewBuilder
+    private var meetingActionButton: some View {
+        if meetingVM.coordinator.isRecording {
+            Button {
+                Task { await meetingVM.stopMeeting() }
+            } label: {
+                HStack(spacing: 3) {
+                    Circle()
+                        .fill(.red)
+                        .frame(width: 6, height: 6)
+                    Text("Stop")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .foregroundStyle(.red)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(.red.opacity(0.15), in: Capsule())
+            }
+            .buttonStyle(.plain)
+        } else {
+            Button {
+                selectedPage = .meetings
+                Task { await meetingVM.startMeeting() }
+            } label: {
+                Text("Start")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(settings.accentUITint)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(settings.accentUITint.opacity(0.15), in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
     // MARK: - Row Builders
 
     @ViewBuilder
@@ -239,6 +277,10 @@ struct SidebarView: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(ColorTokens.border, in: Capsule())
+                }
+
+                if page == .meetings {
+                    meetingActionButton
                 }
             }
             .padding(.vertical, 6)

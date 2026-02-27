@@ -21,6 +21,7 @@ struct thinkurApp: App {
                 .environment(coordinator.insightsViewModel)
                 .environment(coordinator.onboardingViewModel)
                 .environment(coordinator.integrationsViewModel)
+                .environment(coordinator.meetingViewModel)
                 .environment(coordinator.settings)
                 .environment(coordinator.sharedState)
                 .environment(coordinator.licenseManager)
