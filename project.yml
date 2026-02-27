@@ -74,11 +74,13 @@ schemes:
       postActions:
         - script: |
             if [ "${CONFIGURATION}" = "Debug" ]; then
-              killall thinkur 2>/dev/null || true
-              mkdir -p "/Applications/thinkur.app"
-              rsync -a --delete "${BUILT_PRODUCTS_DIR}/thinkur.app/" "/Applications/thinkur.app/"
+              # Clear stale TCC entries so the new binary gets fresh grants.
+              # Without this, duplicate csreq entries accumulate and permissions break.
+              for svc in Microphone Accessibility ListenEvent SpeechRecognition; do
+                tccutil reset "$svc" com.jyo.thinkur 2>/dev/null || true
+              done
             fi
-          name: "Copy to /Applications (Debug only)"
+          name: "Reset TCC permissions (Debug only)"
           settingsTarget: thinkur
     test:
       targets:
