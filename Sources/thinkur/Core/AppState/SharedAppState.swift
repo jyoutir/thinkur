@@ -11,4 +11,5 @@ final class SharedAppState {
     var modelDownloadProgress: Double = 0.0
     var transcriptionVersion: Int = 0
     var lastSmartHomeAction: String?
+    var isMeetingActive: Bool = false
 }
