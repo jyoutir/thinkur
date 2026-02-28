@@ -1,3 +1,11 @@
+/// CGEvent tap manager for global hotkey capture.
+///
+/// When thinkur is frontmost, the tap is fully disabled so keyboard events bypass it entirely —
+/// TextFields, Tab navigation, and Input Methods work without interference. When another app
+/// takes focus, the tap re-enables after a 500ms debounce (to absorb ViewBridge bounces on macOS 26).
+/// If the thinkur window is still visible after the debounce, the app is reactivated instead of
+/// re-enabling the tap, preventing spurious focus loss from breaking TextFields.
+
 import Cocoa
 import os
 
@@ -26,6 +34,11 @@ final class HotkeyManager: HotkeyListening {
     var onKeyUp: (() -> Void)?
     var targetKeyCode: UInt16 = Constants.tabKeyCode
     var targetModifiers: CGEventFlags = []
+
+    /// Injected check for whether the app window is visible.
+    /// Used during tap re-enable debounce to detect spurious focus loss.
+    /// Defaults to checking NSWindow identifier if not set.
+    var isAppWindowVisible: (() -> Bool)?
 
     private(set) var isRunning = false
 
@@ -207,8 +220,16 @@ final class HotkeyManager: HotkeyListening {
                     // If the thinkur window is still visible, this was a spurious
                     // focus loss (e.g. ViewBridge crash). Reactivate instead of
                     // re-enabling the tap so TextFields keep working.
-                    let thinkurWindowVisible = NSApp.windows.contains { $0.title == "thinkur" && $0.isVisible }
+                    let thinkurWindowVisible = self.isAppWindowVisible?() ?? NSApp.windows.contains {
+                        $0.identifier?.rawValue.contains("main") == true && $0.isVisible
+                    }
                     if thinkurWindowVisible {
+                        // Don't steal focus from active text editing (popovers have their own window)
+                        let anyTextEditing = NSApp.windows.contains { $0.firstResponder is NSTextView }
+                        if anyTextEditing {
+                            Logger.hotkey.debug("Text editing active — skipping reactivation")
+                            return
+                        }
                         NSApp.activate(ignoringOtherApps: true)
                         Logger.hotkey.debug("Window still visible — reactivating app instead of re-enabling tap")
                         return

@@ -1,3 +1,11 @@
+/// Dual-track meeting capture coordinator.
+///
+/// Records mic audio (AVAudioEngine) and system audio (ScreenCaptureKit) to separate WAV files.
+/// The mic tap is the master clock: each audio callback reads from the SystemAudioCaptureManager's
+/// ring buffer and writes both tracks synchronously. A timer task polls elapsed time, audio levels,
+/// and system audio health. On stop, hands both WAV files to MeetingFinalProcessor for transcription
+/// and speaker diarization.
+
 import Accelerate
 @preconcurrency import AVFAudio
 import AVFoundation
@@ -114,7 +122,14 @@ final class MeetingCoordinator {
         // Load offline diarizer models
         if offlineDiarizer == nil {
             do {
-                let offline = OfflineDiarizerManager()
+                let voipConfig = OfflineDiarizerConfig(
+                    clusteringThreshold: 0.45,
+                    Fa: 0.15,
+                    Fb: 0.5,
+                    embeddingExcludeOverlap: false,
+                    minSegmentDuration: 0.3
+                ).withSpeakers(min: 2)
+                let offline = OfflineDiarizerManager(config: voipConfig)
                 let offlineCacheDir = Constants.appSupportDirectory
                     .appendingPathComponent("offline-diarizer", isDirectory: true)
                 try await offline.prepareModels(directory: offlineCacheDir)
@@ -186,7 +201,7 @@ final class MeetingCoordinator {
         processingState = .idle
         sharedState.isMeetingActive = true
 
-        // Start elapsed time timer + audio level polling
+        // Start elapsed time timer + audio level polling + system audio health check
         timerTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
@@ -196,6 +211,13 @@ final class MeetingCoordinator {
                 }
                 if let processor = self.tapProcessor {
                     self.currentAudioLevel = processor.currentAudioLevel
+                }
+                // Check if system audio capture dropped mid-meeting
+                if self.isSystemAudioActive,
+                   let sysAudio = self.systemAudioManager,
+                   !sysAudio.isCapturing {
+                    self.isSystemAudioActive = false
+                    Logger.app.warning("System audio capture dropped mid-meeting")
                 }
             }
         }
