@@ -73,12 +73,16 @@ final class SystemAudioCaptureManager: NSObject, @unchecked Sendable {
         self.stream = nil
         isCapturing = false
 
+        resetRingBuffer()
+
+        Logger.app.info("System audio capture stopped")
+    }
+
+    private func resetRingBuffer() {
         lock.lock()
         writeIndex = 0
         availableSamples = 0
         lock.unlock()
-
-        Logger.app.info("System audio capture stopped")
     }
 
     // MARK: - Ring Buffer Read

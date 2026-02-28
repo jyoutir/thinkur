@@ -13,7 +13,7 @@ struct MeetingProcessingResult: Sendable {
 /// Transcribes both tracks in parallel, runs diarization on the system track,
 /// and merges everything into speaker-attributed segments.
 actor MeetingFinalProcessor {
-    private let asrManager: AsrManager
+    nonisolated(unsafe) private let asrManager: AsrManager
     private let offlineDiarizer: OfflineDiarizerManager?
 
     init(asrManager: AsrManager, offlineDiarizer: OfflineDiarizerManager?) {
