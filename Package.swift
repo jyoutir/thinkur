@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "thinkur",
     platforms: [
-        .macOS("26.0")
+        .macOS("15.0")
     ],
     dependencies: [
         .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.12.1"),

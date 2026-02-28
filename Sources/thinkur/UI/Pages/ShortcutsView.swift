@@ -32,7 +32,7 @@ struct ShortcutsView: View {
                                 .padding(4)
                                 .frame(minHeight: 32, maxHeight: 120)
                                 .fixedSize(horizontal: false, vertical: true)
-                                .glassClear(cornerRadius: CornerRadius.field)
+                                .materialClear(cornerRadius: CornerRadius.field)
                                 .overlay(alignment: .topLeading) {
                                     if vm.newExpansion.isEmpty {
                                         Text("thinkur types…")
@@ -83,7 +83,7 @@ struct ShortcutsView: View {
                                 }
                             }
                         }
-                        .glassCard()
+                        .interactiveCard()
                     }
                 }
             }

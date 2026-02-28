@@ -94,7 +94,7 @@ struct PermissionsPage: View {
                     .frame(maxWidth: 280)
                     .padding(.vertical, Spacing.sm)
             }
-            .buttonStyle(.glassProminent)
+            .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .tint(settings.accentUITint)
 
@@ -172,7 +172,7 @@ struct ModelLoadingPage: View {
                 .frame(maxWidth: 280)
                 .padding(.vertical, Spacing.sm)
             }
-            .buttonStyle(.glassProminent)
+            .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .tint(settings.accentUITint)
             .disabled(!viewModel.isModelReady)
@@ -294,7 +294,7 @@ struct TryItPage: View {
                     .frame(maxWidth: 280)
                     .padding(.vertical, Spacing.sm)
             }
-            .buttonStyle(.glassProminent)
+            .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .tint(settings.accentUITint)
             .disabled(messages.isEmpty)
@@ -409,7 +409,7 @@ struct TryItPage: View {
                     .font(.system(size: 20))
                     .foregroundStyle(isActive ? settings.accentColor : ColorTokens.textPrimary)
                     .frame(width: 40, height: 40)
-                    .glassClear(cornerRadius: CornerRadius.button)
+                    .materialClear(cornerRadius: CornerRadius.button)
             }
             .buttonStyle(.plain)
 
@@ -1171,7 +1171,7 @@ struct QuickSettingsPage: View {
                     .frame(maxWidth: 280)
                     .padding(.vertical, Spacing.sm)
             }
-            .buttonStyle(.glassProminent)
+            .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .tint(settings.accentUITint)
 
@@ -1279,7 +1279,7 @@ private struct ROICalculatorView: View {
         }
         .padding(Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .glassCard()
+        .interactiveCard()
     }
 
     private var controlsCard: some View {
@@ -1315,7 +1315,7 @@ private struct ROICalculatorView: View {
                         .frame(width: 60)
                         .padding(.horizontal, Spacing.xs)
                         .padding(.vertical, Spacing.xxs)
-                        .glassClear(cornerRadius: CornerRadius.field)
+                        .materialClear(cornerRadius: CornerRadius.field)
 
                     Text("/ hour")
                         .font(Typography.callout)

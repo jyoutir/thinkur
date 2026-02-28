@@ -77,7 +77,7 @@ struct InsightsView: View {
                     } else {
                         BarChartView(data: viewModel.chartData, barColor: settings.accentUITint)
                             .padding(Spacing.md)
-                            .glassCard()
+                            .interactiveCard()
                     }
                 }
 
@@ -111,7 +111,7 @@ struct InsightsView: View {
                             }
                         }
                         .padding(Spacing.md)
-                        .glassCard()
+                        .interactiveCard()
                     }
                 }
             }

@@ -31,7 +31,7 @@ struct ActiveMeetingView: View {
                     .foregroundStyle(ColorTokens.textSecondary)
                     .padding(.horizontal, Spacing.xs)
                     .padding(.vertical, 4)
-                    .glassClear(cornerRadius: CornerRadius.button)
+                    .materialClear(cornerRadius: CornerRadius.button)
                 }
 
                 Button {
@@ -53,7 +53,7 @@ struct ActiveMeetingView: View {
             }
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, Spacing.sm)
-            .glassCard()
+            .interactiveCard()
 
             // Audio level bar
             AudioLevelBar(level: viewModel.coordinator.currentAudioLevel, accentColor: settings.accentUITint)

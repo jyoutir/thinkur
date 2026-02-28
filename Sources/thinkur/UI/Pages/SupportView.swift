@@ -134,7 +134,7 @@ struct SupportView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.xl)
-        .glassCard()
+        .interactiveCard()
     }
 
     // MARK: - Feedback Form
@@ -214,7 +214,7 @@ struct SupportView: View {
             }
         }
         .padding(Spacing.md)
-        .glassCard()
+        .interactiveCard()
         .onAppear { installPasteMonitor() }
         .onDisappear { removePasteMonitor() }
     }

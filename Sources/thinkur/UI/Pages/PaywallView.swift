@@ -65,7 +65,7 @@ struct PaywallView: View {
                     }
                     .padding(Spacing.sm)
                     .frame(maxWidth: 460)
-                    .glassCard()
+                    .interactiveCard()
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
@@ -77,7 +77,7 @@ struct PaywallView: View {
                                 .font(Typography.body)
                                 .padding(.horizontal, Spacing.sm)
                                 .padding(.vertical, Spacing.xs)
-                                .glassClear(cornerRadius: CornerRadius.field)
+                                .materialClear(cornerRadius: CornerRadius.field)
 
                             Button {
                                 Task { await activateLicense() }
@@ -93,7 +93,7 @@ struct PaywallView: View {
                                 .padding(.horizontal, Spacing.md)
                                 .padding(.vertical, Spacing.xs)
                             }
-                            .buttonStyle(.glassProminent)
+                            .buttonStyle(.borderedProminent)
                             .tint(.primary)
                             .disabled(licenseKey.trimmingCharacters(in: .whitespaces).isEmpty || isActivating)
                         }
@@ -198,12 +198,12 @@ private struct PlanCardCompact: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Spacing.xs)
             }
-            .buttonStyle(.glassProminent)
+            .buttonStyle(.borderedProminent)
             .tint(.primary)
         }
         .padding(Spacing.md)
         .frame(maxWidth: .infinity)
-        .glassCard()
+        .interactiveCard()
         .overlay(alignment: .top) {
             if let badge {
                 Text(badge)

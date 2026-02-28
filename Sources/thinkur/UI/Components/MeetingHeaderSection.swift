@@ -1,37 +1,25 @@
 import SwiftUI
 
 struct MeetingHeaderSection: View {
-    @Environment(MeetingViewModel.self) private var viewModel
+    @Bindable var meeting: MeetingRecord
     @Environment(SettingsManager.self) private var settings
 
-    let meeting: MeetingRecord
-
-    @State private var editingTitle: String
     @State private var isEditing = false
+    @State private var originalTitle = ""
     @FocusState private var titleFieldFocused: Bool
-
-    init(meeting: MeetingRecord) {
-        self.meeting = meeting
-        self._editingTitle = State(initialValue: meeting.title)
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             if isEditing {
                 HStack(spacing: Spacing.sm) {
-                    TextField("Meeting title", text: $editingTitle)
+                    TextField("Meeting title", text: $meeting.title)
                         .font(Typography.title2)
                         .textFieldStyle(.roundedBorder)
                         .focused($titleFieldFocused)
-                        .onSubmit { saveTitle() }
-
-                    Button("Save") { saveTitle() }
-                        .font(Typography.caption)
-                        .buttonStyle(.plain)
-                        .foregroundStyle(settings.accentUITint)
+                        .onSubmit { isEditing = false }
 
                     Button("Cancel") {
-                        editingTitle = meeting.title
+                        meeting.title = originalTitle
                         isEditing = false
                     }
                     .font(Typography.caption)
@@ -45,7 +33,7 @@ struct MeetingHeaderSection: View {
                         .foregroundStyle(ColorTokens.textPrimary)
 
                     Button {
-                        editingTitle = meeting.title
+                        originalTitle = meeting.title
                         isEditing = true
                         DispatchQueue.main.async { titleFieldFocused = true }
                     } label: {
@@ -63,10 +51,5 @@ struct MeetingHeaderSection: View {
                 .font(Typography.caption)
                 .foregroundStyle(ColorTokens.textTertiary)
         }
-    }
-
-    private func saveTitle() {
-        viewModel.updateTitle(meeting: meeting, title: editingTitle)
-        isEditing = false
     }
 }

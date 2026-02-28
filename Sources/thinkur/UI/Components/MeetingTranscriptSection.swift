@@ -30,7 +30,7 @@ struct MeetingTranscriptSection: View {
                     }
                 }
             }
-            .glassCard()
+            .interactiveCard()
         }
     }
 }
