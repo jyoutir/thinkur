@@ -1,3 +1,12 @@
+/// Final-only meeting processing pipeline.
+///
+/// After recording stops, both WAV tracks (mic + system) are transcribed in parallel via ASrManager.
+/// The system track is run through OfflineDiarizerManager to identify distinct remote speakers.
+/// ASR token timings are merged with diarization speaker segments to produce speaker-attributed text.
+/// For 1:1 calls (single remote speaker), the merge step is skipped for cleaner output.
+
+import Accelerate
+import AVFoundation
 import FluidAudio
 import Foundation
 import os
@@ -48,21 +57,33 @@ actor MeetingFinalProcessor {
         var remoteSegments: [AttributedSegment] = []
         var speakerEmbeddings: [String: [Float]] = [:]
 
-        if let diarizer = offlineDiarizer {
+        // Check if system audio actually contains non-silent audio before diarization
+        let systemHasContent = hasAudioContent(systemURL)
+
+        if !systemHasContent {
+            Logger.app.warning("MeetingFinalProcessor: system audio is silent — skipping diarization")
+            // Still use ASR text if available (might have picked up faint audio)
+            remoteSegments = makeFallbackRemoteSegments(sys: sys, duration: duration)
+        } else if let diarizer = offlineDiarizer {
             do {
                 let diarizationResult = try await diarizer.process(systemURL)
+                let uniqueRawSpeakers = Set(diarizationResult.segments.map(\.speakerId))
+                Logger.app.info("MeetingFinalProcessor: diarizer returned \(diarizationResult.segments.count) segments, \(uniqueRawSpeakers.count) unique speakers: \(uniqueRawSpeakers)")
 
                 // Remap diarizer speaker IDs ("S1", "S2", ...) → "remote-1", "remote-2", ...
                 let remappedSegments = remapSpeakerIds(diarizationResult.segments)
 
-                if let sysTimings = sys.tokenTimings, !sysTimings.isEmpty,
-                   !remappedSegments.isEmpty {
+                // Only use fallback when diarization produced NO segments at all
+                if remappedSegments.isEmpty {
+                    Logger.app.info("MeetingFinalProcessor: no diarization segments — using fallback")
+                    remoteSegments = makeFallbackRemoteSegments(sys: sys, duration: duration)
+                } else if let sysTimings = sys.tokenTimings, !sysTimings.isEmpty {
                     remoteSegments = MeetingTranscriptionMerger.mergeTimingsWithSpeakers(
                         tokenTimings: sysTimings,
                         speakerSegments: remappedSegments,
                         chunkStartTime: 0
                     )
-                } else if !remappedSegments.isEmpty {
+                } else {
                     // No token timings — use diarization segments with system text
                     remoteSegments = remappedSegments.map { seg in
                         AttributedSegment(
@@ -97,7 +118,8 @@ actor MeetingFinalProcessor {
                     }
                 }
 
-                Logger.app.info("MeetingFinalProcessor: diarization produced \(remoteSegments.count) remote segments")
+                let uniqueRemappedSpeakers = Set(remappedSegments.map(\.speakerId))
+                Logger.app.info("MeetingFinalProcessor: diarization produced \(remoteSegments.count) remote segments, \(uniqueRemappedSpeakers.count) speakers")
             } catch {
                 Logger.app.error("MeetingFinalProcessor: diarization failed, falling back: \(error)")
                 remoteSegments = makeFallbackRemoteSegments(sys: sys, duration: duration)
@@ -211,6 +233,26 @@ actor MeetingFinalProcessor {
             startTime: 0,
             endTime: duration
         )]
+    }
+
+    /// Check if the WAV file at `url` contains non-silent audio.
+    /// Returns false if the file is all zeros or RMS is below threshold.
+    private func hasAudioContent(_ url: URL, threshold: Float = 0.001) -> Bool {
+        guard let audioFile = try? AVAudioFile(forReading: url) else {
+            Logger.app.warning("MeetingFinalProcessor: could not open audio file for content check: \(url.lastPathComponent)")
+            return false
+        }
+        let frameCount = AVAudioFrameCount(audioFile.length)
+        guard frameCount > 0,
+              let buffer = AVAudioPCMBuffer(pcmFormat: audioFile.processingFormat, frameCapacity: min(frameCount, 160_000)),
+              let _ = try? audioFile.read(into: buffer),
+              let channelData = buffer.floatChannelData else {
+            return false
+        }
+        var rms: Float = 0
+        vDSP_rmsqv(channelData[0], 1, &rms, vDSP_Length(buffer.frameLength))
+        Logger.app.info("MeetingFinalProcessor: system audio RMS = \(rms)")
+        return rms > threshold
     }
 
     /// Group consecutive segments with the same speaker into single segments.

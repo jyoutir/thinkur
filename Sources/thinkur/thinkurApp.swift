@@ -102,7 +102,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // If we still have a valid ref, keep it
         if let w = mainWindow, w.isVisible || NSApp.windows.contains(w) { return }
         mainWindow = nil  // clear stale ref
-        if let window = NSApp.windows.first(where: { $0.title == "thinkur" }) {
+        if let window = NSApp.windows.first(where: {
+            $0.identifier?.rawValue.contains("main") == true
+        }) {
             window.delegate = self
             mainWindow = window
         }
@@ -164,7 +166,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard let window = notification.object as? NSWindow,
               window.isVisible else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            guard !NSApp.isActive, window.isVisible else { return }
+            guard !window.isKeyWindow, window.isVisible else { return }
+            // Don't fight focus if another thinkur window is now key (popover, sheet)
+            if let currentKey = NSApp.keyWindow, currentKey !== window { return }
+            // Check ALL app windows for active text editing (popovers have their own window)
+            let anyTextEditing = NSApp.windows.contains { $0.firstResponder is NSTextView }
+            if anyTextEditing { return }
             NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
         }

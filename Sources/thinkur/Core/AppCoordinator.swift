@@ -64,6 +64,13 @@ final class AppCoordinator {
         services.frontmostAppDetector.startObserving()
         recordingViewModel.setupHotkey()
 
+        // Wire up window visibility check so HotkeyManager doesn't hardcode window identifiers
+        services.hotkeyManager.isAppWindowVisible = {
+            NSApp.windows.contains {
+                $0.identifier?.rawValue.contains("main") == true && $0.isVisible
+            }
+        }
+
         await services.licenseManager.validateOnLaunch()
         await modelLoad
     }

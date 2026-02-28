@@ -1,3 +1,11 @@
+/// ScreenCaptureKit-based system audio capture with ring buffer.
+///
+/// Captures all system audio (excluding this process) via SCStream at 16kHz mono Float32.
+/// Samples are written into a lock-protected ring buffer (~4 seconds capacity).
+/// The mic callback in MeetingCoordinator's AudioTapProcessor reads from this buffer,
+/// keeping both tracks sample-aligned. If the mic reads faster than SCStream writes,
+/// the output is zero-padded.
+
 import Accelerate
 import AVFoundation
 import Foundation
@@ -8,8 +16,8 @@ final class SystemAudioCaptureManager: NSObject, @unchecked Sendable {
     private var stream: SCStream?
     private(set) var isCapturing = false
 
-    // Ring buffer: ~2 seconds at 16kHz
-    private let ringCapacity = 32_000
+    // Ring buffer: ~4 seconds at 16kHz (extra headroom for timing jitter between AVAudioEngine and SCStream)
+    private let ringCapacity = 64_000
     private var ringBuffer: [Float]
     private var writeIndex = 0
     private var availableSamples = 0
@@ -24,7 +32,7 @@ final class SystemAudioCaptureManager: NSObject, @unchecked Sendable {
     )!
 
     override init() {
-        ringBuffer = [Float](repeating: 0, count: 32_000)
+        ringBuffer = [Float](repeating: 0, count: 64_000)
         super.init()
     }
 
@@ -94,6 +102,9 @@ final class SystemAudioCaptureManager: NSObject, @unchecked Sendable {
         defer { lock.unlock() }
 
         let toRead = min(count, availableSamples)
+        if toRead < count {
+            Logger.app.debug("Ring buffer underrun: requested \(count), available \(self.availableSamples)")
+        }
         var output = [Float](repeating: 0, count: count)
 
         if toRead > 0 {

@@ -10,87 +10,90 @@ struct AttributedSegment: Sendable {
     let endTime: Double
 }
 
-/// Namespace for merging ASR token timings with speaker diarization segments.
+/// Merges ASR token timings with speaker diarization using the WhisperX pipeline:
+/// tokens -> words (BPE reconstruction) -> speaker assignment -> sentence grouping.
 enum MeetingTranscriptionMerger {
 
-    /// Map each token to its overlapping speaker segment, then group consecutive
-    /// same-speaker tokens into attributed segments.
+    /// Reconstruct words from BPE tokens, assign speakers via interval overlap,
+    /// then group consecutive same-speaker words into sentence segments.
     static func mergeTimingsWithSpeakers(
         tokenTimings: [TokenTiming],
         speakerSegments: [TimedSpeakerSegment],
         chunkStartTime: Double
     ) -> [AttributedSegment] {
-        // For each token, find the speaker segment that overlaps most
-        var tokenSpeakers: [(token: String, speakerId: String, start: Double, end: Double)] = []
+        guard !tokenTimings.isEmpty, !speakerSegments.isEmpty else { return [] }
 
-        for timing in tokenTimings {
-            let tokenStart = chunkStartTime + timing.startTime
-            let tokenEnd = chunkStartTime + timing.endTime
-            let tokenMid = (tokenStart + tokenEnd) / 2.0
+        // Step 1: BPE tokens -> whole words (replaces WhisperX's wav2vec2 alignment)
+        let words = WordReconstructor.reconstruct(
+            tokens: tokenTimings,
+            chunkStartTime: chunkStartTime
+        )
 
-            // Find the speaker segment whose time range contains the token midpoint
-            var bestSpeaker = speakerSegments.first?.speakerId ?? "1"
-            var bestOverlap: Double = -1
+        // Step 2: Assign speakers to words (ported from WhisperX diarize.py)
+        let speakerWords = SpeakerAssignment.assignSpeakers(
+            words: words,
+            speakerSegments: speakerSegments
+        )
 
-            for seg in speakerSegments {
-                let segStart = Double(seg.startTimeSeconds)
-                let segEnd = Double(seg.endTimeSeconds)
-                let overlapStart = max(tokenStart, segStart)
-                let overlapEnd = min(tokenEnd, segEnd)
-                let overlap = max(0, overlapEnd - overlapStart)
+        // Step 3: Group consecutive same-speaker words into sentences
+        return groupIntoSentences(speakerWords)
+    }
 
-                if overlap > bestOverlap {
-                    bestOverlap = overlap
-                    bestSpeaker = seg.speakerId
-                } else if overlap == 0 && bestOverlap <= 0 {
-                    // No overlap — use closest segment by midpoint
-                    let dist = min(abs(tokenMid - segStart), abs(tokenMid - segEnd))
-                    let bestDist = bestOverlap < 0 ? Double.infinity : 0
-                    if dist < bestDist {
-                        bestSpeaker = seg.speakerId
-                    }
-                }
-            }
+    /// Groups consecutive same-speaker words into sentence segments.
+    /// Breaks at sentence-ending punctuation or pauses > 1s between words.
+    private static func groupIntoSentences(_ words: [SpeakerWord]) -> [AttributedSegment] {
+        guard !words.isEmpty else { return [] }
 
-            tokenSpeakers.append((timing.token, bestSpeaker, tokenStart, tokenEnd))
-        }
-
-        // Group consecutive same-speaker tokens
         var result: [AttributedSegment] = []
-        var currentSpeaker = ""
-        var currentWords: [String] = []
-        var currentStart: Double = 0
-        var currentEnd: Double = 0
+        var currentSpeaker = words[0].speakerId
+        var currentWords: [String] = [words[0].text]
+        var currentStart = words[0].start
+        var currentEnd = words[0].end
 
-        for item in tokenSpeakers {
-            if item.speakerId != currentSpeaker {
-                if !currentWords.isEmpty {
+        for i in 1..<words.count {
+            let word = words[i]
+            let prevEnd = words[i - 1].end
+            let gap = word.start - prevEnd
+            let prevText = words[i - 1].text
+
+            // Break on: speaker change, sentence-ending punctuation, or pause > 1s
+            let sentenceEnd = prevText.hasSuffix(".") || prevText.hasSuffix("?") || prevText.hasSuffix("!")
+            let speakerChange = word.speakerId != currentSpeaker
+            let longPause = gap > 1.0
+
+            if speakerChange || sentenceEnd || longPause {
+                let text = currentWords.joined(separator: " ")
+                    .trimmingCharacters(in: .whitespaces)
+                if !text.isEmpty {
                     result.append(AttributedSegment(
                         speakerId: currentSpeaker,
-                        text: currentWords.joined(separator: "").trimmingCharacters(in: .whitespaces),
+                        text: text,
                         startTime: currentStart,
                         endTime: currentEnd
                     ))
                 }
-                currentSpeaker = item.speakerId
-                currentWords = [item.token]
-                currentStart = item.start
-                currentEnd = item.end
+                currentSpeaker = word.speakerId
+                currentWords = [word.text]
+                currentStart = word.start
+                currentEnd = word.end
             } else {
-                currentWords.append(item.token)
-                currentEnd = item.end
+                currentWords.append(word.text)
+                currentEnd = word.end
             }
         }
 
-        if !currentWords.isEmpty {
+        // Flush last group
+        let text = currentWords.joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
+        if !text.isEmpty {
             result.append(AttributedSegment(
                 speakerId: currentSpeaker,
-                text: currentWords.joined(separator: "").trimmingCharacters(in: .whitespaces),
+                text: text,
                 startTime: currentStart,
                 endTime: currentEnd
             ))
         }
 
-        return result.filter { !$0.text.isEmpty }
+        return result
     }
 }
