@@ -53,6 +53,7 @@ final class SystemAudioCaptureManager: NSObject, @unchecked Sendable {
         config.minimumFrameInterval = CMTime(value: 1, timescale: 1) // 1 fps
 
         let stream = SCStream(filter: filter, configuration: config, delegate: self)
+        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: .global(qos: .background))
         try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: .global(qos: .userInteractive))
 
         try await stream.startCapture()

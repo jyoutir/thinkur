@@ -9,10 +9,12 @@ final class MeetingViewModel {
 
     let coordinator: MeetingCoordinator
     private let meetingService: MeetingService
+    private let speakerProfileService: SpeakerProfileService
 
-    init(coordinator: MeetingCoordinator, meetingService: MeetingService) {
+    init(coordinator: MeetingCoordinator, meetingService: MeetingService, speakerProfileService: SpeakerProfileService) {
         self.coordinator = coordinator
         self.meetingService = meetingService
+        self.speakerProfileService = speakerProfileService
     }
 
     func loadMeetings() {
@@ -38,6 +40,13 @@ final class MeetingViewModel {
     func updateSpeakerName(meeting: MeetingRecord, speakerId: String, name: String) {
         do {
             try meetingService.updateSpeakerName(meeting: meeting, speakerId: speakerId, name: name)
+            // Also update the speaker profile so the name carries to future meetings
+            if let profile = try speakerProfileService.findProfile(
+                for: speakerId,
+                embeddings: meeting.speakerEmbeddings
+            ) {
+                try speakerProfileService.updateProfileName(profile, name: name)
+            }
         } catch {
             Logger.app.error("Failed to update speaker name: \(error)")
         }
@@ -59,5 +68,9 @@ final class MeetingViewModel {
     func stopMeeting() async {
         await coordinator.stopMeeting()
         loadMeetings()
+        // Auto-select the most recent meeting after processing completes
+        if coordinator.processingState == .complete {
+            selectedMeeting = meetings.first
+        }
     }
 }

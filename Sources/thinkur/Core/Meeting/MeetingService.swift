@@ -26,6 +26,9 @@ final class MeetingService {
         duration: Double,
         speakerCount: Int,
         audioRelativePath: String?,
+        micAudioRelativePath: String? = nil,
+        systemAudioRelativePath: String? = nil,
+        speakerEmbeddings: [String: [Float]]? = nil,
         segments: [AttributedSegment]
     ) throws -> MeetingRecord {
         let context = container.mainContext
@@ -35,8 +38,15 @@ final class MeetingService {
             date: Date(),
             duration: duration,
             speakerCount: speakerCount,
-            audioFileRelativePath: audioRelativePath
+            audioFileRelativePath: audioRelativePath,
+            micAudioRelativePath: micAudioRelativePath,
+            systemAudioRelativePath: systemAudioRelativePath
         )
+
+        if let embeddings = speakerEmbeddings {
+            record.speakerEmbeddings = embeddings
+        }
+
         context.insert(record)
 
         for seg in segments {
@@ -63,10 +73,12 @@ final class MeetingService {
     }
 
     func deleteMeeting(_ meeting: MeetingRecord) throws {
-        // Clean up audio file
-        if let path = meeting.audioFileRelativePath {
-            MeetingAudioWriter.deleteAudioFile(relativePath: path)
-        }
+        // Clean up all possible audio files (legacy single, mic, system)
+        MeetingAudioWriter.deleteAudioFiles(relativePaths: [
+            meeting.audioFileRelativePath,
+            meeting.micAudioRelativePath,
+            meeting.systemAudioRelativePath,
+        ])
 
         let context = container.mainContext
         context.delete(meeting)

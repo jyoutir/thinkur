@@ -21,19 +21,6 @@ struct ActiveMeetingView: View {
 
                 Spacer()
 
-                if viewModel.coordinator.speakerCount > 0 {
-                    HStack(spacing: 4) {
-                        Image(systemName: "person.2")
-                            .font(.system(size: 12))
-                        Text("\(viewModel.coordinator.speakerCount)")
-                            .font(Typography.caption)
-                    }
-                    .foregroundStyle(ColorTokens.textSecondary)
-                    .padding(.horizontal, Spacing.xs)
-                    .padding(.vertical, 4)
-                    .glassClear(cornerRadius: CornerRadius.button)
-                }
-
                 if viewModel.coordinator.isSystemAudioActive {
                     HStack(spacing: 4) {
                         Image(systemName: "speaker.wave.2")
@@ -72,53 +59,25 @@ struct ActiveMeetingView: View {
             AudioLevelBar(level: viewModel.coordinator.currentAudioLevel, accentColor: settings.accentUITint)
                 .frame(height: 6)
 
-            // Live transcript
-            if !viewModel.coordinator.liveSegments.isEmpty {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: Spacing.sm) {
-                            ForEach(Array(viewModel.coordinator.liveSegments.enumerated()), id: \.offset) { index, segment in
-                                MeetingTranscriptRow(
-                                    speakerId: segment.speakerId,
-                                    speakerName: "Speaker \(segment.speakerId)",
-                                    timestamp: MeetingSegment.formatTime(segment.startTime),
-                                    text: segment.text
-                                )
-                                .id(index)
-                            }
-                        }
-                        .padding(Spacing.md)
-                    }
-                    .glassCard()
-                    .onChange(of: viewModel.coordinator.liveSegments.count) { _, _ in
-                        let lastIndex = viewModel.coordinator.liveSegments.count - 1
-                        if lastIndex >= 0 {
-                            withAnimation {
-                                proxy.scrollTo(lastIndex, anchor: .bottom)
-                            }
-                        }
-                    }
-                }
-            } else {
-                VStack(spacing: Spacing.sm) {
-                    HStack(spacing: Spacing.xs) {
-                        Circle()
-                            .fill(.red)
-                            .frame(width: 8, height: 8)
-                            .opacity(pulsePhase ? 0.3 : 1.0)
+            // Recording message
+            VStack(spacing: Spacing.sm) {
+                HStack(spacing: Spacing.xs) {
+                    Circle()
+                        .fill(.red)
+                        .frame(width: 8, height: 8)
+                        .opacity(pulsePhase ? 0.3 : 1.0)
 
-                        Text("Recording")
-                            .font(Typography.caption)
-                            .foregroundStyle(ColorTokens.textSecondary)
-                    }
-
-                    Text("Transcript will appear as people speak")
+                    Text("Recording")
                         .font(Typography.caption)
-                        .foregroundStyle(ColorTokens.textTertiary)
+                        .foregroundStyle(ColorTokens.textSecondary)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, Spacing.lg)
+
+                Text("Transcript will be ready when the meeting ends")
+                    .font(Typography.caption)
+                    .foregroundStyle(ColorTokens.textTertiary)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Spacing.lg)
 
             Spacer()
         }

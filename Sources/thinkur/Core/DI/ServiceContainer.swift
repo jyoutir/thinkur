@@ -19,6 +19,7 @@ final class ServiceContainer {
     let licenseManager: LicenseManager
     let telemetryService: TelemetryService
     let meetingService: MeetingService
+    let speakerProfileService: SpeakerProfileService
 
     init() {
         self.settings = .shared
@@ -36,6 +37,7 @@ final class ServiceContainer {
         self.licenseManager = LicenseManager()
         self.telemetryService = TelemetryService(settings: self.settings)
         self.meetingService = MeetingService()
+        self.speakerProfileService = SpeakerProfileService()
         self.licenseManager.telemetryService = self.telemetryService
         self.stylePreferenceService = StylePreferenceService()
         self.textPostProcessor = TextPostProcessor(processors: [
@@ -66,7 +68,8 @@ final class ServiceContainer {
         smartHomeService: SmartHomeService,
         licenseManager: LicenseManager,
         telemetryService: TelemetryService,
-        meetingService: MeetingService
+        meetingService: MeetingService,
+        speakerProfileService: SpeakerProfileService
     ) {
         self.settings = settings
         self.sharedState = sharedState
@@ -85,5 +88,6 @@ final class ServiceContainer {
         self.licenseManager = licenseManager
         self.telemetryService = telemetryService
         self.meetingService = meetingService
+        self.speakerProfileService = speakerProfileService
     }
 }
