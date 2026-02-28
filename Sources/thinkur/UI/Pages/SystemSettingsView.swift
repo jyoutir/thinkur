@@ -61,15 +61,6 @@ struct SystemSettingsView: View {
                         Divider()
 
                         ToggleRow(
-                            icon: "dock.rectangle",
-                            title: "Show in Dock",
-                            subtitle: "Display thinkur in the Dock alongside other apps",
-                            isOn: $s.showInDock
-                        )
-
-                        Divider()
-
-                        ToggleRow(
                             icon: "arrow.triangle.2.circlepath",
                             title: "Automatic Updates",
                             subtitle: "Keep thinkur up to date automatically",

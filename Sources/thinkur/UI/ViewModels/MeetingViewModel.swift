@@ -6,6 +6,7 @@ import os
 final class MeetingViewModel {
     var meetings: [MeetingRecord] = []
     var selectedMeeting: MeetingRecord?
+    var editError: String?
 
     let coordinator: MeetingCoordinator
     private let meetingService: MeetingService
@@ -38,6 +39,7 @@ final class MeetingViewModel {
     }
 
     func updateSpeakerName(meeting: MeetingRecord, speakerId: String, name: String) {
+        editError = nil
         do {
             try meetingService.updateSpeakerName(meeting: meeting, speakerId: speakerId, name: name)
             // Also update the speaker profile so the name carries to future meetings
@@ -48,14 +50,17 @@ final class MeetingViewModel {
                 try speakerProfileService.updateProfileName(profile, name: name)
             }
         } catch {
+            editError = "Failed to save speaker name: \(error.localizedDescription)"
             Logger.app.error("Failed to update speaker name: \(error)")
         }
     }
 
     func updateTitle(meeting: MeetingRecord, title: String) {
+        editError = nil
         do {
             try meetingService.updateTitle(meeting: meeting, title: title)
         } catch {
+            editError = "Failed to save title: \(error.localizedDescription)"
             Logger.app.error("Failed to update meeting title: \(error)")
         }
     }

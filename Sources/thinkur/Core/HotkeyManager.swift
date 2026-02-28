@@ -6,7 +6,20 @@ final class HotkeyManager: HotkeyListening {
     private var runLoopSource: CFRunLoopSource?
     private var retainedSelf: Unmanaged<HotkeyManager>?
     private var isKeyDown = false
-    private var healthTimer: Timer?
+    private var healthTimer: DispatchSourceTimer?
+    private var tapDisableCount = 0
+
+    /// Dedicated high-priority queue for the event tap's CFRunLoop.
+    /// Keeps event processing off the main thread so SwiftUI work can't stall system events.
+    private let tapQueue = DispatchQueue(label: "com.thinkur.hotkey-tap", qos: .userInteractive)
+    private var tapRunLoop: CFRunLoop?
+
+    /// When thinkur is frontmost, the tap is fully disabled so keyboard events
+    /// bypass it entirely. This ensures TextFields, Tab navigation, and Input Methods
+    /// work without interference from the active event tap.
+    private var isSelfFrontmost = false
+    private let selfPID = ProcessInfo.processInfo.processIdentifier
+    private var frontmostObserver: NSObjectProtocol?
 
     var onKeyDown: (() -> Void)?
     var onKeyUp: (() -> Void)?
@@ -33,6 +46,7 @@ final class HotkeyManager: HotkeyListening {
         retainedSelf = retained
         let refcon = retained.toOpaque()
 
+        // Create tap on the calling thread (needs main thread for permission checks)
         eventTap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
@@ -44,59 +58,164 @@ final class HotkeyManager: HotkeyListening {
 
         guard let eventTap else {
             Logger.hotkey.error("Failed to create event tap — AXIsProcessTrusted=\(trusted), listenAccess=\(listenAccess)")
+            retainedSelf?.release()
+            retainedSelf = nil
             return false
         }
 
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
-        CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
-        CGEvent.tapEnable(tap: eventTap, enable: true)
+
+        // Run the event tap on a dedicated thread so main thread congestion
+        // (SwiftUI view updates, TextField focus changes) can't stall system event delivery.
+        tapQueue.async { [weak self] in
+            guard let self, let source = self.runLoopSource else { return }
+            let rl = CFRunLoopGetCurrent()
+            self.tapRunLoop = rl
+            CFRunLoopAddSource(rl, source, .commonModes)
+            CGEvent.tapEnable(tap: eventTap, enable: true)
+            CFRunLoopRun()
+            // CFRunLoopRun returns after CFRunLoopStop is called in stop()
+        }
+
         isRunning = true
+        tapDisableCount = 0
         startHealthMonitor()
-        Logger.hotkey.info("Hotkey manager started — listening for Tab key")
+        startObservingFrontmostApp()
+        Logger.hotkey.info("Hotkey manager started — listening for key \(self.targetKeyCode)")
         return true
     }
 
     func stop() {
         guard isRunning else { return }
+        isRunning = false
+        isKeyDown = false
 
         stopHealthMonitor()
+        stopObservingFrontmostApp()
+
         if let eventTap {
             CGEvent.tapEnable(tap: eventTap, enable: false)
         }
-        if let runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
+
+        // Stop the dedicated run loop so the tapQueue thread exits
+        if let rl = tapRunLoop {
+            CFRunLoopStop(rl)
         }
+
+        // Wait for the tap thread to finish before cleaning up refs
+        tapQueue.sync {}
+
+        if let runLoopSource, let rl = tapRunLoop {
+            CFRunLoopRemoveSource(rl, runLoopSource, .commonModes)
+        }
+
+        tapRunLoop = nil
         eventTap = nil
         runLoopSource = nil
-        isRunning = false
-        isKeyDown = false
+
         // Release the retained self after the tap is fully torn down
         retainedSelf?.release()
         retainedSelf = nil
         Logger.hotkey.info("Hotkey manager stopped")
     }
 
+    // MARK: - Health Monitor
+
     private func startHealthMonitor() {
-        healthTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            guard let self, let tap = self.eventTap else { return }
+        let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        timer.schedule(deadline: .now() + 5, repeating: 5)
+        timer.setEventHandler { [weak self] in
+            guard let self, let tap = self.eventTap, self.isRunning else { return }
+
+            // Don't re-enable tap when we intentionally disabled it (thinkur is frontmost)
+            guard !self.isSelfFrontmost else { return }
+
             if !CGEvent.tapIsEnabled(tap: tap) {
-                Logger.hotkey.warning("Event tap was silently disabled — re-enabling")
+                self.tapDisableCount += 1
+                Logger.hotkey.warning("Event tap disabled by system (count: \(self.tapDisableCount))")
+
+                if self.tapDisableCount >= 3 {
+                    // Nuclear recovery: tear down and recreate
+                    Logger.hotkey.error("Event tap disabled 3 times — recreating tap")
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self else { return }
+                        self.stop()
+                        _ = self.start()
+                    }
+                } else {
+                    CGEvent.tapEnable(tap: tap, enable: true)
+                }
+            } else {
+                // Reset counter on successful check
+                self.tapDisableCount = 0
+            }
+        }
+        timer.resume()
+        healthTimer = timer
+    }
+
+    private func stopHealthMonitor() {
+        healthTimer?.cancel()
+        healthTimer = nil
+    }
+
+    // MARK: - Frontmost App Tracking
+
+    /// Disables the event tap when thinkur is active so keyboard events bypass it
+    /// entirely — no interference with TextFields, Tab navigation, or Input Methods.
+    /// Re-enables the tap when another app takes focus so the hotkey works.
+    private func startObservingFrontmostApp() {
+        let selfFrontmost = NSWorkspace.shared.frontmostApplication?.processIdentifier == selfPID
+        isSelfFrontmost = selfFrontmost
+        if selfFrontmost, let tap = eventTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+        }
+
+        frontmostObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] notification in
+            guard let self,
+                  let tap = self.eventTap,
+                  self.isRunning,
+                  let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            else { return }
+
+            let nowFrontmost = (app.processIdentifier == self.selfPID)
+            self.isSelfFrontmost = nowFrontmost
+
+            if nowFrontmost {
+                // Disable tap completely — events bypass it, TextFields work normally
+                CGEvent.tapEnable(tap: tap, enable: false)
+                Logger.hotkey.debug("thinkur activated — tap disabled")
+            } else {
+                // Re-enable tap — hotkey works in other apps
                 CGEvent.tapEnable(tap: tap, enable: true)
+                self.tapDisableCount = 0
+                Logger.hotkey.debug("Other app activated — tap enabled")
             }
         }
     }
 
-    private func stopHealthMonitor() {
-        healthTimer?.invalidate()
-        healthTimer = nil
+    private func stopObservingFrontmostApp() {
+        if let frontmostObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(frontmostObserver)
+        }
+        frontmostObserver = nil
     }
 
+    // MARK: - Event Handling
+
     fileprivate func handleEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // Re-enable tap if system disabled it due to slow processing
+        // If the system disabled our tap, just pass the event through.
+        // The health monitor will handle re-enabling or recreating.
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let eventTap {
-                CGEvent.tapEnable(tap: eventTap, enable: true)
-            }
+            return Unmanaged.passRetained(event)
+        }
+
+        // Safety: if somehow called while thinkur is frontmost, pass through
+        if isSelfFrontmost {
             return Unmanaged.passRetained(event)
         }
 
