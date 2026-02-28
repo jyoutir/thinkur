@@ -150,4 +150,33 @@ struct MeetingTranscriptionMergerTests {
             #expect(seg.speakerId == "remote-1" || seg.speakerId == "remote-2")
         }
     }
+
+    @Test("Boundary smoothing keeps straddling word with correct speaker")
+    func boundarySmoothing() {
+        // "these will be perfect" — "be" straddles a brief mis-classified B segment
+        // Diarizer placed B at [0.66, 0.74] (80ms error), A everywhere else
+        // Without smoothing, "be" would get assigned to B, fragmenting the sentence
+        let tokens = [
+            token(" these", start: 0.0, end: 0.3),
+            token(" will", start: 0.3, end: 0.6),
+            token(" be", start: 0.6, end: 0.8),
+            token(" per", start: 0.8, end: 1.0),
+            token("fect", start: 1.0, end: 1.2),
+        ]
+        let segments = [
+            segment("A", start: 0.0, end: 0.66),
+            segment("B", start: 0.66, end: 0.74),
+            segment("A", start: 0.74, end: 2.0),
+        ]
+        let result = MeetingTranscriptionMerger.mergeTimingsWithSpeakers(
+            tokenTimings: tokens, speakerSegments: segments, chunkStartTime: 0
+        )
+        // All words should be assigned to speaker A after smoothing
+        let allText = result.map(\.text).joined(separator: " ")
+        #expect(allText.contains("be"))
+        #expect(allText.contains("perfect"))
+        for seg in result {
+            #expect(seg.speakerId == "A")
+        }
+    }
 }
