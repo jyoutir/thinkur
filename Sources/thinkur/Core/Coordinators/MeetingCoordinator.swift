@@ -399,9 +399,8 @@ final class MeetingCoordinator {
             let frameLength = Int(convertedBuffer.frameLength)
 
             // Compute RMS audio level from mic
-            var rms: Float = 0
-            vDSP_rmsqv(channelData[0], 1, &rms, vDSP_Length(frameLength))
-            _audioLevel.withLock { $0 = min(rms * 12.0, 1.0) }
+            var micRms: Float = 0
+            vDSP_rmsqv(channelData[0], 1, &micRms, vDSP_Length(frameLength))
 
             let micSamples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
 
@@ -409,10 +408,18 @@ final class MeetingCoordinator {
             micWriter.appendSamples(micSamples)
 
             // Write system audio to system track (separate file, no mixing)
+            var sysRms: Float = 0
             if let systemAudio, systemAudio.isCapturing {
                 let sysSamples = systemAudio.readSamples(count: frameLength)
                 systemWriter.appendSamples(sysSamples)
+                sysSamples.withUnsafeBufferPointer { buf in
+                    vDSP_rmsqv(buf.baseAddress!, 1, &sysRms, vDSP_Length(sysSamples.count))
+                }
             }
+
+            // Show whichever source is louder
+            let combinedLevel = max(micRms, sysRms)
+            _audioLevel.withLock { $0 = min(combinedLevel * 12.0, 1.0) }
         }
     }
 
