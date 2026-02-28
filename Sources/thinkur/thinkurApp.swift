@@ -83,12 +83,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return
         }
 
-        // LSUIElement=true in Info.plist defaults to accessory (no dock icon).
-        // Override at runtime if the user enabled "Show in Dock".
-        if UserDefaults.standard.bool(forKey: "showInDock") {
-            NSApp.setActivationPolicy(.regular)
-        }
-
         // Create persistent menu bar icon
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
@@ -100,27 +94,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
-        // Intercept window close so it hides instead of destroying.
-        // SwiftUI may create the window after this method returns, so observe
-        // didBecomeMainNotification to catch it whenever it first appears.
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleWindowBecameMain(_:)),
-            name: NSWindow.didBecomeMainNotification,
-            object: nil
-        )
-
         NSApp.activate(ignoringOtherApps: true)
     }
 
     // MARK: - Window Discovery
 
-    @objc private func handleWindowBecameMain(_ notification: Notification) {
-        captureMainWindow()
-    }
-
     private func captureMainWindow() {
-        if mainWindow != nil { return }  // already have it
+        // If we still have a valid ref, keep it
+        if let w = mainWindow, w.isVisible || NSApp.windows.contains(w) { return }
+        mainWindow = nil  // clear stale ref
         if let window = NSApp.windows.first(where: { $0.title == "thinkur" }) {
             window.delegate = self
             mainWindow = window

@@ -44,21 +44,8 @@ final class RecordingViewModel {
             }
         }
 
-        if hotkeyManager.start() { return }
-
-        // Permissions not ready — poll until granted, then start
-        Logger.app.warning("Hotkey manager failed to start — waiting for permissions")
-        Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1))
-                guard let self else { return }
-                if AXIsProcessTrusted() && CGPreflightListenEventAccess() {
-                    if self.hotkeyManager.start() {
-                        Logger.app.info("Hotkey manager started after permissions granted")
-                        return
-                    }
-                }
-            }
+        if !hotkeyManager.start() {
+            Logger.app.warning("Hotkey manager failed to start — permissions not ready")
         }
     }
 

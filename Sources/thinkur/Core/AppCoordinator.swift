@@ -69,8 +69,10 @@ final class AppCoordinator {
     }
 
     func updateHotkey() {
+        services.hotkeyManager.stop()
         services.hotkeyManager.targetKeyCode = settings.hotkeyCode
         services.hotkeyManager.targetModifiers = CGEventFlags(rawValue: UInt64(settings.hotkeyModifiers))
+        _ = services.hotkeyManager.start()
     }
 
     func clearAllHistory() async {

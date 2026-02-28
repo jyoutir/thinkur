@@ -8,6 +8,7 @@ struct MeetingDetailView: View {
 
     @State private var editingTitle: String = ""
     @State private var isEditingTitle = false
+    @FocusState private var titleFieldFocused: Bool
     @State private var speakersExpanded = false
     @State private var editedSpeakerNames: [String: String] = [:]
     @State private var appeared = false
@@ -29,6 +30,16 @@ struct MeetingDetailView: View {
                     .foregroundStyle(settings.accentUITint)
                 }
                 .buttonStyle(.plain)
+
+                // Error banner (visible when save fails)
+                if let error = viewModel.editError {
+                    Text(error)
+                        .font(Typography.caption)
+                        .foregroundStyle(.white)
+                        .padding(Spacing.sm)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(ColorTokens.danger.opacity(0.9), in: RoundedRectangle(cornerRadius: CornerRadius.button))
+                }
 
                 // Header
                 headerSection
@@ -74,6 +85,7 @@ struct MeetingDetailView: View {
                     TextField("Meeting title", text: $editingTitle)
                         .font(Typography.title2)
                         .textFieldStyle(.roundedBorder)
+                        .focused($titleFieldFocused)
                         .onSubmit { saveTitle() }
 
                     Button("Save") { saveTitle() }
@@ -98,6 +110,7 @@ struct MeetingDetailView: View {
                     Button {
                         editingTitle = meeting.title
                         isEditingTitle = true
+                        DispatchQueue.main.async { titleFieldFocused = true }
                     } label: {
                         Image(systemName: "pencil")
                             .font(.system(size: 12))
@@ -144,6 +157,7 @@ struct MeetingDetailView: View {
                         .rotationEffect(speakersExpanded ? .degrees(90) : .zero)
                         .animation(Animations.glassMorph, value: speakersExpanded)
                 }
+                .fixedSize()
                 .padding(.horizontal, Spacing.md)
                 .padding(.vertical, Spacing.sm)
                 .glassCard(cornerRadius: CornerRadius.button)
@@ -153,7 +167,7 @@ struct MeetingDetailView: View {
             statBadge(
                 icon: "text.alignleft",
                 value: "\(meeting.segments.count)",
-                label: meeting.segments.count == 1 ? "segment" : "segments"
+                label: meeting.segments.count == 1 ? "exchange" : "exchanges"
             )
 
             Spacer()
@@ -207,6 +221,7 @@ struct MeetingDetailView: View {
                 .font(Typography.callout)
                 .foregroundStyle(ColorTokens.textTertiary)
         }
+        .fixedSize()
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.sm)
         .glassCard(cornerRadius: CornerRadius.button)
@@ -231,7 +246,7 @@ struct MeetingDetailView: View {
                             saveSpeakerName(speakerId: speaker.speakerId)
                         }
 
-                    Text("\(speaker.segmentCount) \(speaker.segmentCount == 1 ? "segment" : "segments")")
+                    Text("\(speaker.segmentCount) \(speaker.segmentCount == 1 ? "exchange" : "exchanges")")
                         .font(Typography.caption)
                         .foregroundStyle(ColorTokens.textTertiary)
 
