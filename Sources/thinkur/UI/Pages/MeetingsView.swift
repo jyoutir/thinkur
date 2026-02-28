@@ -66,7 +66,7 @@ struct MeetingsView: View {
                         .foregroundStyle(ColorTokens.danger)
                         .padding(Spacing.sm)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .glassClear()
+                        .materialClear()
                 }
 
                 // Loading
@@ -152,7 +152,7 @@ struct MeetingsView: View {
                     .foregroundStyle(ColorTokens.textTertiary)
             }
             .padding(Spacing.md)
-            .glassCard()
+            .interactiveCard()
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

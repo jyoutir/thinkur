@@ -10,6 +10,6 @@ struct KeyboardShortcutBadge: View {
             .foregroundStyle(settings.accentUITint)
             .padding(.horizontal, Spacing.xs)
             .padding(.vertical, Spacing.xxs)
-            .glassEffect(.clear, in: .capsule)
+            .materialCapsule()
     }
 }

@@ -2,7 +2,7 @@ name: thinkur
 options:
   bundleIdPrefix: com.jyo
   deploymentTarget:
-    macOS: "26.0"
+    macOS: "15.0"
   xcodeVersion: "16.0"
   createIntermediateGroups: true
 

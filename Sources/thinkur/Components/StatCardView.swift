@@ -31,6 +31,6 @@ struct StatCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.md)
-        .glassCard()
+        .interactiveCard()
     }
 }

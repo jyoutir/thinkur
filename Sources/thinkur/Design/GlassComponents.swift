@@ -1,25 +1,10 @@
 import SwiftUI
 
-// MARK: - Glass Card
-
-struct GlassCard: ViewModifier {
-    @Environment(SettingsManager.self) private var settings
-    @Environment(\.colorScheme) private var colorScheme
-    var cornerRadius: CGFloat = CornerRadius.card
-
-    func body(content: Content) -> some View {
-        content
-            .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .strokeBorder(settings.accentUITint.opacity(colorScheme == .dark ? 0.2 : 0.4), lineWidth: 1)
-            )
-    }
-}
+// MARK: - Glass Card (deprecated — forwards to InteractiveCard)
 
 extension View {
     func glassCard(cornerRadius: CGFloat = CornerRadius.card) -> some View {
-        modifier(GlassCard(cornerRadius: cornerRadius))
+        modifier(InteractiveCard(cornerRadius: cornerRadius))
     }
 }
 
@@ -46,35 +31,45 @@ extension View {
     }
 }
 
-// MARK: - Glass Clear
+// MARK: - Material Clear
 
-struct GlassClear: ViewModifier {
+struct MaterialClear: ViewModifier {
     var cornerRadius: CGFloat = CornerRadius.card
 
     func body(content: Content) -> some View {
         content
-            .glassEffect(.clear, in: .rect(cornerRadius: cornerRadius))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
     }
 }
 
 extension View {
+    func materialClear(cornerRadius: CGFloat = CornerRadius.card) -> some View {
+        modifier(MaterialClear(cornerRadius: cornerRadius))
+    }
+
+    /// Deprecated — forwards to materialClear
     func glassClear(cornerRadius: CGFloat = CornerRadius.card) -> some View {
-        modifier(GlassClear(cornerRadius: cornerRadius))
+        modifier(MaterialClear(cornerRadius: cornerRadius))
     }
 }
 
-// MARK: - Glass Capsule
+// MARK: - Material Capsule
 
-struct GlassCapsule: ViewModifier {
+struct MaterialCapsule: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .glassEffect(.regular, in: .capsule)
+            .background(.regularMaterial, in: Capsule())
     }
 }
 
 extension View {
+    func materialCapsule() -> some View {
+        modifier(MaterialCapsule())
+    }
+
+    /// Deprecated — forwards to materialCapsule
     func glassCapsule() -> some View {
-        modifier(GlassCapsule())
+        modifier(MaterialCapsule())
     }
 }
 
@@ -102,6 +97,6 @@ struct GlassEmptyState: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.xl)
-        .glassClear()
+        .materialClear()
     }
 }

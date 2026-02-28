@@ -32,7 +32,7 @@ struct LiveAudioWaveform: View {
         .frame(height: height)
 
         if showGlass {
-            bars.glassCapsule()
+            bars.materialCapsule()
         } else {
             bars
         }

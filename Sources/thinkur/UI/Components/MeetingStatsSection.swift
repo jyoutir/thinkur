@@ -1,10 +1,9 @@
 import SwiftUI
 
 struct MeetingStatsSection: View {
+    @Bindable var meeting: MeetingRecord
     @Environment(MeetingViewModel.self) private var viewModel
     @Environment(SettingsManager.self) private var settings
-
-    let meeting: MeetingRecord
 
     @State private var speakersExpanded = false
     @State private var copied = false
@@ -38,7 +37,7 @@ struct MeetingStatsSection: View {
                     .fixedSize()
                     .padding(.horizontal, Spacing.md)
                     .padding(.vertical, Spacing.sm)
-                    .glassCard(cornerRadius: CornerRadius.button)
+                    .interactiveCard(cornerRadius: CornerRadius.button)
                 }
                 .buttonStyle(.plain)
 
@@ -107,7 +106,7 @@ struct MeetingStatsSection: View {
         .fixedSize()
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.sm)
-        .glassCard(cornerRadius: CornerRadius.button)
+        .interactiveCard(cornerRadius: CornerRadius.button)
     }
 
     @ViewBuilder
@@ -116,15 +115,31 @@ struct MeetingStatsSection: View {
             ForEach(uniqueSpeakers, id: \.speakerId) { speaker in
                 SpeakerNameRow(
                     speakerId: speaker.speakerId,
-                    initialName: meeting.displayName(for: speaker.speakerId),
+                    name: speakerNameBinding(for: speaker.speakerId),
                     segmentCount: speaker.segmentCount
-                ) { name in
-                    viewModel.updateSpeakerName(meeting: meeting, speakerId: speaker.speakerId, name: name)
+                ) {
+                    // On Return: also update the speaker profile for future meetings
+                    viewModel.updateSpeakerName(
+                        meeting: meeting,
+                        speakerId: speaker.speakerId,
+                        name: meeting.displayName(for: speaker.speakerId)
+                    )
                 }
             }
         }
         .padding(Spacing.md)
         .interactiveCard()
+    }
+
+    private func speakerNameBinding(for speakerId: String) -> Binding<String> {
+        Binding(
+            get: { meeting.displayName(for: speakerId) },
+            set: { newValue in
+                var names = meeting.speakerNames
+                names[speakerId] = newValue
+                meeting.speakerNames = names
+            }
+        )
     }
 
     private var uniqueSpeakers: [(speakerId: String, segmentCount: Int)] {

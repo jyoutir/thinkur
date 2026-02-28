@@ -20,6 +20,7 @@ final class HotkeyManager: HotkeyListening {
     private var isSelfFrontmost = false
     private let selfPID = ProcessInfo.processInfo.processIdentifier
     private var frontmostObserver: NSObjectProtocol?
+    private var tapReEnableWork: DispatchWorkItem?
 
     var onKeyDown: (() -> Void)?
     var onKeyUp: (() -> Void)?
@@ -92,6 +93,8 @@ final class HotkeyManager: HotkeyListening {
 
         stopHealthMonitor()
         stopObservingFrontmostApp()
+        tapReEnableWork?.cancel()
+        tapReEnableWork = nil
 
         if let eventTap {
             CGEvent.tapEnable(tap: eventTap, enable: false)
@@ -186,14 +189,38 @@ final class HotkeyManager: HotkeyListening {
             self.isSelfFrontmost = nowFrontmost
 
             if nowFrontmost {
+                // Cancel any pending re-enable — we're back in focus
+                self.tapReEnableWork?.cancel()
+                self.tapReEnableWork = nil
                 // Disable tap completely — events bypass it, TextFields work normally
                 CGEvent.tapEnable(tap: tap, enable: false)
                 Logger.hotkey.debug("thinkur activated — tap disabled")
             } else {
-                // Re-enable tap — hotkey works in other apps
-                CGEvent.tapEnable(tap: tap, enable: true)
-                self.tapDisableCount = 0
-                Logger.hotkey.debug("Other app activated — tap enabled")
+                // Debounce tap re-enable: ViewBridge crashes on macOS 26 cause
+                // momentary focus loss that bounces back almost immediately.
+                // Wait before re-enabling so these bounces don't break TextFields.
+                self.tapReEnableWork?.cancel()
+                let work = DispatchWorkItem { [weak self] in
+                    guard let self, self.isRunning, !self.isSelfFrontmost,
+                          let tap = self.eventTap else { return }
+
+                    // If the thinkur window is still visible, this was a spurious
+                    // focus loss (e.g. ViewBridge crash). Reactivate instead of
+                    // re-enabling the tap so TextFields keep working.
+                    let thinkurWindowVisible = NSApp.windows.contains { $0.title == "thinkur" && $0.isVisible }
+                    if thinkurWindowVisible {
+                        NSApp.activate(ignoringOtherApps: true)
+                        Logger.hotkey.debug("Window still visible — reactivating app instead of re-enabling tap")
+                        return
+                    }
+
+                    CGEvent.tapEnable(tap: tap, enable: true)
+                    self.tapDisableCount = 0
+                    Logger.hotkey.debug("Tap re-enabled after debounce")
+                }
+                self.tapReEnableWork = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
+                Logger.hotkey.debug("Other app activated — tap re-enable scheduled")
             }
         }
     }

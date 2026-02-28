@@ -45,7 +45,7 @@ struct HomeView: View {
                         .padding(.horizontal, Spacing.md)
                         .padding(.vertical, Spacing.sm)
                         .contentShape(Rectangle())
-                        .glassCard()
+                        .interactiveCard()
                     }
                     .buttonStyle(.plain)
 
@@ -146,7 +146,7 @@ struct HomeView: View {
                                         correctionCount: record.correctionCount
                                     )
                                     .padding(Spacing.sm)
-                                    .glassCard()
+                                    .interactiveCard()
                                     .hoverBrightness()
                                 }
                             }
@@ -189,7 +189,7 @@ private struct StatPill: View {
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.sm)
-        .glassCard()
+        .interactiveCard()
     }
 }
 

@@ -31,7 +31,6 @@ struct thinkurApp: App {
         }
         .defaultSize(width: 920, height: 620)
         .windowResizability(.contentSize)
-        .defaultLaunchBehavior(.presented)
     }
 }
 
@@ -159,6 +158,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         sender.orderOut(nil)  // Hide, don't destroy
         return false
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window.isVisible else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            guard !NSApp.isActive, window.isVisible else { return }
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+        }
     }
 
     // MARK: - Menu Bar Icon
