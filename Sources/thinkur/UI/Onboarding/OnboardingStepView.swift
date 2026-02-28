@@ -1329,6 +1329,6 @@ private struct ROICalculatorView: View {
         }
         .padding(Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .glassCard()
+        .interactiveCard()
     }
 }

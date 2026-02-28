@@ -23,6 +23,29 @@ extension View {
     }
 }
 
+// MARK: - Interactive Card (material-based, safe for TextFields)
+
+struct InteractiveCard: ViewModifier {
+    @Environment(SettingsManager.self) private var settings
+    @Environment(\.colorScheme) private var colorScheme
+    var cornerRadius: CGFloat = CornerRadius.card
+
+    func body(content: Content) -> some View {
+        content
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .strokeBorder(settings.accentUITint.opacity(colorScheme == .dark ? 0.2 : 0.4), lineWidth: 1)
+            )
+    }
+}
+
+extension View {
+    func interactiveCard(cornerRadius: CGFloat = CornerRadius.card) -> some View {
+        modifier(InteractiveCard(cornerRadius: cornerRadius))
+    }
+}
+
 // MARK: - Glass Clear
 
 struct GlassClear: ViewModifier {
