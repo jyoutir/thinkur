@@ -23,8 +23,14 @@ enum MeetingSpeakerColor: Int, CaseIterable {
         }
     }
 
+    /// "local" always gets teal (index 0). Remote speakers hash to the remaining colors.
     static func color(for speakerId: String) -> Color {
-        let index = abs(speakerId.hashValue) % allCases.count
-        return allCases[index].color
+        if speakerId == "local" {
+            return allCases[0].color
+        }
+        // Use remaining colors (skip teal at index 0) for remote speakers
+        let remoteColors = Array(allCases.dropFirst())
+        let index = abs(speakerId.hashValue) % remoteColors.count
+        return remoteColors[index].color
     }
 }

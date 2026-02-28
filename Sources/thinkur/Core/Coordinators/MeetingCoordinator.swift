@@ -12,14 +12,17 @@ import Synchronization
 final class MeetingCoordinator {
     // MARK: - Observable State
 
+    enum MeetingProcessingState {
+        case idle, processing, complete, failed
+    }
+
     var isRecording = false
     var elapsedTime: TimeInterval = 0
-    var liveSegments: [AttributedSegment] = []
     var currentAudioLevel: Float = 0
-    var speakerCount: Int = 0
     var isSystemAudioActive = false
     var isDiarizerLoading = false
     var diarizerLoadingMessage = ""
+    var processingState: MeetingProcessingState = .idle
     var error: String?
 
     // MARK: - Dependencies
@@ -28,6 +31,7 @@ final class MeetingCoordinator {
     private let meetingService: MeetingService
     private let permissionManager: PermissionManager
     private let sharedState: SharedAppState
+    private let speakerProfileService: SpeakerProfileService
 
     // MARK: - Recording State
 
@@ -35,20 +39,14 @@ final class MeetingCoordinator {
     // mutated from @MainActor contexts (startMeeting/stopAudioEngine).
     nonisolated(unsafe) private var audioEngine: AVAudioEngine?
     nonisolated(unsafe) private var configChangeObserver: NSObjectProtocol?
-    private var audioWriter: MeetingAudioWriter?
-    private var pipeline: MeetingTranscriptionPipeline?
-    private let bufferQueue = DispatchQueue(label: "com.thinkur.meetingBuffer")
+    private var micWriter: MeetingAudioWriter?
+    private var systemWriter: MeetingAudioWriter?
     nonisolated(unsafe) private var timerTask: Task<Void, Never>?
-    nonisolated(unsafe) private var chunkTask: Task<Void, Never>?
     private var recordingStartTime: Date?
-
-    /// ~30 seconds of audio at 16kHz
-    private let chunkSizeInSamples = Int(30.0 * Constants.sampleRate)
 
     private var systemAudioManager: SystemAudioCaptureManager?
 
-    // Diarizer state (loaded once, reused)
-    private var diarizerManager: DiarizerManager?
+    // Models (loaded once, reused)
     private var offlineDiarizer: OfflineDiarizerManager?
     private var asrManagerForMeeting: AsrManager?
 
@@ -63,12 +61,14 @@ final class MeetingCoordinator {
         transcriptionEngine: ParakeetTranscriptionEngine,
         meetingService: MeetingService,
         permissionManager: PermissionManager,
-        sharedState: SharedAppState
+        sharedState: SharedAppState,
+        speakerProfileService: SpeakerProfileService
     ) {
         self.transcriptionEngine = transcriptionEngine
         self.meetingService = meetingService
         self.permissionManager = permissionManager
         self.sharedState = sharedState
+        self.speakerProfileService = speakerProfileService
     }
 
     deinit {
@@ -76,7 +76,6 @@ final class MeetingCoordinator {
             NotificationCenter.default.removeObserver(observer)
         }
         timerTask?.cancel()
-        chunkTask?.cancel()
         audioEngine?.inputNode.removeTap(onBus: 0)
         audioEngine?.stop()
         audioEngine?.reset()
@@ -95,7 +94,6 @@ final class MeetingCoordinator {
         }
 
         // Check screen recording permission (hard gate — required for system audio)
-        // Use ScreenCaptureKit directly for a reliable async check
         do {
             _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
         } catch {
@@ -113,26 +111,7 @@ final class MeetingCoordinator {
         isDiarizerLoading = true
         diarizerLoadingMessage = "Preparing meeting models"
 
-        // Load diarizer models if needed
-        if diarizerManager == nil {
-            do {
-                let cacheDir = Constants.appSupportDirectory
-                    .appendingPathComponent("diarizer", isDirectory: true)
-                try FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
-
-                let models = try await DiarizerModels.download(to: cacheDir)
-                let manager = DiarizerManager()
-                manager.initialize(models: models)
-                diarizerManager = manager
-                Logger.app.info("Diarizer models loaded for meeting mode")
-            } catch {
-                self.error = "Failed to prepare meeting: \(error.localizedDescription)"
-                isDiarizerLoading = false
-                return
-            }
-        }
-
-        // Load offline diarizer models for post-recording polish
+        // Load offline diarizer models
         if offlineDiarizer == nil {
             do {
                 let offline = OfflineDiarizerManager()
@@ -140,10 +119,10 @@ final class MeetingCoordinator {
                     .appendingPathComponent("offline-diarizer", isDirectory: true)
                 try await offline.prepareModels(directory: offlineCacheDir)
                 offlineDiarizer = offline
-                Logger.app.info("Offline diarizer models loaded for meeting polish")
+                Logger.app.info("Offline diarizer models loaded for meeting")
             } catch {
-                Logger.app.warning("Offline diarizer failed to load, polish will be skipped: \(error)")
-                // Non-fatal — live segments will still be used
+                Logger.app.warning("Offline diarizer failed to load, remote speakers won't be separated: \(error)")
+                // Non-fatal — all remote audio will be assigned to "remote-1"
             }
         }
 
@@ -166,17 +145,15 @@ final class MeetingCoordinator {
         isDiarizerLoading = false
         diarizerLoadingMessage = ""
 
-        // Create pipeline
-        pipeline = MeetingTranscriptionPipeline(
-            asrManager: asrManagerForMeeting!,
-            diarizerManager: diarizerManager!
-        )
+        // Generate shared meeting ID for both track files
+        let meetingId = UUID().uuidString
 
-        // Create audio writer
+        // Create audio writers for both tracks
         do {
-            audioWriter = try MeetingAudioWriter()
+            micWriter = try MeetingAudioWriter(trackName: "mic", meetingId: meetingId)
+            systemWriter = try MeetingAudioWriter(trackName: "system", meetingId: meetingId)
         } catch {
-            self.error = "Failed to create audio file: \(error.localizedDescription)"
+            self.error = "Failed to create audio files: \(error.localizedDescription)"
             return
         }
 
@@ -203,11 +180,10 @@ final class MeetingCoordinator {
         }
 
         // Reset state
-        liveSegments = []
-        speakerCount = 0
         elapsedTime = 0
         recordingStartTime = Date()
         isRecording = true
+        processingState = .idle
         sharedState.isMeetingActive = true
 
         // Start elapsed time timer + audio level polling
@@ -224,29 +200,15 @@ final class MeetingCoordinator {
             }
         }
 
-        // Start chunk processing loop
-        chunkTask = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(30))
-                guard !Task.isCancelled, let self else { break }
-                await self.processCurrentChunk()
-            }
-        }
-
         Logger.app.info("Meeting recording started")
     }
 
     func stopMeeting() async {
         guard isRecording else { return }
 
-        // Stop timers
+        // Stop timer
         timerTask?.cancel()
         timerTask = nil
-        chunkTask?.cancel()
-        chunkTask = nil
-
-        // Process remaining buffer before stopping the engine
-        await processCurrentChunk()
 
         // Stop system audio capture
         if let sysAudio = systemAudioManager {
@@ -258,63 +220,72 @@ final class MeetingCoordinator {
         // Stop audio engine (this nils tapProcessor)
         stopAudioEngine()
 
-        // Finalize audio file
-        let audioPath = audioWriter?.relativePath
-        let audioFileURL = audioWriter?.finalize()
-        audioWriter = nil
-
-        // Re-process with offline pipeline for better speaker attribution
-        if let offlineDiarizer, let audioURL = audioFileURL {
-            do {
-                let offlineResult = try await offlineDiarizer.process(audioURL)
-
-                if let asrManager = asrManagerForMeeting {
-                    let audioData = try loadAudioSamples(from: audioURL)
-                    let asrResult = try await asrManager.transcribe(audioData, source: .microphone)
-
-                    if let timings = asrResult.tokenTimings, !timings.isEmpty,
-                       !offlineResult.segments.isEmpty {
-                        let polished = MeetingTranscriptionPipeline.mergeTimingsWithSpeakers(
-                            tokenTimings: timings,
-                            speakerSegments: offlineResult.segments,
-                            chunkStartTime: 0
-                        )
-                        if !polished.isEmpty {
-                            liveSegments = polished
-                            Logger.app.info("Meeting polished with offline diarization: \(polished.count) segments")
-                        }
-                    }
-                }
-            } catch {
-                Logger.app.error("Offline polish failed, keeping live segments: \(error)")
-            }
-        }
-
-        // Collect unique speakers
-        let uniqueSpeakers = Set(liveSegments.map(\.speakerId))
-        speakerCount = uniqueSpeakers.count
-
-        // Save to SwiftData
-        let duration = elapsedTime
-        let segments = liveSegments
-        let title = makeMeetingTitle()
-
-        do {
-            _ = try meetingService.saveMeeting(
-                title: title,
-                duration: duration,
-                speakerCount: uniqueSpeakers.count,
-                audioRelativePath: audioPath,
-                segments: segments
-            )
-        } catch {
-            Logger.app.error("Failed to save meeting: \(error)")
-        }
+        // Finalize both WAV files
+        let micPath = micWriter?.relativePath
+        let sysPath = systemWriter?.relativePath
+        let micFileURL = micWriter?.finalize()
+        let sysFileURL = systemWriter?.finalize()
+        micWriter = nil
+        systemWriter = nil
 
         isRecording = false
+        let duration = elapsedTime
+
+        // Run final processing
+        processingState = .processing
+
+        guard let micURL = micFileURL, let sysURL = sysFileURL,
+              let asrManager = asrManagerForMeeting else {
+            processingState = .failed
+            error = "Audio files or ASR engine unavailable"
+            sharedState.isMeetingActive = false
+            return
+        }
+
+        let processor = MeetingFinalProcessor(
+            asrManager: asrManager,
+            offlineDiarizer: offlineDiarizer
+        )
+
+        do {
+            let result = try await processor.process(
+                micURL: micURL,
+                systemURL: sysURL,
+                duration: duration
+            )
+
+            // Match speakers against known profiles
+            let matches = try speakerProfileService.matchSpeakers(embeddings: result.speakerEmbeddings)
+            let profileNames = speakerProfileService.applyProfileNames(matches: matches)
+            try speakerProfileService.updateProfiles(embeddings: result.speakerEmbeddings, matches: matches)
+
+            let title = makeMeetingTitle()
+            let record = try meetingService.saveMeeting(
+                title: title,
+                duration: duration,
+                speakerCount: result.speakerCount,
+                audioRelativePath: nil,
+                micAudioRelativePath: micPath,
+                systemAudioRelativePath: sysPath,
+                speakerEmbeddings: result.speakerEmbeddings,
+                segments: result.segments
+            )
+
+            // Apply known speaker names from profiles
+            for (speakerId, name) in profileNames {
+                try meetingService.updateSpeakerName(meeting: record, speakerId: speakerId, name: name)
+            }
+
+            processingState = .complete
+            Logger.app.info("Meeting saved: \(String(format: "%.0f", duration))s, \(result.speakerCount) speakers, \(result.segments.count) segments")
+        } catch {
+            Logger.app.error("Meeting processing failed: \(error)")
+            self.error = "Failed to process meeting: \(error.localizedDescription)"
+            processingState = .failed
+        }
+
         sharedState.isMeetingActive = false
         recordingStartTime = nil
-        Logger.app.info("Meeting recording stopped: \(String(format: "%.0f", duration))s, \(uniqueSpeakers.count) speakers")
     }
 
     // MARK: - Audio Engine
@@ -332,15 +303,15 @@ final class MeetingCoordinator {
             throw AudioCaptureError.converterCreationFailed
         }
 
-        guard let writer = audioWriter else {
+        guard let micW = micWriter, let sysW = systemWriter else {
             throw MeetingAudioWriterError.invalidFormat
         }
 
         let processor = AudioTapProcessor(
             converter: conv,
             targetFormat: targetFormat,
-            audioWriter: writer,
-            bufferQueue: bufferQueue
+            micWriter: micW,
+            systemWriter: sysW
         )
         tapProcessor = processor
 
@@ -383,22 +354,21 @@ final class MeetingCoordinator {
     }
 
     /// Audio processing helper that runs on the audio thread.
-    /// Captures necessary references to avoid main actor access.
+    /// Writes mic and system audio to separate WAV files.
     private class AudioTapProcessor {
         let converter: AVAudioConverter
         let targetFormat: AVAudioFormat
-        let audioWriter: MeetingAudioWriter
-        let bufferQueue: DispatchQueue
+        let micWriter: MeetingAudioWriter
+        let systemWriter: MeetingAudioWriter
         var systemAudio: SystemAudioCaptureManager?
-        var chunkBuffer: [Float] = []
         private let _audioLevel = Mutex<Float>(0)
         var currentAudioLevel: Float { _audioLevel.withLock { $0 } }
 
-        init(converter: AVAudioConverter, targetFormat: AVAudioFormat, audioWriter: MeetingAudioWriter, bufferQueue: DispatchQueue, systemAudio: SystemAudioCaptureManager? = nil) {
+        init(converter: AVAudioConverter, targetFormat: AVAudioFormat, micWriter: MeetingAudioWriter, systemWriter: MeetingAudioWriter, systemAudio: SystemAudioCaptureManager? = nil) {
             self.converter = converter
             self.targetFormat = targetFormat
-            self.audioWriter = audioWriter
-            self.bufferQueue = bufferQueue
+            self.micWriter = micWriter
+            self.systemWriter = systemWriter
             self.systemAudio = systemAudio
         }
 
@@ -428,33 +398,20 @@ final class MeetingCoordinator {
 
             let frameLength = Int(convertedBuffer.frameLength)
 
-            // Compute RMS audio level
+            // Compute RMS audio level from mic
             var rms: Float = 0
             vDSP_rmsqv(channelData[0], 1, &rms, vDSP_Length(frameLength))
             _audioLevel.withLock { $0 = min(rms * 12.0, 1.0) }
 
-            var samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
+            let micSamples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
 
-            // Mix in system audio if available
+            // Write mic samples to mic track
+            micWriter.appendSamples(micSamples)
+
+            // Write system audio to system track (separate file, no mixing)
             if let systemAudio, systemAudio.isCapturing {
-                var sysSamples = systemAudio.readSamples(count: frameLength)
-                vDSP_vadd(samples, 1, sysSamples, 1, &samples, 1, vDSP_Length(frameLength))
-            }
-
-            // Write to disk (thread-safe)
-            audioWriter.appendSamples(samples)
-
-            // Append to chunk buffer
-            bufferQueue.sync {
-                chunkBuffer.append(contentsOf: samples)
-            }
-        }
-
-        func drainChunkBuffer() -> [Float] {
-            bufferQueue.sync {
-                let chunk = chunkBuffer
-                chunkBuffer.removeAll(keepingCapacity: true)
-                return chunk
+                let sysSamples = systemAudio.readSamples(count: frameLength)
+                systemWriter.appendSamples(sysSamples)
             }
         }
     }
@@ -474,7 +431,7 @@ final class MeetingCoordinator {
 
         guard inputFormat.sampleRate > 0,
               let conv = AVAudioConverter(from: inputFormat, to: targetFormat),
-              let writer = audioWriter else {
+              let micW = micWriter, let sysW = systemWriter else {
             Logger.app.error("Meeting config change: invalid format — stopping meeting")
             Task { await stopMeeting() }
             return
@@ -483,8 +440,8 @@ final class MeetingCoordinator {
         let processor = AudioTapProcessor(
             converter: conv,
             targetFormat: targetFormat,
-            audioWriter: writer,
-            bufferQueue: bufferQueue,
+            micWriter: micW,
+            systemWriter: sysW,
             systemAudio: systemAudioManager
         )
         tapProcessor = processor
@@ -505,47 +462,7 @@ final class MeetingCoordinator {
         }
     }
 
-    // MARK: - Chunk Processing
-
-    private func processCurrentChunk() async {
-        guard let processor = tapProcessor else { return }
-
-        // Update audio level on main actor
-        currentAudioLevel = processor.currentAudioLevel
-
-        let samples = processor.drainChunkBuffer()
-        guard !samples.isEmpty, let pipeline else { return }
-
-        let chunkStartTime = elapsedTime - Double(samples.count) / Constants.sampleRate
-
-        let segments = await pipeline.processChunk(samples, chunkStartTime: max(0, chunkStartTime))
-
-        if !segments.isEmpty {
-            liveSegments.append(contentsOf: segments)
-            let uniqueSpeakers = Set(liveSegments.map(\.speakerId))
-            speakerCount = uniqueSpeakers.count
-        }
-    }
-
     // MARK: - Helpers
-
-    private func loadAudioSamples(from url: URL) throws -> [Float] {
-        let file = try AVAudioFile(forReading: url)
-        let format = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: Constants.sampleRate,
-            channels: 1,
-            interleaved: false
-        )!
-        guard let buffer = AVAudioPCMBuffer(
-            pcmFormat: format,
-            frameCapacity: AVAudioFrameCount(file.length)
-        ) else {
-            throw MeetingAudioWriterError.invalidFormat
-        }
-        try file.read(into: buffer)
-        return Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)))
-    }
 
     private func makeMeetingTitle() -> String {
         let formatter = DateFormatter()

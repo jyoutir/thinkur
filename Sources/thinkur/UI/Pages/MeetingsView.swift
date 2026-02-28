@@ -10,6 +10,8 @@ struct MeetingsView: View {
         Group {
             if viewModel.coordinator.isRecording {
                 ActiveMeetingView()
+            } else if viewModel.coordinator.processingState == .processing {
+                MeetingProcessingView()
             } else if !permissionManager.screenRecordingGranted {
                 MeetingSetupView()
             } else if let meeting = viewModel.selectedMeeting {

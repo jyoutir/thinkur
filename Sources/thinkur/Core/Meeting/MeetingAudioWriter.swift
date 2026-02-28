@@ -39,6 +39,36 @@ final class MeetingAudioWriter {
         Logger.app.info("MeetingAudioWriter created: \(filename)")
     }
 
+    /// Creates a writer for a named track within a shared meeting.
+    /// File is named `{meetingId}-{trackName}.wav` in the meetings directory.
+    init(trackName: String, meetingId: String) throws {
+        let meetingsDir = Constants.appSupportDirectory
+            .appendingPathComponent("meetings", isDirectory: true)
+        try FileManager.default.createDirectory(at: meetingsDir, withIntermediateDirectories: true)
+
+        let filename = "\(meetingId)-\(trackName).wav"
+        self.fileURL = meetingsDir.appendingPathComponent(filename)
+
+        guard let fmt = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: Constants.sampleRate,
+            channels: 1,
+            interleaved: false
+        ) else {
+            throw MeetingAudioWriterError.invalidFormat
+        }
+        self.format = fmt
+
+        self.audioFile = try AVAudioFile(
+            forWriting: fileURL,
+            settings: fmt.settings,
+            commonFormat: .pcmFormatFloat32,
+            interleaved: false
+        )
+
+        Logger.app.info("MeetingAudioWriter created: \(filename)")
+    }
+
     /// Append audio samples to the WAV file. Thread-safe.
     func appendSamples(_ samples: [Float]) {
         guard !samples.isEmpty else { return }
@@ -92,6 +122,14 @@ final class MeetingAudioWriter {
             .appendingPathComponent("meetings", isDirectory: true)
             .appendingPathComponent(relativePath)
         try? FileManager.default.removeItem(at: url)
+    }
+
+    /// Delete multiple audio files from disk, skipping nil paths.
+    static func deleteAudioFiles(relativePaths: [String?]) {
+        for path in relativePaths {
+            guard let path else { continue }
+            deleteAudioFile(relativePath: path)
+        }
     }
 }
 

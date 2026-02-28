@@ -10,87 +10,8 @@ struct AttributedSegment: Sendable {
     let endTime: Double
 }
 
-/// Processes audio chunks: runs ASR for text + diarization for speaker labels,
-/// then merges word timings with speaker segments.
-actor MeetingTranscriptionPipeline {
-    private let asrManager: AsrManager
-    private let diarizerManager: DiarizerManager
-
-    init(asrManager: AsrManager, diarizerManager: DiarizerManager) {
-        self.asrManager = asrManager
-        self.diarizerManager = diarizerManager
-    }
-
-    /// Process a chunk of audio and return speaker-attributed segments.
-    /// - Parameters:
-    ///   - samples: Audio samples (16kHz mono Float32)
-    ///   - chunkStartTime: The absolute start time of this chunk in the meeting
-    /// - Returns: Array of attributed segments with speaker IDs and text
-    func processChunk(_ samples: [Float], chunkStartTime: Double) async -> [AttributedSegment] {
-        guard samples.count > Int(Constants.sampleRate * 0.5) else { return [] }
-
-        // Run ASR
-        let asrResult: (text: String, timings: [TokenTiming]?)
-        do {
-            let result = try await asrManager.transcribe(samples, source: .microphone)
-            asrResult = (result.text, result.tokenTimings)
-        } catch {
-            Logger.transcription.error("Meeting ASR failed: \(error)")
-            return []
-        }
-
-        let text = asrResult.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return [] }
-
-        // Run diarization
-        let diarizationSegments: [TimedSpeakerSegment]
-        do {
-            let result = try diarizerManager.performCompleteDiarization(
-                samples,
-                sampleRate: Int(Constants.sampleRate),
-                atTime: chunkStartTime
-            )
-            diarizationSegments = result.segments
-        } catch {
-            Logger.app.error("Meeting diarization failed: \(error)")
-            // Fall back to a single unknown speaker segment
-            return [AttributedSegment(
-                speakerId: "1",
-                text: text,
-                startTime: chunkStartTime,
-                endTime: chunkStartTime + Double(samples.count) / Constants.sampleRate
-            )]
-        }
-
-        guard !diarizationSegments.isEmpty else {
-            return [AttributedSegment(
-                speakerId: "1",
-                text: text,
-                startTime: chunkStartTime,
-                endTime: chunkStartTime + Double(samples.count) / Constants.sampleRate
-            )]
-        }
-
-        // Merge word timings with speaker segments
-        guard let tokenTimings = asrResult.timings, !tokenTimings.isEmpty else {
-            // No word-level timings — assign all text to the dominant speaker
-            let dominantSpeaker = diarizationSegments
-                .max(by: { $0.durationSeconds < $1.durationSeconds })?
-                .speakerId ?? "1"
-            return [AttributedSegment(
-                speakerId: dominantSpeaker,
-                text: text,
-                startTime: chunkStartTime,
-                endTime: chunkStartTime + Double(samples.count) / Constants.sampleRate
-            )]
-        }
-
-        return Self.mergeTimingsWithSpeakers(
-            tokenTimings: tokenTimings,
-            speakerSegments: diarizationSegments,
-            chunkStartTime: chunkStartTime
-        )
-    }
+/// Namespace for merging ASR token timings with speaker diarization segments.
+enum MeetingTranscriptionMerger {
 
     /// Map each token to its overlapping speaker segment, then group consecutive
     /// same-speaker tokens into attributed segments.

@@ -46,11 +46,13 @@ final class ViewModelFactory {
             transcriptionEngine: services.transcriptionEngine,
             meetingService: services.meetingService,
             permissionManager: services.permissionManager,
-            sharedState: services.sharedState
+            sharedState: services.sharedState,
+            speakerProfileService: services.speakerProfileService
         )
         self.meetingViewModel = MeetingViewModel(
             coordinator: self.meetingCoordinator,
-            meetingService: services.meetingService
+            meetingService: services.meetingService,
+            speakerProfileService: services.speakerProfileService
         )
     }
 }
