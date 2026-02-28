@@ -49,6 +49,20 @@ struct PermissionsView: View {
                     }
                 }
 
+                GroupedSettingsSection(title: "Meetings") {
+                    PermissionRowView(
+                        icon: "tv.and.mediabox",
+                        name: "Screen Recording",
+                        description: "Required to capture system audio during meetings",
+                        isGranted: viewModel.screenRecordingGranted,
+                        helpText: "Captures audio from video calls, browser tabs, and other apps.",
+                        action: {
+                            viewModel.requestScreenRecording()
+                            viewModel.openScreenRecordingSettings()
+                        }
+                    )
+                }
+
                 Button("Open System Settings") {
                     NSWorkspace.shared.open(
                         URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy")!
@@ -66,6 +80,7 @@ struct PermissionsView: View {
         .navigationTitle("Permissions")
         .task {
             viewModel.checkAll()
+            viewModel.checkScreenRecording()
         }
         .onAppear { appeared = true }
     }

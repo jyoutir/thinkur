@@ -34,6 +34,19 @@ struct ActiveMeetingView: View {
                     .glassClear(cornerRadius: CornerRadius.button)
                 }
 
+                if viewModel.coordinator.isSystemAudioActive {
+                    HStack(spacing: 4) {
+                        Image(systemName: "speaker.wave.2")
+                            .font(.system(size: 12))
+                        Text("System")
+                            .font(Typography.caption)
+                    }
+                    .foregroundStyle(ColorTokens.textSecondary)
+                    .padding(.horizontal, Spacing.xs)
+                    .padding(.vertical, 4)
+                    .glassClear(cornerRadius: CornerRadius.button)
+                }
+
                 Button {
                     Task { await viewModel.stopMeeting() }
                 } label: {
