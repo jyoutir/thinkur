@@ -76,7 +76,7 @@ schemes:
             if [ "${CONFIGURATION}" = "Debug" ]; then
               # Clear stale TCC entries so the new binary gets fresh grants.
               # Without this, duplicate csreq entries accumulate and permissions break.
-              for svc in Microphone Accessibility ListenEvent SpeechRecognition; do
+              for svc in Microphone Accessibility ListenEvent SpeechRecognition ScreenCapture; do
                 tccutil reset "$svc" com.jyo.thinkur 2>/dev/null || true
               done
             fi

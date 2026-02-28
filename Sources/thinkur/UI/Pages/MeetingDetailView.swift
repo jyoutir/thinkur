@@ -7,6 +7,7 @@ struct MeetingDetailView: View {
     let meeting: MeetingRecord
 
     @State private var editingTitle: String = ""
+    @State private var isEditingTitle = false
     @State private var editingSpeakerId: String?
     @State private var editingSpeakerName: String = ""
     @State private var appeared = false
@@ -63,23 +64,42 @@ struct MeetingDetailView: View {
     @ViewBuilder
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            HStack(spacing: Spacing.xs) {
-                TextField("Meeting title", text: $editingTitle)
-                    .font(Typography.title2)
-                    .textFieldStyle(.plain)
-                    .onSubmit {
-                        viewModel.updateTitle(meeting: meeting, title: editingTitle)
-                    }
+            if isEditingTitle {
+                HStack(spacing: Spacing.sm) {
+                    TextField("Meeting title", text: $editingTitle)
+                        .font(Typography.title2)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit { saveTitle() }
 
-                Image(systemName: "pencil")
-                    .font(.system(size: 12))
+                    Button("Save") { saveTitle() }
+                        .font(Typography.caption)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(settings.accentUITint)
+
+                    Button("Cancel") {
+                        editingTitle = meeting.title
+                        isEditingTitle = false
+                    }
+                    .font(Typography.caption)
+                    .buttonStyle(.plain)
                     .foregroundStyle(ColorTokens.textTertiary)
-            }
-            .padding(.bottom, 4)
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(ColorTokens.border)
-                    .frame(height: 1)
+                }
+            } else {
+                HStack(spacing: Spacing.xs) {
+                    Text(meeting.title)
+                        .font(Typography.title2)
+                        .foregroundStyle(ColorTokens.textPrimary)
+
+                    Button {
+                        editingTitle = meeting.title
+                        isEditingTitle = true
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 12))
+                            .foregroundStyle(ColorTokens.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
             Text(meeting.date, format: .dateTime.month().day().year().hour().minute())
@@ -100,21 +120,36 @@ struct MeetingDetailView: View {
             Spacer()
 
             Button {
+                guard !copied else { return }
                 copyTranscript()
                 copied = true
                 Task {
-                    try? await Task.sleep(for: .seconds(2))
+                    try? await Task.sleep(for: .seconds(1.5))
                     copied = false
                 }
             } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 11))
-                    Text(copied ? "Copied!" : "Copy Transcript")
-                        .font(Typography.caption)
+                ZStack {
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 11))
+                        Text("Copy Transcript")
+                            .font(Typography.caption)
+                    }
+                    .foregroundStyle(settings.accentUITint)
+                    .opacity(copied ? 0 : 1)
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(settings.accentUITint)
+                        Text("Copied to clipboard")
+                            .font(Typography.caption)
+                            .foregroundStyle(ColorTokens.textPrimary)
+                    }
+                    .opacity(copied ? 1 : 0)
+                    .scaleEffect(copied ? 1 : 0.8)
                 }
-                .foregroundStyle(copied ? .green : settings.accentUITint)
-                .animation(.easeInOut(duration: 0.2), value: copied)
+                .animation(.spring(duration: 0.4, bounce: 0.2), value: copied)
             }
             .buttonStyle(.plain)
         }
@@ -216,6 +251,11 @@ struct MeetingDetailView: View {
             return String(format: "%d:%02d:%02d", hours, minutes, secs)
         }
         return String(format: "%d:%02d", minutes, secs)
+    }
+
+    private func saveTitle() {
+        viewModel.updateTitle(meeting: meeting, title: editingTitle)
+        isEditingTitle = false
     }
 
     private func copyTranscript() {

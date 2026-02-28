@@ -4,6 +4,7 @@ import AVFoundation
 import FluidAudio
 import Foundation
 import os
+import ScreenCaptureKit
 import Synchronization
 
 @MainActor
@@ -16,6 +17,7 @@ final class MeetingCoordinator {
     var liveSegments: [AttributedSegment] = []
     var currentAudioLevel: Float = 0
     var speakerCount: Int = 0
+    var isSystemAudioActive = false
     var isDiarizerLoading = false
     var diarizerLoadingMessage = ""
     var error: String?
@@ -42,6 +44,8 @@ final class MeetingCoordinator {
 
     /// ~30 seconds of audio at 16kHz
     private let chunkSizeInSamples = Int(30.0 * Constants.sampleRate)
+
+    private var systemAudioManager: SystemAudioCaptureManager?
 
     // Diarizer state (loaded once, reused)
     private var diarizerManager: DiarizerManager?
@@ -87,6 +91,15 @@ final class MeetingCoordinator {
         permissionManager.checkMicrophone()
         guard permissionManager.microphoneGranted else {
             await permissionManager.requestMicrophone()
+            return
+        }
+
+        // Check screen recording permission (hard gate — required for system audio)
+        // Use ScreenCaptureKit directly for a reliable async check
+        do {
+            _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+        } catch {
+            self.error = "Screen Recording permission required for meetings. Grant it in Settings \u{2192} Permissions."
             return
         }
 
@@ -175,6 +188,20 @@ final class MeetingCoordinator {
             return
         }
 
+        // Start system audio capture
+        do {
+            let sysAudio = SystemAudioCaptureManager()
+            try await sysAudio.startCapture()
+            systemAudioManager = sysAudio
+            tapProcessor?.systemAudio = sysAudio
+            isSystemAudioActive = true
+            Logger.app.info("System audio capture enabled for meeting")
+        } catch {
+            Logger.app.warning("System audio capture failed: \(error)")
+            isSystemAudioActive = false
+            systemAudioManager = nil
+        }
+
         // Reset state
         liveSegments = []
         speakerCount = 0
@@ -220,6 +247,13 @@ final class MeetingCoordinator {
 
         // Process remaining buffer before stopping the engine
         await processCurrentChunk()
+
+        // Stop system audio capture
+        if let sysAudio = systemAudioManager {
+            await sysAudio.stopCapture()
+            systemAudioManager = nil
+        }
+        isSystemAudioActive = false
 
         // Stop audio engine (this nils tapProcessor)
         stopAudioEngine()
@@ -355,15 +389,17 @@ final class MeetingCoordinator {
         let targetFormat: AVAudioFormat
         let audioWriter: MeetingAudioWriter
         let bufferQueue: DispatchQueue
+        var systemAudio: SystemAudioCaptureManager?
         var chunkBuffer: [Float] = []
         private let _audioLevel = Mutex<Float>(0)
         var currentAudioLevel: Float { _audioLevel.withLock { $0 } }
 
-        init(converter: AVAudioConverter, targetFormat: AVAudioFormat, audioWriter: MeetingAudioWriter, bufferQueue: DispatchQueue) {
+        init(converter: AVAudioConverter, targetFormat: AVAudioFormat, audioWriter: MeetingAudioWriter, bufferQueue: DispatchQueue, systemAudio: SystemAudioCaptureManager? = nil) {
             self.converter = converter
             self.targetFormat = targetFormat
             self.audioWriter = audioWriter
             self.bufferQueue = bufferQueue
+            self.systemAudio = systemAudio
         }
 
         func process(_ buffer: AVAudioPCMBuffer) {
@@ -397,7 +433,13 @@ final class MeetingCoordinator {
             vDSP_rmsqv(channelData[0], 1, &rms, vDSP_Length(frameLength))
             _audioLevel.withLock { $0 = min(rms * 12.0, 1.0) }
 
-            let samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
+            var samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
+
+            // Mix in system audio if available
+            if let systemAudio, systemAudio.isCapturing {
+                var sysSamples = systemAudio.readSamples(count: frameLength)
+                vDSP_vadd(samples, 1, sysSamples, 1, &samples, 1, vDSP_Length(frameLength))
+            }
 
             // Write to disk (thread-safe)
             audioWriter.appendSamples(samples)
@@ -442,7 +484,8 @@ final class MeetingCoordinator {
             converter: conv,
             targetFormat: targetFormat,
             audioWriter: writer,
-            bufferQueue: bufferQueue
+            bufferQueue: bufferQueue,
+            systemAudio: systemAudioManager
         )
         tapProcessor = processor
 

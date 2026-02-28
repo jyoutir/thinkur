@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MeetingsView: View {
     @Environment(MeetingViewModel.self) private var viewModel
+    @Environment(PermissionManager.self) private var permissionManager
     @Environment(SettingsManager.self) private var settings
     @State private var appeared = false
 
@@ -9,6 +10,8 @@ struct MeetingsView: View {
         Group {
             if viewModel.coordinator.isRecording {
                 ActiveMeetingView()
+            } else if !permissionManager.screenRecordingGranted {
+                MeetingSetupView()
             } else if let meeting = viewModel.selectedMeeting {
                 MeetingDetailView(meeting: meeting)
             } else {
@@ -16,7 +19,10 @@ struct MeetingsView: View {
             }
         }
         .navigationTitle("Meetings")
-        .task { viewModel.loadMeetings() }
+        .task {
+            permissionManager.checkScreenRecording()
+            viewModel.loadMeetings()
+        }
         .onAppear { appeared = true }
     }
 

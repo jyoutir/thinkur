@@ -1,6 +1,7 @@
 import AVFAudio
 import Cocoa
 import os
+import ScreenCaptureKit
 
 @MainActor
 @Observable
@@ -8,6 +9,7 @@ final class PermissionManager: PermissionChecking {
     var accessibilityGranted = false
     var microphoneGranted = false
     var inputMonitoringGranted = false
+    var screenRecordingGranted = false
 
     var allGranted: Bool {
         accessibilityGranted && microphoneGranted && inputMonitoringGranted
@@ -90,4 +92,43 @@ final class PermissionManager: PermissionChecking {
             URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!
         )
     }
+
+    // MARK: - Screen Recording
+
+    private var isCheckingScreenRecording = false
+
+    func checkScreenRecording() {
+        // Fast path: CGPreflight works when it works
+        if CGPreflightScreenCaptureAccess() {
+            screenRecordingGranted = true
+            return
+        }
+        // CGPreflightScreenCaptureAccess is unreliable on macOS Sequoia
+        // (returns false even when granted). Verify with ScreenCaptureKit.
+        guard !isCheckingScreenRecording else { return }
+        isCheckingScreenRecording = true
+        Task {
+            defer { isCheckingScreenRecording = false }
+            do {
+                _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+                screenRecordingGranted = true
+                Logger.permissions.info("checkScreenRecording: SCShareableContent succeeded, granted = true")
+            } catch {
+                screenRecordingGranted = false
+                Logger.permissions.info("checkScreenRecording: SCShareableContent failed, granted = false")
+            }
+        }
+    }
+
+    func requestScreenRecording() {
+        CGRequestScreenCaptureAccess()
+        Logger.permissions.info("Requested Screen Recording access")
+    }
+
+    func openScreenRecordingSettings() {
+        NSWorkspace.shared.open(
+            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!
+        )
+    }
+
 }
