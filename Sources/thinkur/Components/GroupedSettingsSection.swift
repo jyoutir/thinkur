@@ -22,7 +22,7 @@ struct GroupedSettingsSection<Content: View>: View {
             VStack(spacing: 0) {
                 content
             }
-            .glassCard()
+            .interactiveCard()
         }
     }
 }
