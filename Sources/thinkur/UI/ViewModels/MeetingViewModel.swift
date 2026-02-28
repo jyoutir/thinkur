@@ -55,7 +55,6 @@ final class MeetingViewModel {
     func updateTitle(meeting: MeetingRecord, title: String) {
         do {
             try meetingService.updateTitle(meeting: meeting, title: title)
-            loadMeetings()
         } catch {
             Logger.app.error("Failed to update meeting title: \(error)")
         }

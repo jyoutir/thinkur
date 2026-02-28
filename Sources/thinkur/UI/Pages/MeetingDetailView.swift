@@ -8,8 +8,8 @@ struct MeetingDetailView: View {
 
     @State private var editingTitle: String = ""
     @State private var isEditingTitle = false
-    @State private var editingSpeakerId: String?
-    @State private var editingSpeakerName: String = ""
+    @State private var speakersExpanded = false
+    @State private var editedSpeakerNames: [String: String] = [:]
     @State private var appeared = false
     @State private var copied = false
 
@@ -41,6 +41,11 @@ struct MeetingDetailView: View {
                     .opacity(appeared ? 1 : 0)
                     .offset(y: appeared ? 0 : 8)
                     .animation(Animations.glassStagger(index: 1), value: appeared)
+
+                // Expandable speakers panel
+                if speakersExpanded {
+                    speakersPanel
+                }
 
                 Divider()
 
@@ -97,6 +102,8 @@ struct MeetingDetailView: View {
                         Image(systemName: "pencil")
                             .font(.system(size: 12))
                             .foregroundStyle(ColorTokens.textTertiary)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -113,9 +120,41 @@ struct MeetingDetailView: View {
     @ViewBuilder
     private var statsSection: some View {
         HStack(spacing: Spacing.md) {
-            statBadge(icon: "clock", value: formatDuration(meeting.duration))
-            statBadge(icon: "person.2", value: "\(meeting.speakerCount) speakers")
-            statBadge(icon: "text.alignleft", value: "\(meeting.segments.count) segments")
+            statBadge(icon: "clock", value: formatDuration(meeting.duration), label: "duration")
+
+            // Speakers badge as expandable button
+            Button {
+                withAnimation(Animations.glassMorph) {
+                    speakersExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: Spacing.xs) {
+                    Image(systemName: "person.2")
+                        .font(.system(size: 11))
+                        .foregroundStyle(ColorTokens.textTertiary)
+                    Text("\(meeting.speakerCount)")
+                        .font(Typography.headline)
+                        .foregroundStyle(settings.accentUITint)
+                    Text(meeting.speakerCount == 1 ? "speaker" : "speakers")
+                        .font(Typography.callout)
+                        .foregroundStyle(ColorTokens.textTertiary)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(ColorTokens.textTertiary)
+                        .rotationEffect(speakersExpanded ? .degrees(90) : .zero)
+                        .animation(Animations.glassMorph, value: speakersExpanded)
+                }
+                .padding(.horizontal, Spacing.md)
+                .padding(.vertical, Spacing.sm)
+                .glassCard(cornerRadius: CornerRadius.button)
+            }
+            .buttonStyle(.plain)
+
+            statBadge(
+                icon: "text.alignleft",
+                value: "\(meeting.segments.count)",
+                label: meeting.segments.count == 1 ? "segment" : "segments"
+            )
 
             Spacer()
 
@@ -156,17 +195,52 @@ struct MeetingDetailView: View {
     }
 
     @ViewBuilder
-    private func statBadge(icon: String, value: String) -> some View {
-        HStack(spacing: 4) {
+    private func statBadge(icon: String, value: String, label: String) -> some View {
+        HStack(spacing: Spacing.xs) {
             Image(systemName: icon)
                 .font(.system(size: 11))
+                .foregroundStyle(ColorTokens.textTertiary)
             Text(value)
-                .font(Typography.caption)
+                .font(Typography.headline)
+                .foregroundStyle(settings.accentUITint)
+            Text(label)
+                .font(Typography.callout)
+                .foregroundStyle(ColorTokens.textTertiary)
         }
-        .foregroundStyle(ColorTokens.textPrimary)
-        .padding(.horizontal, Spacing.xs)
-        .padding(.vertical, 4)
-        .glassClear(cornerRadius: CornerRadius.button)
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.sm)
+        .glassCard(cornerRadius: CornerRadius.button)
+    }
+
+    // MARK: - Speakers Panel
+
+    @ViewBuilder
+    private var speakersPanel: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            ForEach(uniqueSpeakers, id: \.speakerId) { speaker in
+                HStack(spacing: Spacing.sm) {
+                    Circle()
+                        .fill(MeetingSpeakerColor.color(for: speaker.speakerId))
+                        .frame(width: 8, height: 8)
+
+                    TextField("Speaker name", text: speakerNameBinding(for: speaker.speakerId))
+                        .font(Typography.body)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 200)
+                        .onSubmit {
+                            saveSpeakerName(speakerId: speaker.speakerId)
+                        }
+
+                    Text("\(speaker.segmentCount) \(speaker.segmentCount == 1 ? "segment" : "segments")")
+                        .font(Typography.caption)
+                        .foregroundStyle(ColorTokens.textTertiary)
+
+                    Spacer()
+                }
+            }
+        }
+        .padding(Spacing.md)
+        .glassCard()
     }
 
     // MARK: - Transcript
@@ -180,68 +254,54 @@ struct MeetingDetailView: View {
                 subtitle: "This meeting has no transcript segments"
             )
         } else {
-            VStack(alignment: .leading, spacing: Spacing.sm) {
-                ForEach(meeting.sortedSegments, id: \.id) { segment in
-                    if editingSpeakerId == segment.speakerId {
-                        // Inline speaker name editor
-                        HStack(spacing: Spacing.sm) {
-                            Circle()
-                                .fill(MeetingSpeakerColor.color(for: segment.speakerId))
-                                .frame(width: 8, height: 8)
+            let segments = meeting.sortedSegments
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(segments.enumerated()), id: \.element.id) { index, segment in
+                    MeetingTranscriptRow(
+                        speakerId: segment.speakerId,
+                        speakerName: meeting.displayName(for: segment.speakerId),
+                        timestamp: segment.formattedStartTime,
+                        text: segment.text
+                    )
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                            TextField("Speaker name", text: $editingSpeakerName)
-                                .font(Typography.caption)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 140)
-                                .onSubmit {
-                                    viewModel.updateSpeakerName(
-                                        meeting: meeting,
-                                        speakerId: segment.speakerId,
-                                        name: editingSpeakerName
-                                    )
-                                    editingSpeakerId = nil
-                                }
-
-                            Button("Save") {
-                                viewModel.updateSpeakerName(
-                                    meeting: meeting,
-                                    speakerId: segment.speakerId,
-                                    name: editingSpeakerName
-                                )
-                                editingSpeakerId = nil
-                            }
-                            .font(Typography.caption)
-                            .buttonStyle(.plain)
-                            .foregroundStyle(settings.accentUITint)
-
-                            Button("Cancel") {
-                                editingSpeakerId = nil
-                            }
-                            .font(Typography.caption)
-                            .buttonStyle(.plain)
-                            .foregroundStyle(ColorTokens.textTertiary)
-                        }
-                        .padding(.vertical, 4)
-                    } else {
-                        MeetingTranscriptRow(
-                            speakerId: segment.speakerId,
-                            speakerName: meeting.displayName(for: segment.speakerId),
-                            timestamp: segment.formattedStartTime,
-                            text: segment.text
-                        )
-                        .onTapGesture {
-                            editingSpeakerId = segment.speakerId
-                            editingSpeakerName = meeting.displayName(for: segment.speakerId)
-                        }
+                    if index < segments.count - 1 {
+                        Divider()
+                            .padding(.leading, Spacing.md + 8 + Spacing.sm)
                     }
                 }
             }
-            .padding(Spacing.md)
             .glassCard()
         }
     }
 
     // MARK: - Helpers
+
+    private var uniqueSpeakers: [(speakerId: String, segmentCount: Int)] {
+        var counts: [String: Int] = [:]
+        for segment in meeting.sortedSegments {
+            counts[segment.speakerId, default: 0] += 1
+        }
+        return counts.sorted { lhs, rhs in
+            if lhs.key == "local" { return true }
+            if rhs.key == "local" { return false }
+            return lhs.key < rhs.key
+        }.map { (speakerId: $0.key, segmentCount: $0.value) }
+    }
+
+    private func speakerNameBinding(for speakerId: String) -> Binding<String> {
+        Binding(
+            get: { editedSpeakerNames[speakerId] ?? meeting.displayName(for: speakerId) },
+            set: { editedSpeakerNames[speakerId] = $0 }
+        )
+    }
+
+    private func saveSpeakerName(speakerId: String) {
+        guard let name = editedSpeakerNames[speakerId], !name.isEmpty else { return }
+        viewModel.updateSpeakerName(meeting: meeting, speakerId: speakerId, name: name)
+    }
 
     private func formatDuration(_ seconds: Double) -> String {
         let hours = Int(seconds) / 3600
