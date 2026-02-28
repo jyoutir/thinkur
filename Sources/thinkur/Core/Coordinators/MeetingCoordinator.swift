@@ -123,11 +123,11 @@ final class MeetingCoordinator {
         if offlineDiarizer == nil {
             do {
                 let voipConfig = OfflineDiarizerConfig(
-                    clusteringThreshold: 0.45,
+                    clusteringThreshold: 0.7,
                     Fa: 0.15,
                     Fb: 0.5,
                     embeddingExcludeOverlap: false,
-                    minSegmentDuration: 0.3
+                    minSegmentDuration: 1.0
                 ).withSpeakers(min: 2)
                 let offline = OfflineDiarizerManager(config: voipConfig)
                 let offlineCacheDir = Constants.appSupportDirectory

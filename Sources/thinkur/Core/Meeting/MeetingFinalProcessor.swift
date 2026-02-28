@@ -40,17 +40,25 @@ actor MeetingFinalProcessor {
 
         Logger.app.info("MeetingFinalProcessor: mic=\(mic.text.count) chars, sys=\(sys.text.count) chars")
 
-        // Build local speaker segments from mic tokens
+        // Echo detection: if mic picked up system audio (speaker playback), suppress local segments
+        let isEcho = detectEcho(micText: mic.text, sysText: sys.text)
+        if isEcho {
+            Logger.app.info("MeetingFinalProcessor: echo detected — suppressing local (You) segments")
+        }
+
+        // Build local speaker segments from mic tokens (skip if echo detected)
         var localSegments: [AttributedSegment] = []
-        if let timings = mic.tokenTimings, !timings.isEmpty {
-            localSegments = groupTokens(timings, speakerId: "local", startOffset: 0)
-        } else if !mic.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            localSegments = [AttributedSegment(
-                speakerId: "local",
-                text: mic.text.trimmingCharacters(in: .whitespacesAndNewlines),
-                startTime: 0,
-                endTime: duration
-            )]
+        if !isEcho {
+            if let timings = mic.tokenTimings, !timings.isEmpty {
+                localSegments = groupTokens(timings, speakerId: "local", startOffset: 0)
+            } else if !mic.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                localSegments = [AttributedSegment(
+                    speakerId: "local",
+                    text: mic.text.trimmingCharacters(in: .whitespacesAndNewlines),
+                    startTime: 0,
+                    endTime: duration
+                )]
+            }
         }
 
         // Build remote speaker segments
@@ -140,6 +148,37 @@ actor MeetingFinalProcessor {
             speakerCount: uniqueSpeakers.count,
             speakerEmbeddings: speakerEmbeddings
         )
+    }
+
+    // MARK: - Echo Detection
+
+    /// Detect if the mic audio is an echo of system audio (speaker playback picked up by mic).
+    /// Uses Jaccard word similarity: if > 50% of words overlap, it's likely echo.
+    private func detectEcho(micText: String, sysText: String) -> Bool {
+        let micNorm = normalizeForComparison(micText)
+        let sysNorm = normalizeForComparison(sysText)
+
+        guard !micNorm.isEmpty, !sysNorm.isEmpty else { return false }
+
+        let micWords = Set(micNorm.split(separator: " ").map(String.init))
+        let sysWords = Set(sysNorm.split(separator: " ").map(String.init))
+
+        let intersection = micWords.intersection(sysWords).count
+        let union = micWords.union(sysWords).count
+
+        guard union > 0 else { return false }
+
+        let similarity = Double(intersection) / Double(union)
+        Logger.app.info("MeetingFinalProcessor: echo check — Jaccard similarity = \(String(format: "%.2f", similarity))")
+        return similarity > 0.5
+    }
+
+    /// Normalize text for echo comparison: lowercase, strip punctuation, collapse whitespace.
+    private func normalizeForComparison(_ text: String) -> String {
+        text.lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
     // MARK: - Private Helpers
