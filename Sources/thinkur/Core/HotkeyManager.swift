@@ -1,34 +1,40 @@
-/// CGEvent tap manager for global hotkey capture.
+/// Global hotkey manager using Carbon RegisterEventHotKey.
 ///
-/// When thinkur is frontmost, the tap is fully disabled so keyboard events bypass it entirely —
-/// TextFields, Tab navigation, and Input Methods work without interference. When another app
-/// takes focus, the tap re-enables after a 500ms debounce (to absorb ViewBridge bounces on macOS 26).
-/// If the thinkur window is still visible after the debounce, the app is reactivated instead of
-/// re-enabling the tap, preventing spurious focus loss from breaking TextFields.
+/// Carbon hotkeys fire only on the exact registered key combo — no manual filtering needed.
+/// Supports both keyDown (kEventHotKeyPressed) and keyUp (kEventHotKeyReleased) for push-to-talk.
+///
+/// When thinkur is frontmost, the hotkey is unregistered so keyboard events pass through to
+/// TextFields normally. When another app takes focus, the hotkey re-registers after a 500ms
+/// debounce (to absorb ViewBridge bounces on macOS 26).
+///
+/// Fn/Globe key (keyCode 63) uses a minimal CGEvent tap fallback since Carbon can't register
+/// modifier-only keys.
 
+import Carbon
 import Cocoa
 import os
 
 final class HotkeyManager: HotkeyListening {
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
-    private var retainedSelf: Unmanaged<HotkeyManager>?
+    // MARK: - Carbon Hotkey State
+
+    private var hotKeyRef: EventHotKeyRef?
+    private var handlerRef: EventHandlerRef?
+
+    // MARK: - Fn/Globe Key Fallback (CGEvent tap)
+
+    private var fnEventTap: CFMachPort?
+    private var fnRunLoopSource: CFRunLoopSource?
+    private var fnRetainedSelf: Unmanaged<HotkeyManager>?
+    private let fnTapQueue = DispatchQueue(label: "com.thinkur.fn-tap", qos: .userInteractive)
+    private var fnTapRunLoop: CFRunLoop?
+
+    // MARK: - Shared State
+
     private var isKeyDown = false
-    private var healthTimer: DispatchSourceTimer?
-    private var tapDisableCount = 0
-
-    /// Dedicated high-priority queue for the event tap's CFRunLoop.
-    /// Keeps event processing off the main thread so SwiftUI work can't stall system events.
-    private let tapQueue = DispatchQueue(label: "com.thinkur.hotkey-tap", qos: .userInteractive)
-    private var tapRunLoop: CFRunLoop?
-
-    /// When thinkur is frontmost, the tap is fully disabled so keyboard events
-    /// bypass it entirely. This ensures TextFields, Tab navigation, and Input Methods
-    /// work without interference from the active event tap.
     private var isSelfFrontmost = false
     private let selfPID = ProcessInfo.processInfo.processIdentifier
     private var frontmostObserver: NSObjectProtocol?
-    private var tapReEnableWork: DispatchWorkItem?
+    private var reRegisterWork: DispatchWorkItem?
 
     var onKeyDown: (() -> Void)?
     var onKeyUp: (() -> Void)?
@@ -36,11 +42,12 @@ final class HotkeyManager: HotkeyListening {
     var targetModifiers: CGEventFlags = []
 
     /// Injected check for whether the app window is visible.
-    /// Used during tap re-enable debounce to detect spurious focus loss.
-    /// Defaults to checking NSWindow identifier if not set.
+    /// Used during hotkey re-register debounce to detect spurious focus loss.
     var isAppWindowVisible: (() -> Bool)?
 
     private(set) var isRunning = false
+
+    // MARK: - Public API
 
     func start() -> Bool {
         guard !isRunning else { return true }
@@ -49,51 +56,16 @@ final class HotkeyManager: HotkeyListening {
         let listenAccess = CGPreflightListenEventAccess()
         Logger.hotkey.info("AXIsProcessTrusted: \(trusted), CGPreflightListenEventAccess: \(listenAccess)")
 
-        let eventMask: CGEventMask =
-            (1 << CGEventType.keyDown.rawValue) |
-            (1 << CGEventType.keyUp.rawValue) |
-            (1 << CGEventType.flagsChanged.rawValue)
-
-        // Retain self for the event tap callback to prevent use-after-free.
-        // Released in stop() before the tap is destroyed.
-        let retained = Unmanaged.passRetained(self)
-        retainedSelf = retained
-        let refcon = retained.toOpaque()
-
-        // Create tap on the calling thread (needs main thread for permission checks)
-        eventTap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: eventMask,
-            callback: hotkeyCallback,
-            userInfo: refcon
-        )
-
-        guard let eventTap else {
-            Logger.hotkey.error("Failed to create event tap — AXIsProcessTrusted=\(trusted), listenAccess=\(listenAccess)")
-            retainedSelf?.release()
-            retainedSelf = nil
-            return false
+        let success: Bool
+        if targetKeyCode == 63 {
+            success = startFnKeyTap()
+        } else {
+            success = startCarbonHotkey()
         }
 
-        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
-
-        // Run the event tap on a dedicated thread so main thread congestion
-        // (SwiftUI view updates, TextField focus changes) can't stall system event delivery.
-        tapQueue.async { [weak self] in
-            guard let self, let source = self.runLoopSource else { return }
-            let rl = CFRunLoopGetCurrent()
-            self.tapRunLoop = rl
-            CFRunLoopAddSource(rl, source, .commonModes)
-            CGEvent.tapEnable(tap: eventTap, enable: true)
-            CFRunLoopRun()
-            // CFRunLoopRun returns after CFRunLoopStop is called in stop()
-        }
+        guard success else { return false }
 
         isRunning = true
-        tapDisableCount = 0
-        startHealthMonitor()
         startObservingFrontmostApp()
         Logger.hotkey.info("Hotkey manager started — listening for key \(self.targetKeyCode)")
         return true
@@ -104,87 +76,222 @@ final class HotkeyManager: HotkeyListening {
         isRunning = false
         isKeyDown = false
 
-        stopHealthMonitor()
         stopObservingFrontmostApp()
-        tapReEnableWork?.cancel()
-        tapReEnableWork = nil
+        reRegisterWork?.cancel()
+        reRegisterWork = nil
 
-        if let eventTap {
-            CGEvent.tapEnable(tap: eventTap, enable: false)
+        if targetKeyCode == 63 {
+            stopFnKeyTap()
+        } else {
+            stopCarbonHotkey()
         }
 
-        // Stop the dedicated run loop so the tapQueue thread exits
-        if let rl = tapRunLoop {
-            CFRunLoopStop(rl)
-        }
-
-        // Wait for the tap thread to finish before cleaning up refs
-        tapQueue.sync {}
-
-        if let runLoopSource, let rl = tapRunLoop {
-            CFRunLoopRemoveSource(rl, runLoopSource, .commonModes)
-        }
-
-        tapRunLoop = nil
-        eventTap = nil
-        runLoopSource = nil
-
-        // Release the retained self after the tap is fully torn down
-        retainedSelf?.release()
-        retainedSelf = nil
         Logger.hotkey.info("Hotkey manager stopped")
     }
 
-    // MARK: - Health Monitor
+    // MARK: - Carbon Hotkey Registration
 
-    private func startHealthMonitor() {
-        let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
-        timer.schedule(deadline: .now() + 5, repeating: 5)
-        timer.setEventHandler { [weak self] in
-            guard let self, let tap = self.eventTap, self.isRunning else { return }
-
-            // Don't re-enable tap when we intentionally disabled it (thinkur is frontmost)
-            guard !self.isSelfFrontmost else { return }
-
-            if !CGEvent.tapIsEnabled(tap: tap) {
-                self.tapDisableCount += 1
-                Logger.hotkey.warning("Event tap disabled by system (count: \(self.tapDisableCount))")
-
-                if self.tapDisableCount >= 3 {
-                    // Nuclear recovery: tear down and recreate
-                    Logger.hotkey.error("Event tap disabled 3 times — recreating tap")
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self else { return }
-                        self.stop()
-                        _ = self.start()
-                    }
-                } else {
-                    CGEvent.tapEnable(tap: tap, enable: true)
-                }
-            } else {
-                // Reset counter on successful check
-                self.tapDisableCount = 0
-            }
-        }
-        timer.resume()
-        healthTimer = timer
+    private func startCarbonHotkey() -> Bool {
+        installCarbonHandler()
+        return registerHotkey()
     }
 
-    private func stopHealthMonitor() {
-        healthTimer?.cancel()
-        healthTimer = nil
+    private func stopCarbonHotkey() {
+        unregisterHotkey()
+        removeCarbonHandler()
+    }
+
+    private func installCarbonHandler() {
+        guard handlerRef == nil else { return }
+
+        var eventTypes = [
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased)),
+        ]
+
+        let refcon = Unmanaged.passUnretained(self).toOpaque()
+
+        InstallEventHandler(
+            GetEventDispatcherTarget(),
+            carbonHotkeyHandler,
+            eventTypes.count,
+            &eventTypes,
+            refcon,
+            &handlerRef
+        )
+    }
+
+    private func removeCarbonHandler() {
+        if let handler = handlerRef {
+            RemoveEventHandler(handler)
+            handlerRef = nil
+        }
+    }
+
+    @discardableResult
+    private func registerHotkey() -> Bool {
+        guard hotKeyRef == nil else { return true }
+
+        let carbonMods = Self.cgEventFlagsToCarbonModifiers(targetModifiers)
+        var hotKeyID = EventHotKeyID(
+            signature: Self.fourCharCode("thkr"),
+            id: 1
+        )
+
+        let status = RegisterEventHotKey(
+            UInt32(targetKeyCode),
+            carbonMods,
+            hotKeyID,
+            GetEventDispatcherTarget(),
+            0,
+            &hotKeyRef
+        )
+
+        if status != noErr {
+            Logger.hotkey.error("RegisterEventHotKey failed: \(status)")
+            return false
+        }
+
+        Logger.hotkey.debug("Registered hotkey: keyCode=\(self.targetKeyCode), carbonMods=\(carbonMods)")
+        return true
+    }
+
+    private func unregisterHotkey() {
+        if let ref = hotKeyRef {
+            UnregisterEventHotKey(ref)
+            hotKeyRef = nil
+            Logger.hotkey.debug("Unregistered hotkey")
+        }
+    }
+
+    // MARK: - Carbon Event Handling
+
+    func handleCarbonEvent(_ event: EventRef) {
+        var hotKeyID = EventHotKeyID()
+        GetEventParameter(
+            event,
+            UInt32(kEventParamDirectObject),
+            UInt32(typeEventHotKeyID),
+            nil,
+            MemoryLayout<EventHotKeyID>.size,
+            nil,
+            &hotKeyID
+        )
+
+        let kind = Int(GetEventKind(event))
+
+        if kind == kEventHotKeyPressed {
+            guard !isKeyDown else { return }
+            isKeyDown = true
+            onKeyDown?()
+        } else if kind == kEventHotKeyReleased {
+            guard isKeyDown else { return }
+            isKeyDown = false
+            onKeyUp?()
+        }
+    }
+
+    // MARK: - Fn/Globe Key Fallback
+
+    private func startFnKeyTap() -> Bool {
+        let eventMask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
+
+        let retained = Unmanaged.passRetained(self)
+        fnRetainedSelf = retained
+        let refcon = retained.toOpaque()
+
+        fnEventTap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: eventMask,
+            callback: fnKeyCallback,
+            userInfo: refcon
+        )
+
+        guard let tap = fnEventTap else {
+            Logger.hotkey.error("Failed to create Fn key event tap")
+            fnRetainedSelf?.release()
+            fnRetainedSelf = nil
+            return false
+        }
+
+        fnRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+
+        fnTapQueue.async { [weak self] in
+            guard let self, let source = self.fnRunLoopSource else { return }
+            let rl = CFRunLoopGetCurrent()
+            self.fnTapRunLoop = rl
+            CFRunLoopAddSource(rl, source, .commonModes)
+            CGEvent.tapEnable(tap: tap, enable: true)
+            CFRunLoopRun()
+        }
+
+        return true
+    }
+
+    private func stopFnKeyTap() {
+        if let tap = fnEventTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+        }
+        if let rl = fnTapRunLoop {
+            CFRunLoopStop(rl)
+        }
+        fnTapQueue.sync {}
+        if let source = fnRunLoopSource, let rl = fnTapRunLoop {
+            CFRunLoopRemoveSource(rl, source, .commonModes)
+        }
+        fnTapRunLoop = nil
+        fnEventTap = nil
+        fnRunLoopSource = nil
+        fnRetainedSelf?.release()
+        fnRetainedSelf = nil
+    }
+
+    func handleFnEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let tap = fnEventTap {
+                CGEvent.tapEnable(tap: tap, enable: true)
+            }
+            return Unmanaged.passRetained(event)
+        }
+
+        guard isSelfFrontmost == false else {
+            return Unmanaged.passRetained(event)
+        }
+
+        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        guard keyCode == 63 else {
+            return Unmanaged.passRetained(event)
+        }
+
+        let fnDown = event.flags.contains(.maskSecondaryFn)
+        if fnDown && !isKeyDown {
+            isKeyDown = true
+            onKeyDown?()
+            return nil
+        } else if !fnDown && isKeyDown {
+            isKeyDown = false
+            onKeyUp?()
+            return nil
+        }
+
+        return Unmanaged.passRetained(event)
     }
 
     // MARK: - Frontmost App Tracking
 
-    /// Disables the event tap when thinkur is active so keyboard events bypass it
-    /// entirely — no interference with TextFields, Tab navigation, or Input Methods.
-    /// Re-enables the tap when another app takes focus so the hotkey works.
+    /// When thinkur is frontmost, unregister the hotkey so keyboard events pass through
+    /// to TextFields normally. Re-register when another app takes focus.
     private func startObservingFrontmostApp() {
         let selfFrontmost = NSWorkspace.shared.frontmostApplication?.processIdentifier == selfPID
         isSelfFrontmost = selfFrontmost
-        if selfFrontmost, let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
+        if selfFrontmost {
+            if targetKeyCode == 63 {
+                if let tap = fnEventTap { CGEvent.tapEnable(tap: tap, enable: false) }
+            } else {
+                unregisterHotkey()
+            }
         }
 
         frontmostObserver = NSWorkspace.shared.notificationCenter.addObserver(
@@ -192,9 +299,7 @@ final class HotkeyManager: HotkeyListening {
             object: nil,
             queue: nil
         ) { [weak self] notification in
-            guard let self,
-                  let tap = self.eventTap,
-                  self.isRunning,
+            guard let self, self.isRunning,
                   let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
             else { return }
 
@@ -202,46 +307,43 @@ final class HotkeyManager: HotkeyListening {
             self.isSelfFrontmost = nowFrontmost
 
             if nowFrontmost {
-                // Cancel any pending re-enable — we're back in focus
-                self.tapReEnableWork?.cancel()
-                self.tapReEnableWork = nil
-                // Disable tap completely — events bypass it, TextFields work normally
-                CGEvent.tapEnable(tap: tap, enable: false)
-                Logger.hotkey.debug("thinkur activated — tap disabled")
+                self.reRegisterWork?.cancel()
+                self.reRegisterWork = nil
+                if self.targetKeyCode == 63 {
+                    if let tap = self.fnEventTap { CGEvent.tapEnable(tap: tap, enable: false) }
+                } else {
+                    self.unregisterHotkey()
+                }
+                Logger.hotkey.debug("thinkur activated — hotkey unregistered")
             } else {
-                // Debounce tap re-enable: ViewBridge crashes on macOS 26 cause
+                // Debounce re-register: ViewBridge crashes on macOS 26 cause
                 // momentary focus loss that bounces back almost immediately.
-                // Wait before re-enabling so these bounces don't break TextFields.
-                self.tapReEnableWork?.cancel()
+                self.reRegisterWork?.cancel()
                 let work = DispatchWorkItem { [weak self] in
-                    guard let self, self.isRunning, !self.isSelfFrontmost,
-                          let tap = self.eventTap else { return }
+                    guard let self, self.isRunning, !self.isSelfFrontmost else { return }
 
                     // If the thinkur window is still visible, this was a spurious
                     // focus loss (e.g. ViewBridge crash). Reactivate instead of
-                    // re-enabling the tap so TextFields keep working.
+                    // re-registering the hotkey so TextFields keep working.
                     let thinkurWindowVisible = self.isAppWindowVisible?() ?? NSApp.windows.contains {
                         $0.identifier?.rawValue.contains("main") == true && $0.isVisible
                     }
                     if thinkurWindowVisible {
-                        // Don't steal focus from active text editing (popovers have their own window)
-                        let anyTextEditing = NSApp.windows.contains { $0.firstResponder is NSTextView }
-                        if anyTextEditing {
-                            Logger.hotkey.debug("Text editing active — skipping reactivation")
-                            return
-                        }
                         NSApp.activate(ignoringOtherApps: true)
-                        Logger.hotkey.debug("Window still visible — reactivating app instead of re-enabling tap")
+                        Logger.hotkey.debug("Window still visible — reactivating app instead of re-registering hotkey")
                         return
                     }
 
-                    CGEvent.tapEnable(tap: tap, enable: true)
-                    self.tapDisableCount = 0
-                    Logger.hotkey.debug("Tap re-enabled after debounce")
+                    if self.targetKeyCode == 63 {
+                        if let tap = self.fnEventTap { CGEvent.tapEnable(tap: tap, enable: true) }
+                    } else {
+                        self.registerHotkey()
+                    }
+                    Logger.hotkey.debug("Hotkey re-registered after debounce")
                 }
-                self.tapReEnableWork = work
+                self.reRegisterWork = work
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
-                Logger.hotkey.debug("Other app activated — tap re-enable scheduled")
+                Logger.hotkey.debug("Other app activated — hotkey re-register scheduled")
             }
         }
     }
@@ -253,75 +355,30 @@ final class HotkeyManager: HotkeyListening {
         frontmostObserver = nil
     }
 
-    // MARK: - Event Handling
+    // MARK: - Modifier Conversion
 
-    func handleEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // If the system disabled our tap, just pass the event through.
-        // The health monitor will handle re-enabling or recreating.
-        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            return Unmanaged.passRetained(event)
+    /// Convert CGEventFlags (same raw values as NSEvent.ModifierFlags) to Carbon modifier mask.
+    /// NSEvent/CGEvent and Carbon use completely different bit positions:
+    ///   Command: 0x100000 (NSEvent) → 0x0100 (cmdKey)
+    ///   Shift:   0x020000 (NSEvent) → 0x0200 (shiftKey)
+    ///   Option:  0x080000 (NSEvent) → 0x0800 (optionKey)
+    ///   Control: 0x040000 (NSEvent) → 0x1000 (controlKey)
+    static func cgEventFlagsToCarbonModifiers(_ flags: CGEventFlags) -> UInt32 {
+        var carbon: UInt32 = 0
+        if flags.contains(.maskCommand)   { carbon |= UInt32(cmdKey) }
+        if flags.contains(.maskShift)     { carbon |= UInt32(shiftKey) }
+        if flags.contains(.maskAlternate) { carbon |= UInt32(optionKey) }
+        if flags.contains(.maskControl)   { carbon |= UInt32(controlKey) }
+        return carbon
+    }
+
+    /// Create a four-character code from a string (e.g., "thkr" → OSType).
+    static func fourCharCode(_ string: String) -> OSType {
+        var result: OSType = 0
+        for char in string.utf8.prefix(4) {
+            result = (result << 8) | OSType(char)
         }
-
-        // Safety: if somehow called while thinkur is frontmost, pass through
-        if isSelfFrontmost {
-            return Unmanaged.passRetained(event)
-        }
-
-        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-
-        guard keyCode == Int64(targetKeyCode) else {
-            return Unmanaged.passRetained(event)
-        }
-
-        // Handle Fn/Globe key — it only generates flagsChanged, not keyDown/keyUp
-        if type == .flagsChanged && targetKeyCode == 63 {
-            let fnDown = event.flags.contains(.maskSecondaryFn)
-            if fnDown && !isKeyDown {
-                isKeyDown = true
-                onKeyDown?()
-                return nil
-            } else if !fnDown && isKeyDown {
-                isKeyDown = false
-                onKeyUp?()
-                return nil
-            }
-            return Unmanaged.passRetained(event)
-        }
-
-        if type == .keyDown {
-            // Already activated — suppress repeats regardless of modifier state
-            // (user may have released a modifier while still holding the key)
-            if isKeyDown {
-                return nil
-            }
-
-            // Strict modifier matching only on initial activation
-            let standardFlags: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
-            let currentModifiers = event.flags.intersection(standardFlags)
-            guard currentModifiers == targetModifiers else {
-                return Unmanaged.passRetained(event)
-            }
-
-            // Ignore key repeat events
-            let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat)
-            if isRepeat != 0 {
-                return nil
-            }
-
-            isKeyDown = true
-            onKeyDown?()
-            return nil
-        } else if type == .keyUp {
-            // Lenient on release — always handle if we're in activated state,
-            // even if modifiers changed since keyDown (e.g. user released Shift before S)
-            if isKeyDown {
-                isKeyDown = false
-                onKeyUp?()
-            }
-            return nil
-        }
-
-        return Unmanaged.passRetained(event)
+        return result
     }
 
     deinit {
@@ -329,7 +386,22 @@ final class HotkeyManager: HotkeyListening {
     }
 }
 
-private func hotkeyCallback(
+// MARK: - Carbon Event Handler (C function)
+
+private func carbonHotkeyHandler(
+    nextHandler: EventHandlerCallRef?,
+    event: EventRef?,
+    userData: UnsafeMutableRawPointer?
+) -> OSStatus {
+    guard let event, let userData else { return OSStatus(eventNotHandledErr) }
+    let manager = Unmanaged<HotkeyManager>.fromOpaque(userData).takeUnretainedValue()
+    manager.handleCarbonEvent(event)
+    return noErr
+}
+
+// MARK: - Fn Key CGEvent Callback (C function)
+
+private func fnKeyCallback(
     proxy: CGEventTapProxy,
     type: CGEventType,
     event: CGEvent,
@@ -337,5 +409,5 @@ private func hotkeyCallback(
 ) -> Unmanaged<CGEvent>? {
     guard let refcon else { return Unmanaged.passRetained(event) }
     let manager = Unmanaged<HotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
-    return manager.handleEvent(type: type, event: event)
+    return manager.handleFnEvent(type: type, event: event)
 }
