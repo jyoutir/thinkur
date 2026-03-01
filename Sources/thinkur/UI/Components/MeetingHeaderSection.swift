@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MeetingHeaderSection: View {
     @Bindable var meeting: MeetingRecord
+    @Environment(MeetingViewModel.self) private var viewModel
     @Environment(SettingsManager.self) private var settings
 
     @State private var showRenameSheet = false
@@ -40,7 +41,7 @@ struct MeetingHeaderSection: View {
                     Button("Cancel") { showRenameSheet = false }
                     Spacer()
                     Button("Save") {
-                        meeting.title = editingTitle
+                        viewModel.updateTitle(meeting: meeting, title: editingTitle)
                         showRenameSheet = false
                     }
                     .keyboardShortcut(.defaultAction)

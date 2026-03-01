@@ -3,13 +3,12 @@
 /// Records mic audio (AVAudioEngine) and system audio (ScreenCaptureKit) to separate WAV files.
 /// The mic tap is the master clock: each audio callback reads from the SystemAudioCaptureManager's
 /// ring buffer and writes both tracks synchronously. A timer task polls elapsed time, audio levels,
-/// and system audio health. On stop, hands both WAV files to MeetingFinalProcessor for transcription
+/// and system audio health. On stop, mixes both tracks and sends to Deepgram for transcription
 /// and speaker diarization.
 
 import Accelerate
 @preconcurrency import AVFAudio
 import AVFoundation
-import FluidAudio
 import Foundation
 import os
 import ScreenCaptureKit
@@ -28,18 +27,15 @@ final class MeetingCoordinator {
     var elapsedTime: TimeInterval = 0
     var currentAudioLevel: Float = 0
     var isSystemAudioActive = false
-    var isDiarizerLoading = false
-    var diarizerLoadingMessage = ""
     var processingState: MeetingProcessingState = .idle
     var error: String?
 
     // MARK: - Dependencies
 
-    private let transcriptionEngine: ParakeetTranscriptionEngine
+    private let settings: SettingsManager
     private let meetingService: MeetingService
     private let permissionManager: PermissionManager
     private let sharedState: SharedAppState
-    private let speakerProfileService: SpeakerProfileService
 
     // MARK: - Recording State
 
@@ -54,11 +50,6 @@ final class MeetingCoordinator {
 
     private var systemAudioManager: SystemAudioCaptureManager?
 
-    // Models (loaded once, reused)
-    private var offlineDiarizer: OfflineDiarizerManager?
-    private var asrManagerForMeeting: AsrManager?
-    private var vadManager: VadManager?
-
     private let targetFormat = AVAudioFormat(
         commonFormat: .pcmFormatFloat32,
         sampleRate: Constants.sampleRate,
@@ -67,17 +58,15 @@ final class MeetingCoordinator {
     )!
 
     init(
-        transcriptionEngine: ParakeetTranscriptionEngine,
+        settings: SettingsManager,
         meetingService: MeetingService,
         permissionManager: PermissionManager,
-        sharedState: SharedAppState,
-        speakerProfileService: SpeakerProfileService
+        sharedState: SharedAppState
     ) {
-        self.transcriptionEngine = transcriptionEngine
+        self.settings = settings
         self.meetingService = meetingService
         self.permissionManager = permissionManager
         self.sharedState = sharedState
-        self.speakerProfileService = speakerProfileService
     }
 
     deinit {
@@ -95,6 +84,12 @@ final class MeetingCoordinator {
     func startMeeting() async {
         guard !isRecording else { return }
 
+        // Check API key first
+        guard settings.hasDeepgramKey else {
+            error = "Deepgram API key required. Set it up in Meetings."
+            return
+        }
+
         // Check microphone permission
         permissionManager.checkMicrophone()
         guard permissionManager.microphoneGranted else {
@@ -110,70 +105,7 @@ final class MeetingCoordinator {
             return
         }
 
-        // Ensure ASR model is loaded
-        guard transcriptionEngine.isLoaded else {
-            error = "Voice engine not ready yet"
-            return
-        }
-
         error = nil
-        isDiarizerLoading = true
-        diarizerLoadingMessage = "Preparing meeting models"
-
-        // Load FluidAudio offline diarizer (CoreML/ANE, 60x real-time on M1)
-        if offlineDiarizer == nil {
-            do {
-                diarizerLoadingMessage = "Preparing speaker models"
-                let voipConfig = OfflineDiarizerConfig(
-                    clusteringThreshold: 0.7,
-                    Fa: 0.15,
-                    Fb: 0.5,
-                    embeddingExcludeOverlap: false,
-                    minSegmentDuration: 1.0
-                ).withSpeakers(min: 2, max: 6)
-                let offline = OfflineDiarizerManager(config: voipConfig)
-                let offlineCacheDir = Constants.appSupportDirectory
-                    .appendingPathComponent("offline-diarizer", isDirectory: true)
-                try await offline.prepareModels(directory: offlineCacheDir)
-                offlineDiarizer = offline
-                Logger.app.info("FluidAudio offline diarizer loaded")
-            } catch {
-                Logger.app.warning("FluidAudio diarizer failed to load: \(error)")
-                // Non-fatal — all remote audio will be assigned to "remote-1"
-            }
-        }
-
-        // Load VAD for mic gating (suppress phantom "You" from echo)
-        if vadManager == nil {
-            do {
-                diarizerLoadingMessage = "Loading voice detector"
-                let vadDir = Constants.appSupportDirectory
-                    .appendingPathComponent("vad", isDirectory: true)
-                vadManager = try await VadManager(modelDirectory: vadDir)
-                Logger.app.info("VAD loaded for mic gating")
-            } catch {
-                Logger.app.warning("VAD failed to load, mic gating disabled: \(error)")
-            }
-        }
-
-        // Create a dedicated ASR manager for meetings
-        if asrManagerForMeeting == nil {
-            do {
-                let cacheDir = ParakeetTranscriptionEngine.meetingModelCacheDir
-                let models = try await AsrModels.downloadAndLoad(to: cacheDir, version: .v3)
-                let manager = AsrManager()
-                try await manager.initialize(models: models)
-                asrManagerForMeeting = manager
-                Logger.app.info("Dedicated ASR manager loaded for meetings")
-            } catch {
-                self.error = "Failed to load transcription engine: \(error.localizedDescription)"
-                isDiarizerLoading = false
-                return
-            }
-        }
-
-        isDiarizerLoading = false
-        diarizerLoadingMessage = ""
 
         // Generate shared meeting ID for both track files
         let meetingId = UUID().uuidString
@@ -268,34 +200,22 @@ final class MeetingCoordinator {
         isRecording = false
         let duration = elapsedTime
 
-        // Run final processing
+        // Run final processing via Deepgram
         processingState = .processing
 
-        guard let micURL = micFileURL, let sysURL = sysFileURL,
-              let asrManager = asrManagerForMeeting else {
+        guard let micURL = micFileURL, let sysURL = sysFileURL else {
             processingState = .failed
-            error = "Audio files or ASR engine unavailable"
+            error = "Audio files unavailable"
             sharedState.isMeetingActive = false
             return
         }
 
-        let processor = MeetingFinalProcessor(
-            asrManager: asrManager,
-            offlineDiarizer: offlineDiarizer,
-            vadManager: vadManager
-        )
-
         do {
-            let result = try await processor.process(
-                micURL: micURL,
-                systemURL: sysURL,
-                duration: duration
-            )
+            let mixedURL = try AudioMixer.mix(micURL: micURL, systemURL: sysURL)
+            defer { try? FileManager.default.removeItem(at: mixedURL) }
 
-            // Match speakers against known profiles
-            let matches = try speakerProfileService.matchSpeakers(embeddings: result.speakerEmbeddings)
-            let profileNames = speakerProfileService.applyProfileNames(matches: matches)
-            try speakerProfileService.updateProfiles(embeddings: result.speakerEmbeddings, matches: matches)
+            let client = DeepgramClient()
+            let result = try await client.transcribe(audioURL: mixedURL, apiKey: settings.deepgramApiKey)
 
             let title = makeMeetingTitle()
             let record = try meetingService.saveMeeting(
@@ -305,14 +225,8 @@ final class MeetingCoordinator {
                 audioRelativePath: nil,
                 micAudioRelativePath: micPath,
                 systemAudioRelativePath: sysPath,
-                speakerEmbeddings: result.speakerEmbeddings,
                 segments: result.segments
             )
-
-            // Apply known speaker names from profiles
-            for (speakerId, name) in profileNames {
-                try meetingService.updateSpeakerName(meeting: record, speakerId: speakerId, name: name)
-            }
 
             processingState = .complete
             Logger.app.info("Meeting saved: \(String(format: "%.0f", duration))s, \(result.speakerCount) speakers, \(result.segments.count) segments")
@@ -513,14 +427,5 @@ final class MeetingCoordinator {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d, h:mm a"
         return "Meeting \u{2014} \(formatter.string(from: Date()))"
-    }
-}
-
-// Extension to expose model cache dir for meeting's dedicated ASR
-extension ParakeetTranscriptionEngine {
-    nonisolated static var meetingModelCacheDir: URL {
-        let dir = Constants.appSupportDirectory.appendingPathComponent("parakeet-v3", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
     }
 }

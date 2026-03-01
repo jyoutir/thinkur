@@ -56,8 +56,13 @@ final class MeetingRecord {
         case _ where speakerId.hasPrefix("remote-"):
             let suffix = speakerId.dropFirst("remote-".count)
             return "Speaker \(suffix)"
+        case _ where speakerId.hasPrefix("speaker-"):
+            // Deepgram speaker IDs: speaker-0, speaker-1, ...
+            if let num = Int(speakerId.dropFirst("speaker-".count)) {
+                return "Speaker \(num + 1)"
+            }
+            return "Speaker"
         default:
-            // Backward compat for old numeric IDs
             return "Speaker \(speakerId)"
         }
     }
