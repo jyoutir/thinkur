@@ -3,8 +3,8 @@
 /// Records mic audio (AVAudioEngine) and system audio (ScreenCaptureKit) to separate WAV files.
 /// The mic tap is the master clock: each audio callback reads from the SystemAudioCaptureManager's
 /// ring buffer and writes both tracks synchronously. A timer task polls elapsed time, audio levels,
-/// and system audio health. On stop, mixes both tracks and sends to Deepgram for transcription
-/// and speaker diarization.
+/// and system audio health. On stop, sends both tracks as separate Deepgram requests in parallel
+/// for transcription and speaker diarization.
 
 import Accelerate
 @preconcurrency import AVFAudio
@@ -211,11 +211,10 @@ final class MeetingCoordinator {
         }
 
         do {
-            let mixedURL = try AudioMixer.mix(micURL: micURL, systemURL: sysURL)
-            defer { try? FileManager.default.removeItem(at: mixedURL) }
-
             let client = DeepgramClient()
-            let result = try await client.transcribe(audioURL: mixedURL, apiKey: settings.deepgramApiKey)
+            let result = try await client.transcribeMeeting(
+                micURL: micURL, systemURL: sysURL, apiKey: settings.deepgramApiKey
+            )
 
             let title = makeMeetingTitle()
             let record = try meetingService.saveMeeting(
