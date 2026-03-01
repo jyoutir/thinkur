@@ -1,299 +1,248 @@
 import Testing
 import Cocoa
+import Carbon
 @testable import thinkur
 
-@Suite("HotkeyManager Event Handling")
+@Suite("HotkeyManager")
 struct HotkeyManagerTests {
 
-    // MARK: - Helpers
+    // MARK: - Modifier Conversion
 
-    /// Creates a CGEvent for a key press/release. Returns nil if we lack event-posting permissions.
-    private func makeKeyEvent(keyCode: UInt16, keyDown: Bool, flags: CGEventFlags = []) -> CGEvent? {
-        guard let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: keyDown) else {
-            return nil
-        }
-        event.flags = flags
-        return event
-    }
+    @Suite("Modifier Flag Conversion")
+    struct ModifierConversionTests {
 
-    /// Creates a flagsChanged CGEvent by synthesizing a keyDown event for the modifier key code
-    /// and setting the appropriate flags.
-    private func makeFlagsChangedEvent(keyCode: UInt16, flags: CGEventFlags) -> CGEvent? {
-        guard let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true) else {
-            return nil
-        }
-        event.type = .flagsChanged
-        event.flags = flags
-        return event
-    }
-
-    @MainActor
-    private func makeManager(keyCode: UInt16 = 48, modifiers: CGEventFlags = []) -> HotkeyManager {
-        let manager = HotkeyManager()
-        manager.targetKeyCode = keyCode
-        manager.targetModifiers = modifiers
-        return manager
-    }
-
-    // MARK: - 1. Single key match (Tab, no modifiers)
-
-    @Test @MainActor func singleKeyMatch_triggersOnKeyDown() {
-        let manager = makeManager(keyCode: 48) // Tab
-        guard let event = makeKeyEvent(keyCode: 48, keyDown: true) else {
-            Issue.record("CGEvent creation failed — no event access permissions")
-            return
+        @Test func command_converts() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers(.maskCommand)
+            #expect(result == UInt32(cmdKey))
         }
 
-        var fired = false
-        manager.onKeyDown = { fired = true }
-
-        let result = manager.handleEvent(type: .keyDown, event: event)
-        #expect(fired, "onKeyDown should fire for matching key")
-        #expect(result == nil, "Event should be consumed (nil)")
-    }
-
-    // MARK: - 2. Wrong key code passes through
-
-    @Test @MainActor func wrongKeyCode_passesThrough() {
-        let manager = makeManager(keyCode: 48) // Tab
-        guard let event = makeKeyEvent(keyCode: 49, keyDown: true) else {
-            Issue.record("CGEvent creation failed")
-            return
+        @Test func shift_converts() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers(.maskShift)
+            #expect(result == UInt32(shiftKey))
         }
 
-        var fired = false
-        manager.onKeyDown = { fired = true }
-
-        let result = manager.handleEvent(type: .keyDown, event: event)
-        #expect(!fired, "onKeyDown should NOT fire for wrong key")
-        #expect(result != nil, "Event should pass through")
-    }
-
-    // MARK: - 3. Modifier+key match (Cmd+S)
-
-    @Test @MainActor func modifierPlusKey_match() {
-        let manager = makeManager(keyCode: 1, modifiers: .maskCommand) // Cmd+S
-        guard let event = makeKeyEvent(keyCode: 1, keyDown: true, flags: .maskCommand) else {
-            Issue.record("CGEvent creation failed")
-            return
+        @Test func option_converts() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers(.maskAlternate)
+            #expect(result == UInt32(optionKey))
         }
 
-        var fired = false
-        manager.onKeyDown = { fired = true }
-
-        let result = manager.handleEvent(type: .keyDown, event: event)
-        #expect(fired, "onKeyDown should fire for Cmd+S")
-        #expect(result == nil, "Event should be consumed")
-    }
-
-    // MARK: - 4. Wrong modifiers (Shift+S when Cmd+S expected)
-
-    @Test @MainActor func wrongModifiers_passesThrough() {
-        let manager = makeManager(keyCode: 1, modifiers: .maskCommand) // Cmd+S
-        guard let event = makeKeyEvent(keyCode: 1, keyDown: true, flags: .maskShift) else {
-            Issue.record("CGEvent creation failed")
-            return
+        @Test func control_converts() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers(.maskControl)
+            #expect(result == UInt32(controlKey))
         }
 
-        var fired = false
-        manager.onKeyDown = { fired = true }
-
-        let result = manager.handleEvent(type: .keyDown, event: event)
-        #expect(!fired, "onKeyDown should NOT fire with wrong modifiers")
-        #expect(result != nil, "Event should pass through")
-    }
-
-    // MARK: - 5. Multiple modifiers match (Cmd+Shift+R)
-
-    @Test @MainActor func multipleModifiers_match() {
-        let flags: CGEventFlags = [.maskCommand, .maskShift]
-        let manager = makeManager(keyCode: 15, modifiers: flags) // Cmd+Shift+R
-        guard let event = makeKeyEvent(keyCode: 15, keyDown: true, flags: flags) else {
-            Issue.record("CGEvent creation failed")
-            return
+        @Test func emptyFlags_returnsZero() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers([])
+            #expect(result == 0)
         }
 
-        var fired = false
-        manager.onKeyDown = { fired = true }
-
-        let result = manager.handleEvent(type: .keyDown, event: event)
-        #expect(fired, "onKeyDown should fire for Cmd+Shift+R")
-        #expect(result == nil, "Event should be consumed")
-    }
-
-    // MARK: - 6. Subset modifiers (Cmd+R when Cmd+Shift+R expected)
-
-    @Test @MainActor func subsetModifiers_passesThrough() {
-        let manager = makeManager(keyCode: 15, modifiers: [.maskCommand, .maskShift])
-        guard let event = makeKeyEvent(keyCode: 15, keyDown: true, flags: .maskCommand) else {
-            Issue.record("CGEvent creation failed")
-            return
+        @Test func commandShift_combinesCorrectly() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers([.maskCommand, .maskShift])
+            #expect(result == UInt32(cmdKey) | UInt32(shiftKey))
         }
 
-        var fired = false
-        manager.onKeyDown = { fired = true }
-
-        let result = manager.handleEvent(type: .keyDown, event: event)
-        #expect(!fired, "onKeyDown should NOT fire with subset modifiers")
-        #expect(result != nil, "Event should pass through")
-    }
-
-    // MARK: - 7. Superset modifiers (Cmd+Shift+Opt+R when Cmd+Shift+R expected)
-
-    @Test @MainActor func supersetModifiers_passesThrough() {
-        let manager = makeManager(keyCode: 15, modifiers: [.maskCommand, .maskShift])
-        guard let event = makeKeyEvent(keyCode: 15, keyDown: true, flags: [.maskCommand, .maskShift, .maskAlternate]) else {
-            Issue.record("CGEvent creation failed")
-            return
+        @Test func allModifiers_combinesCorrectly() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers([
+                .maskCommand, .maskShift, .maskAlternate, .maskControl
+            ])
+            let expected = UInt32(cmdKey) | UInt32(shiftKey) | UInt32(optionKey) | UInt32(controlKey)
+            #expect(result == expected)
         }
 
-        var fired = false
-        manager.onKeyDown = { fired = true }
-
-        let result = manager.handleEvent(type: .keyDown, event: event)
-        #expect(!fired, "onKeyDown should NOT fire with superset modifiers")
-        #expect(result != nil, "Event should pass through")
+        @Test func nonStandardFlags_ignored() {
+            // maskSecondaryFn, maskNumericPad, etc. should not produce Carbon modifiers
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers(.maskSecondaryFn)
+            #expect(result == 0)
+        }
     }
 
-    // MARK: - 8. Key repeat suppression
+    // MARK: - FourCharCode
 
-    @Test @MainActor func keyRepeat_suppressed() {
-        let manager = makeManager(keyCode: 48) // Tab
-        guard let event1 = makeKeyEvent(keyCode: 48, keyDown: true),
-              let event2 = makeKeyEvent(keyCode: 48, keyDown: true) else {
-            Issue.record("CGEvent creation failed")
-            return
+    @Suite("FourCharCode")
+    struct FourCharCodeTests {
+
+        @Test func thkr_producesExpectedValue() {
+            let code = HotkeyManager.fourCharCode("thkr")
+            // 't' = 0x74, 'h' = 0x68, 'k' = 0x6B, 'r' = 0x72
+            let expected: OSType = (0x74 << 24) | (0x68 << 16) | (0x6B << 8) | 0x72
+            #expect(code == expected)
         }
-        // Simulate key repeat on second event
-        event2.setIntegerValueField(.keyboardEventAutorepeat, value: 1)
 
-        var count = 0
-        manager.onKeyDown = { count += 1 }
-
-        // First press
-        _ = manager.handleEvent(type: .keyDown, event: event1)
-        // Repeat — should be consumed but not trigger callback
-        let result2 = manager.handleEvent(type: .keyDown, event: event2)
-        #expect(count == 1, "onKeyDown should fire only once despite repeat")
-        #expect(result2 == nil, "Repeat event should be consumed")
+        @Test func truncatesToFourChars() {
+            let long = HotkeyManager.fourCharCode("thinkur")
+            let short = HotkeyManager.fourCharCode("thin")
+            #expect(long == short)
+        }
     }
 
-    // MARK: - 9. KeyUp lenient (release modifiers before key)
+    // MARK: - Lifecycle
 
-    @Test @MainActor func keyUp_lenientModifiers() {
-        let manager = makeManager(keyCode: 1, modifiers: .maskCommand) // Cmd+S
-        guard let keyDown = makeKeyEvent(keyCode: 1, keyDown: true, flags: .maskCommand),
-              let keyUp = makeKeyEvent(keyCode: 1, keyDown: false) else { // No modifiers on release
-            Issue.record("CGEvent creation failed")
-            return
+    @Suite("Start/Stop Lifecycle")
+    struct LifecycleTests {
+
+        @Test @MainActor func initialState_notRunning() {
+            let manager = HotkeyManager()
+            #expect(!manager.isRunning)
         }
 
-        var downFired = false
-        var upFired = false
-        manager.onKeyDown = { downFired = true }
-        manager.onKeyUp = { upFired = true }
+        @Test @MainActor func stop_whenNotRunning_isNoop() {
+            let manager = HotkeyManager()
+            manager.stop() // Should not crash
+            #expect(!manager.isRunning)
+        }
 
-        _ = manager.handleEvent(type: .keyDown, event: keyDown)
-        let result = manager.handleEvent(type: .keyUp, event: keyUp)
-        #expect(downFired, "onKeyDown should fire")
-        #expect(upFired, "onKeyUp should fire even without modifiers on release")
-        #expect(result == nil, "KeyUp event should be consumed")
+        @Test @MainActor func doubleStop_isNoop() {
+            let manager = HotkeyManager()
+            // Even if start fails (no permissions in test), stop should be safe
+            _ = manager.start()
+            manager.stop()
+            manager.stop() // Should not crash
+            #expect(!manager.isRunning)
+        }
+
+        @Test @MainActor func targetKeyCode_defaultsToTab() {
+            let manager = HotkeyManager()
+            #expect(manager.targetKeyCode == Constants.tabKeyCode)
+        }
+
+        @Test @MainActor func targetModifiers_defaultsToEmpty() {
+            let manager = HotkeyManager()
+            #expect(manager.targetModifiers == [])
+        }
     }
 
-    // MARK: - 10. Fn/Globe key (keyCode 63) via flagsChanged
+    // MARK: - Fn/Globe Key (still uses CGEvent tap)
 
-    @Test @MainActor func fnKey_press_triggersKeyDown() {
-        let manager = makeManager(keyCode: 63) // Fn key
-        guard let event = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
-            Issue.record("CGEvent creation failed")
-            return
+    @Suite("Fn/Globe Key Event Handling")
+    struct FnKeyTests {
+
+        private func makeFlagsChangedEvent(keyCode: UInt16, flags: CGEventFlags) -> CGEvent? {
+            guard let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true) else {
+                return nil
+            }
+            event.type = .flagsChanged
+            event.flags = flags
+            return event
         }
 
-        var fired = false
-        manager.onKeyDown = { fired = true }
+        @Test @MainActor func fnPress_triggersKeyDown() {
+            let manager = HotkeyManager()
+            manager.targetKeyCode = 63
+            guard let event = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
+                Issue.record("CGEvent creation failed — no event access permissions")
+                return
+            }
 
-        let result = manager.handleEvent(type: .flagsChanged, event: event)
-        #expect(fired, "onKeyDown should fire for Fn press")
-        #expect(result == nil, "Event should be consumed")
+            var fired = false
+            manager.onKeyDown = { fired = true }
+
+            let result = manager.handleFnEvent(type: .flagsChanged, event: event)
+            #expect(fired, "onKeyDown should fire for Fn press")
+            #expect(result == nil, "Event should be consumed")
+        }
+
+        @Test @MainActor func fnRelease_triggersKeyUp() {
+            let manager = HotkeyManager()
+            manager.targetKeyCode = 63
+            guard let press = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn),
+                  let release = makeFlagsChangedEvent(keyCode: 63, flags: []) else {
+                Issue.record("CGEvent creation failed")
+                return
+            }
+
+            var upFired = false
+            manager.onKeyDown = {}
+            manager.onKeyUp = { upFired = true }
+
+            _ = manager.handleFnEvent(type: .flagsChanged, event: press)
+            let result = manager.handleFnEvent(type: .flagsChanged, event: release)
+            #expect(upFired, "onKeyUp should fire for Fn release")
+            #expect(result == nil, "Event should be consumed")
+        }
+
+        @Test @MainActor func wrongKeyCode_passesThrough() {
+            let manager = HotkeyManager()
+            manager.targetKeyCode = 63
+            guard let event = makeFlagsChangedEvent(keyCode: 55, flags: .maskCommand) else {
+                Issue.record("CGEvent creation failed")
+                return
+            }
+
+            var fired = false
+            manager.onKeyDown = { fired = true }
+
+            let result = manager.handleFnEvent(type: .flagsChanged, event: event)
+            #expect(!fired, "onKeyDown should NOT fire for wrong key")
+            #expect(result != nil, "Event should pass through")
+        }
+
+        @Test @MainActor func tapDisabledByTimeout_passesThrough() {
+            let manager = HotkeyManager()
+            manager.targetKeyCode = 63
+            guard let event = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
+                Issue.record("CGEvent creation failed")
+                return
+            }
+
+            var fired = false
+            manager.onKeyDown = { fired = true }
+
+            let result = manager.handleFnEvent(type: .tapDisabledByTimeout, event: event)
+            #expect(!fired, "onKeyDown should NOT fire for tap disabled event")
+            #expect(result != nil, "Event should pass through")
+        }
+
+        @Test @MainActor func fnDoubleTap_noDoubleKeyDown() {
+            let manager = HotkeyManager()
+            manager.targetKeyCode = 63
+            guard let press1 = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn),
+                  let press2 = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
+                Issue.record("CGEvent creation failed")
+                return
+            }
+
+            var count = 0
+            manager.onKeyDown = { count += 1 }
+
+            _ = manager.handleFnEvent(type: .flagsChanged, event: press1)
+            _ = manager.handleFnEvent(type: .flagsChanged, event: press2)
+            #expect(count == 1, "onKeyDown should fire only once without release in between")
+        }
     }
 
-    // MARK: - 11. Fn key release
+    // MARK: - NSEvent ↔ CGEvent Modifier Roundtrip
 
-    @Test @MainActor func fnKey_release_triggersKeyUp() {
-        let manager = makeManager(keyCode: 63)
-        guard let press = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn),
-              let release = makeFlagsChangedEvent(keyCode: 63, flags: []) else {
-            Issue.record("CGEvent creation failed")
-            return
+    @Suite("NSEvent Modifier Storage Roundtrip")
+    struct ModifierRoundtripTests {
+
+        @Test func commandShiftR_roundtrips() {
+            // Simulate what HotkeySettingsView does: store NSEvent modifiers as UInt
+            let nsFlags: NSEvent.ModifierFlags = [.command, .shift]
+            let stored = UInt(nsFlags.rawValue)
+
+            // Simulate what RecordingViewModel does: convert stored UInt → CGEventFlags
+            let cgFlags = CGEventFlags(rawValue: UInt64(stored))
+
+            // Simulate what HotkeyManager does: convert CGEventFlags → Carbon
+            let carbon = HotkeyManager.cgEventFlagsToCarbonModifiers(cgFlags)
+
+            #expect(carbon == UInt32(cmdKey) | UInt32(shiftKey))
         }
 
-        var upFired = false
-        manager.onKeyDown = {}
-        manager.onKeyUp = { upFired = true }
-
-        // Press first to set isKeyDown
-        _ = manager.handleEvent(type: .flagsChanged, event: press)
-        // Release
-        let result = manager.handleEvent(type: .flagsChanged, event: release)
-        #expect(upFired, "onKeyUp should fire for Fn release")
-        #expect(result == nil, "Event should be consumed")
-    }
-
-    // MARK: - 12. System tap disabled event passes through
-
-    @Test @MainActor func tapDisabledByTimeout_passesThrough() {
-        let manager = makeManager(keyCode: 48)
-        guard let event = makeKeyEvent(keyCode: 48, keyDown: true) else {
-            Issue.record("CGEvent creation failed")
-            return
+        @Test func noModifiers_roundtrips() {
+            let stored: UInt = 0
+            let cgFlags = CGEventFlags(rawValue: UInt64(stored))
+            let carbon = HotkeyManager.cgEventFlagsToCarbonModifiers(cgFlags)
+            #expect(carbon == 0)
         }
 
-        var fired = false
-        manager.onKeyDown = { fired = true }
-
-        let result = manager.handleEvent(type: .tapDisabledByTimeout, event: event)
-        #expect(!fired, "onKeyDown should NOT fire for tap disabled event")
-        #expect(result != nil, "Event should pass through")
-    }
-
-    // MARK: - 13. Self-frontmost passthrough
-
-    @Test @MainActor func selfFrontmost_passesThrough() {
-        let manager = makeManager(keyCode: 48)
-        guard let event = makeKeyEvent(keyCode: 48, keyDown: true) else {
-            Issue.record("CGEvent creation failed")
-            return
+        @Test func allFourModifiers_roundtrip() {
+            let nsFlags: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let stored = UInt(nsFlags.rawValue)
+            let cgFlags = CGEventFlags(rawValue: UInt64(stored))
+            let carbon = HotkeyManager.cgEventFlagsToCarbonModifiers(cgFlags)
+            let expected = UInt32(cmdKey) | UInt32(shiftKey) | UInt32(optionKey) | UInt32(controlKey)
+            #expect(carbon == expected)
         }
-
-        var fired = false
-        manager.onKeyDown = { fired = true }
-
-        // Simulate thinkur being frontmost by starting + observing, which sets isSelfFrontmost.
-        // Since we can't set isSelfFrontmost directly (it's private), we test via the
-        // public start/stop which checks NSWorkspace. Instead, we use a workaround:
-        // The test process IS the frontmost app, and start() would set isSelfFrontmost = true.
-        // But start() requires event tap permissions, so we test the tapDisabled path instead
-        // which exercises the same "pass through" logic.
-        let result = manager.handleEvent(type: .tapDisabledByUserInput, event: event)
-        #expect(!fired, "onKeyDown should NOT fire when tap is disabled")
-        #expect(result != nil, "Event should pass through")
-    }
-
-    // MARK: - 14. Modifier-only keyDown does NOT trigger if target has a key
-
-    @Test @MainActor func modifierOnlyKeyDown_doesNotTrigger() {
-        let manager = makeManager(keyCode: 1, modifiers: .maskCommand) // Cmd+S
-        // Send a keyDown for the Command key itself (keyCode 55), not the target key
-        guard let event = makeKeyEvent(keyCode: 55, keyDown: true, flags: .maskCommand) else {
-            Issue.record("CGEvent creation failed")
-            return
-        }
-
-        var fired = false
-        manager.onKeyDown = { fired = true }
-
-        let result = manager.handleEvent(type: .keyDown, event: event)
-        #expect(!fired, "onKeyDown should NOT fire for modifier-only key")
-        #expect(result != nil, "Modifier key event should pass through")
     }
 }
