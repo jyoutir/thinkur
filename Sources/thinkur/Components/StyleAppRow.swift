@@ -3,6 +3,7 @@ import SwiftUI
 struct StyleAppRow: View {
     let entry: StyleAppEntry
     let onStyleChange: (String) -> Void
+    var onDelete: (() -> Void)?
 
     private let styles = ["Standard", "Casual", "Formal", "Code"]
 
@@ -21,6 +22,16 @@ struct StyleAppRow: View {
             }
 
             Spacer()
+
+            if let onDelete {
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12))
+                        .foregroundStyle(ColorTokens.textTertiary)
+                }
+                .buttonStyle(.plain)
+                .help("Remove app")
+            }
 
             Picker("", selection: Binding(
                 get: { entry.style },
