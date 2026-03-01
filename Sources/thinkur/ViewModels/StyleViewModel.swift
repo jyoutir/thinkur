@@ -18,6 +18,7 @@ final class StyleViewModel {
 
     private let stylePreferenceService: StylePreferenceService
     private let analyticsService: any AnalyticsRecording
+    private let settings: SettingsManager
 
     private static let defaultApps: [(bundleID: String, appName: String, description: String, iconColor: String)] = [
         ("com.tinyspeck.slackmacgap", "Slack", "Casual, friendly tone", "purple"),
@@ -25,20 +26,22 @@ final class StyleViewModel {
         ("com.apple.Notes", "Notes", "Natural, balanced tone", "yellow"),
     ]
 
-    init(stylePreferenceService: StylePreferenceService, analyticsService: any AnalyticsRecording) {
+    init(stylePreferenceService: StylePreferenceService, analyticsService: any AnalyticsRecording, settings: SettingsManager) {
         self.stylePreferenceService = stylePreferenceService
         self.analyticsService = analyticsService
+        self.settings = settings
     }
 
     func loadData() async {
         let usageRecords = await analyticsService.fetchTopApps(limit: 100)
         let storedPrefs = await stylePreferenceService.fetchAll()
+        let hidden = settings.hiddenStyleApps
 
         var entries: [StyleAppEntry] = []
         var seenBundleIDs: Set<String> = []
 
-        // Add all apps the user has dictated into
-        for usage in usageRecords {
+        // Add all apps the user has dictated into (skip hidden)
+        for usage in usageRecords where !hidden.contains(usage.bundleID) {
             let style = storedPrefs.first(where: { $0.bundleID == usage.bundleID })?.style ?? "Standard"
             entries.append(StyleAppEntry(
                 id: usage.bundleID,
@@ -50,8 +53,8 @@ final class StyleViewModel {
             seenBundleIDs.insert(usage.bundleID)
         }
 
-        // Add stored preferences for manually-added apps not yet in the list
-        for pref in storedPrefs where !seenBundleIDs.contains(pref.bundleID) {
+        // Add stored preferences for manually-added apps not yet in the list (skip hidden)
+        for pref in storedPrefs where !seenBundleIDs.contains(pref.bundleID) && !hidden.contains(pref.bundleID) {
             entries.append(StyleAppEntry(
                 id: pref.bundleID,
                 appName: pref.appName,
@@ -62,9 +65,9 @@ final class StyleViewModel {
             seenBundleIDs.insert(pref.bundleID)
         }
 
-        // Fallback defaults for new users with no usage data
+        // Fallback defaults for new users with no usage data (skip hidden)
         if entries.isEmpty {
-            for app in Self.defaultApps {
+            for app in Self.defaultApps where !hidden.contains(app.bundleID) {
                 let style = storedPrefs.first(where: { $0.bundleID == app.bundleID })?.style ?? "Standard"
                 entries.append(StyleAppEntry(
                     id: app.bundleID,
@@ -94,6 +97,7 @@ final class StyleViewModel {
     func removeApp(bundleID: String) async {
         do {
             try await stylePreferenceService.removeStyle(for: bundleID)
+            settings.hiddenStyleApps.insert(bundleID)
             errorMessage = nil
             await loadData()
         } catch {
@@ -104,6 +108,7 @@ final class StyleViewModel {
 
     func addApp(bundleID: String, appName: String) async {
         do {
+            settings.hiddenStyleApps.remove(bundleID)
             try await stylePreferenceService.setStyle(for: bundleID, appName: appName, style: "Standard")
             errorMessage = nil
             await loadData()

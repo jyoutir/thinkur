@@ -255,7 +255,7 @@ final class HotkeyManager: HotkeyListening {
 
     // MARK: - Event Handling
 
-    fileprivate func handleEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+    func handleEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         // If the system disabled our tap, just pass the event through.
         // The health monitor will handle re-enabling or recreating.
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {

@@ -101,6 +101,11 @@ final class SettingsManager {
         (AccentColor(rawValue: accentColorName) ?? .defaultGreen).uiTintColor
     }
 
+    // Hidden style apps (deleted by user, should not reappear from analytics)
+    var hiddenStyleApps: Set<String> {
+        didSet { defaults.set(Array(hiddenStyleApps), forKey: "hiddenStyleApps") }
+    }
+
     // Onboarding
     var hasCompletedOnboarding: Bool {
         didSet { defaults.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding") }
@@ -163,6 +168,9 @@ final class SettingsManager {
         // Accent color (migrate removed "black" to green)
         let storedColor = defaults.string(forKey: "accentColorName") ?? AccentColor.defaultGreen.rawValue
         self.accentColorName = AccentColor(rawValue: storedColor) != nil ? storedColor : AccentColor.defaultGreen.rawValue
+
+        // Hidden style apps
+        self.hiddenStyleApps = Set(defaults.stringArray(forKey: "hiddenStyleApps") ?? [])
 
         // Onboarding
         self.hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")

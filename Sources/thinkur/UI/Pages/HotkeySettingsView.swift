@@ -7,6 +7,7 @@ struct HotkeySettingsView: View {
     @State private var appeared = false
     @State private var isRecording = false
     @State private var eventMonitor: Any?
+    @State private var currentModifiers: NSEvent.ModifierFlags = []
 
     private static let standardModifiers: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
@@ -22,18 +23,26 @@ struct HotkeySettingsView: View {
                 GroupedSettingsSection(title: "Activation") {
                     VStack(spacing: 0) {
                         SettingsRowView(icon: "keyboard", title: "Record Shortcut") {
-                            Button {
-                                if isRecording {
-                                    stopRecording()
-                                } else {
-                                    startRecording()
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Button {
+                                    if isRecording {
+                                        stopRecording()
+                                    } else {
+                                        startRecording()
+                                    }
+                                } label: {
+                                    KeyboardShortcutBadge(
+                                        key: isRecording ? recordingLabel : currentHotkeyLabel
+                                    )
                                 }
-                            } label: {
-                                KeyboardShortcutBadge(
-                                    key: isRecording ? "Type shortcut\u{2026}" : currentHotkeyLabel
-                                )
+                                .buttonStyle(.plain)
+
+                                if isRecording {
+                                    Text("Hold modifiers, then press a key")
+                                        .font(Typography.caption)
+                                        .foregroundStyle(ColorTokens.textTertiary)
+                                }
                             }
-                            .buttonStyle(.plain)
                         }
 
                         Divider()
@@ -74,6 +83,14 @@ struct HotkeySettingsView: View {
         )
     }
 
+    private var recordingLabel: String {
+        let mods = HotkeyDisplayHelper.modifierSymbols(for: currentModifiers)
+        if mods.isEmpty {
+            return "Type shortcut\u{2026}"
+        }
+        return "\(mods)+ key\u{2026}"
+    }
+
     // MARK: - Key Recording
 
     private func startRecording() {
@@ -92,7 +109,8 @@ struct HotkeySettingsView: View {
                         self.stopRecording()
                         return nil
                     }
-                    // Other modifiers (Shift, Cmd, etc.) are captured with the keyDown
+                    // Track held modifiers for real-time display
+                    self.currentModifiers = event.modifierFlags.intersection(Self.standardModifiers)
                     return event
                 }
 
@@ -118,6 +136,7 @@ struct HotkeySettingsView: View {
             NSEvent.removeMonitor(monitor)
             eventMonitor = nil
         }
+        currentModifiers = []
         isRecording = false
     }
 

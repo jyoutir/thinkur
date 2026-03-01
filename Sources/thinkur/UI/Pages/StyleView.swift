@@ -23,9 +23,11 @@ struct StyleView: View {
                                 .padding(Spacing.md)
                         } else {
                             ForEach(viewModel.stylePreferences) { entry in
-                                StyleAppRow(entry: entry) { newStyle in
+                                StyleAppRow(entry: entry, onStyleChange: { newStyle in
                                     Task { await viewModel.updateStyle(for: entry.id, style: newStyle) }
-                                }
+                                }, onDelete: {
+                                    Task { await viewModel.removeApp(bundleID: entry.id) }
+                                })
                                 .contextMenu {
                                     Button(role: .destructive) {
                                         Task { await viewModel.removeApp(bundleID: entry.id) }
