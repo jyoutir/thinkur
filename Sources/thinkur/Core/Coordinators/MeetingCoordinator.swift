@@ -57,6 +57,7 @@ final class MeetingCoordinator {
     // Models (loaded once, reused)
     private var offlineDiarizer: OfflineDiarizerManager?
     private var asrManagerForMeeting: AsrManager?
+    private var vadManager: VadManager?
 
     private let targetFormat = AVAudioFormat(
         commonFormat: .pcmFormatFloat32,
@@ -119,25 +120,39 @@ final class MeetingCoordinator {
         isDiarizerLoading = true
         diarizerLoadingMessage = "Preparing meeting models"
 
-        // Load offline diarizer models
+        // Load FluidAudio offline diarizer (CoreML/ANE, 60x real-time on M1)
         if offlineDiarizer == nil {
             do {
+                diarizerLoadingMessage = "Preparing speaker models"
                 let voipConfig = OfflineDiarizerConfig(
                     clusteringThreshold: 0.7,
                     Fa: 0.15,
                     Fb: 0.5,
                     embeddingExcludeOverlap: false,
                     minSegmentDuration: 1.0
-                ).withSpeakers(min: 2)
+                ).withSpeakers(min: 2, max: 6)
                 let offline = OfflineDiarizerManager(config: voipConfig)
                 let offlineCacheDir = Constants.appSupportDirectory
                     .appendingPathComponent("offline-diarizer", isDirectory: true)
                 try await offline.prepareModels(directory: offlineCacheDir)
                 offlineDiarizer = offline
-                Logger.app.info("Offline diarizer models loaded for meeting")
+                Logger.app.info("FluidAudio offline diarizer loaded")
             } catch {
-                Logger.app.warning("Offline diarizer failed to load, remote speakers won't be separated: \(error)")
+                Logger.app.warning("FluidAudio diarizer failed to load: \(error)")
                 // Non-fatal — all remote audio will be assigned to "remote-1"
+            }
+        }
+
+        // Load VAD for mic gating (suppress phantom "You" from echo)
+        if vadManager == nil {
+            do {
+                diarizerLoadingMessage = "Loading voice detector"
+                let vadDir = Constants.appSupportDirectory
+                    .appendingPathComponent("vad", isDirectory: true)
+                vadManager = try await VadManager(modelDirectory: vadDir)
+                Logger.app.info("VAD loaded for mic gating")
+            } catch {
+                Logger.app.warning("VAD failed to load, mic gating disabled: \(error)")
             }
         }
 
@@ -266,7 +281,8 @@ final class MeetingCoordinator {
 
         let processor = MeetingFinalProcessor(
             asrManager: asrManager,
-            offlineDiarizer: offlineDiarizer
+            offlineDiarizer: offlineDiarizer,
+            vadManager: vadManager
         )
 
         do {
