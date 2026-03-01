@@ -50,11 +50,15 @@ final class HotkeyManager: HotkeyListening {
     // MARK: - Public API
 
     func start() -> Bool {
-        guard !isRunning else { return true }
+        guard !isRunning else {
+            Logger.hotkey.debug("start() called but already running")
+            return true
+        }
 
         let trusted = AXIsProcessTrusted()
         let listenAccess = CGPreflightListenEventAccess()
-        Logger.hotkey.info("AXIsProcessTrusted: \(trusted), CGPreflightListenEventAccess: \(listenAccess)")
+        Logger.hotkey.info("start() — AXIsProcessTrusted: \(trusted), CGPreflightListenEventAccess: \(listenAccess)")
+        Logger.hotkey.info("start() — targetKeyCode=\(self.targetKeyCode), targetModifiers=\(self.targetModifiers.rawValue)")
 
         let success: Bool
         if targetKeyCode == 63 {
@@ -63,11 +67,14 @@ final class HotkeyManager: HotkeyListening {
             success = startCarbonHotkey()
         }
 
-        guard success else { return false }
+        guard success else {
+            Logger.hotkey.error("start() — FAILED to start hotkey")
+            return false
+        }
 
         isRunning = true
         startObservingFrontmostApp()
-        Logger.hotkey.info("Hotkey manager started — listening for key \(self.targetKeyCode)")
+        Logger.hotkey.info("start() — SUCCESS, listening for key \(self.targetKeyCode), hotKeyRef=\(self.hotKeyRef != nil)")
         return true
     }
 
@@ -86,13 +93,17 @@ final class HotkeyManager: HotkeyListening {
             stopCarbonHotkey()
         }
 
-        Logger.hotkey.info("Hotkey manager stopped")
+        Logger.hotkey.info("stop() — Hotkey manager stopped")
     }
 
     // MARK: - Carbon Hotkey Registration
 
     private func startCarbonHotkey() -> Bool {
-        installCarbonHandler()
+        let handlerOK = installCarbonHandler()
+        if !handlerOK {
+            Logger.hotkey.error("startCarbonHotkey — installCarbonHandler FAILED")
+            return false
+        }
         return registerHotkey()
     }
 
@@ -101,8 +112,12 @@ final class HotkeyManager: HotkeyListening {
         removeCarbonHandler()
     }
 
-    private func installCarbonHandler() {
-        guard handlerRef == nil else { return }
+    @discardableResult
+    private func installCarbonHandler() -> Bool {
+        guard handlerRef == nil else {
+            Logger.hotkey.debug("installCarbonHandler — handler already installed")
+            return true
+        }
 
         var eventTypes = [
             EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
@@ -111,7 +126,7 @@ final class HotkeyManager: HotkeyListening {
 
         let refcon = Unmanaged.passUnretained(self).toOpaque()
 
-        InstallEventHandler(
+        let status = InstallEventHandler(
             GetEventDispatcherTarget(),
             carbonHotkeyHandler,
             eventTypes.count,
@@ -119,24 +134,38 @@ final class HotkeyManager: HotkeyListening {
             refcon,
             &handlerRef
         )
+
+        if status != noErr {
+            Logger.hotkey.error("InstallEventHandler FAILED: status=\(status)")
+            return false
+        }
+
+        Logger.hotkey.debug("installCarbonHandler — SUCCESS, handlerRef=\(self.handlerRef != nil)")
+        return true
     }
 
     private func removeCarbonHandler() {
         if let handler = handlerRef {
             RemoveEventHandler(handler)
             handlerRef = nil
+            Logger.hotkey.debug("removeCarbonHandler — handler removed")
         }
     }
 
     @discardableResult
     private func registerHotkey() -> Bool {
-        guard hotKeyRef == nil else { return true }
+        guard hotKeyRef == nil else {
+            Logger.hotkey.debug("registerHotkey — already registered, skipping")
+            return true
+        }
 
         let carbonMods = Self.cgEventFlagsToCarbonModifiers(targetModifiers)
         var hotKeyID = EventHotKeyID(
             signature: Self.fourCharCode("thkr"),
             id: 1
         )
+
+        Logger.hotkey.info("registerHotkey — keyCode=\(self.targetKeyCode), carbonMods=\(carbonMods), cgFlags=0x\(String(self.targetModifiers.rawValue, radix: 16))")
 
         let status = RegisterEventHotKey(
             UInt32(targetKeyCode),
@@ -148,11 +177,11 @@ final class HotkeyManager: HotkeyListening {
         )
 
         if status != noErr {
-            Logger.hotkey.error("RegisterEventHotKey failed: \(status)")
+            Logger.hotkey.error("RegisterEventHotKey FAILED: status=\(status)")
             return false
         }
 
-        Logger.hotkey.debug("Registered hotkey: keyCode=\(self.targetKeyCode), carbonMods=\(carbonMods)")
+        Logger.hotkey.info("registerHotkey — SUCCESS, hotKeyRef=\(self.hotKeyRef != nil)")
         return true
     }
 
@@ -160,7 +189,7 @@ final class HotkeyManager: HotkeyListening {
         if let ref = hotKeyRef {
             UnregisterEventHotKey(ref)
             hotKeyRef = nil
-            Logger.hotkey.debug("Unregistered hotkey")
+            Logger.hotkey.debug("unregisterHotkey — unregistered")
         }
     }
 
@@ -179,14 +208,23 @@ final class HotkeyManager: HotkeyListening {
         )
 
         let kind = Int(GetEventKind(event))
+        Logger.hotkey.debug("handleCarbonEvent — kind=\(kind), isKeyDown=\(self.isKeyDown), sig=\(hotKeyID.signature), id=\(hotKeyID.id)")
 
         if kind == kEventHotKeyPressed {
-            guard !isKeyDown else { return }
+            guard !isKeyDown else {
+                Logger.hotkey.debug("handleCarbonEvent — suppressing repeat press")
+                return
+            }
             isKeyDown = true
+            Logger.hotkey.info("HOTKEY PRESSED — firing onKeyDown")
             onKeyDown?()
         } else if kind == kEventHotKeyReleased {
-            guard isKeyDown else { return }
+            guard isKeyDown else {
+                Logger.hotkey.debug("handleCarbonEvent — release without press, ignoring")
+                return
+            }
             isKeyDown = false
+            Logger.hotkey.info("HOTKEY RELEASED — firing onKeyUp")
             onKeyUp?()
         }
     }
@@ -286,6 +324,7 @@ final class HotkeyManager: HotkeyListening {
     private func startObservingFrontmostApp() {
         let selfFrontmost = NSWorkspace.shared.frontmostApplication?.processIdentifier == selfPID
         isSelfFrontmost = selfFrontmost
+        Logger.hotkey.debug("startObservingFrontmostApp — isSelfFrontmost=\(selfFrontmost)")
         if selfFrontmost {
             if targetKeyCode == 63 {
                 if let tap = fnEventTap { CGEvent.tapEnable(tap: tap, enable: false) }
@@ -297,7 +336,7 @@ final class HotkeyManager: HotkeyListening {
         frontmostObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
-            queue: nil
+            queue: .main
         ) { [weak self] notification in
             guard let self, self.isRunning,
                   let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
@@ -320,7 +359,10 @@ final class HotkeyManager: HotkeyListening {
                 // momentary focus loss that bounces back almost immediately.
                 self.reRegisterWork?.cancel()
                 let work = DispatchWorkItem { [weak self] in
-                    guard let self, self.isRunning, !self.isSelfFrontmost else { return }
+                    guard let self, self.isRunning, !self.isSelfFrontmost else {
+                        Logger.hotkey.debug("debounce — skipped (isRunning=\(self?.isRunning ?? false), isSelfFrontmost=\(self?.isSelfFrontmost ?? true))")
+                        return
+                    }
 
                     // If the thinkur window is still visible, this was a spurious
                     // focus loss (e.g. ViewBridge crash). Reactivate instead of
@@ -328,6 +370,7 @@ final class HotkeyManager: HotkeyListening {
                     let thinkurWindowVisible = self.isAppWindowVisible?() ?? NSApp.windows.contains {
                         $0.identifier?.rawValue.contains("main") == true && $0.isVisible
                     }
+                    Logger.hotkey.debug("debounce — thinkurWindowVisible=\(thinkurWindowVisible)")
                     if thinkurWindowVisible {
                         NSApp.activate(ignoringOtherApps: true)
                         Logger.hotkey.debug("Window still visible — reactivating app instead of re-registering hotkey")
@@ -339,11 +382,11 @@ final class HotkeyManager: HotkeyListening {
                     } else {
                         self.registerHotkey()
                     }
-                    Logger.hotkey.debug("Hotkey re-registered after debounce")
+                    Logger.hotkey.info("debounce — hotkey re-registered, hotKeyRef=\(self.hotKeyRef != nil)")
                 }
                 self.reRegisterWork = work
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
-                Logger.hotkey.debug("Other app activated — hotkey re-register scheduled")
+                Logger.hotkey.debug("Other app (\(app.localizedName ?? "?")) activated — hotkey re-register scheduled")
             }
         }
     }
@@ -393,7 +436,10 @@ private func carbonHotkeyHandler(
     event: EventRef?,
     userData: UnsafeMutableRawPointer?
 ) -> OSStatus {
-    guard let event, let userData else { return OSStatus(eventNotHandledErr) }
+    guard let event, let userData else {
+        Logger.hotkey.error("carbonHotkeyHandler — nil event or userData!")
+        return OSStatus(eventNotHandledErr)
+    }
     let manager = Unmanaged<HotkeyManager>.fromOpaque(userData).takeUnretainedValue()
     manager.handleCarbonEvent(event)
     return noErr
