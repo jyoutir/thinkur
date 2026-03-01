@@ -23,10 +23,11 @@ struct MeetingSetupView: View {
                     .font(Typography.title)
                     .foregroundStyle(ColorTokens.textPrimary)
 
-                Text("Two quick steps to start recording meetings.")
+                Text("thinkur uses Deepgram\u{2019}s Nova-3 for best-in-class transcription and speaker identification. Your audio is sent securely to Deepgram \u{2014} nothing else leaves your Mac.")
                     .font(Typography.body)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .multilineTextAlignment(.center)
+                    .frame(maxWidth: 380)
             }
 
             // Both steps in a single card
@@ -165,7 +166,7 @@ struct MeetingSetupView: View {
                         .foregroundStyle(settings.accentUITint)
                     }
 
-                    Text("$200 free credit on signup (~770 hours)")
+                    Text("Deepgram offers $200 in free credits \u{2014} around 420 hours of meetings.")
                         .font(Typography.caption)
                         .foregroundStyle(ColorTokens.textTertiary)
                 }
