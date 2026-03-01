@@ -1,9 +1,11 @@
 /// Final-only meeting processing pipeline.
 ///
-/// After recording stops, both WAV tracks (mic + system) are transcribed in parallel via ASrManager.
-/// The system track is run through OfflineDiarizerManager to identify distinct remote speakers.
-/// ASR token timings are merged with diarization speaker segments to produce speaker-attributed text.
-/// For 1:1 calls (single remote speaker), the merge step is skipped for cleaner output.
+/// After recording stops, both WAV tracks (mic + system) are transcribed in parallel via AsrManager.
+/// The system track is run through speaker diarization (FluidAudio CoreML/ANE) to identify distinct
+/// remote speakers. ASR token timings are merged with diarization speaker segments to produce
+/// speaker-attributed text. Phantom speakers (< 15% speaking time) are merged into their nearest
+/// temporal neighbor. Mic audio is VAD-gated to suppress phantom "You" segments from echo/ambient
+/// pickup.
 
 import Accelerate
 import AVFoundation
@@ -24,10 +26,16 @@ struct MeetingProcessingResult: Sendable {
 actor MeetingFinalProcessor {
     nonisolated(unsafe) private let asrManager: AsrManager
     private let offlineDiarizer: OfflineDiarizerManager?
+    private let vadManager: VadManager?
 
-    init(asrManager: AsrManager, offlineDiarizer: OfflineDiarizerManager?) {
+    init(
+        asrManager: AsrManager,
+        offlineDiarizer: OfflineDiarizerManager?,
+        vadManager: VadManager?
+    ) {
         self.asrManager = asrManager
         self.offlineDiarizer = offlineDiarizer
+        self.vadManager = vadManager
     }
 
     func process(micURL: URL, systemURL: URL, duration: TimeInterval) async throws -> MeetingProcessingResult {
@@ -46,9 +54,12 @@ actor MeetingFinalProcessor {
             Logger.app.info("MeetingFinalProcessor: echo detected — suppressing local (You) segments")
         }
 
-        // Build local speaker segments from mic tokens (skip if echo detected)
+        // VAD mic gating: suppress phantom "You" from echo/ambient pickup
+        let vadSuppressed = await shouldSuppressMic(micURL: micURL, duration: duration)
+
+        // Build local speaker segments from mic tokens (skip if echo detected or VAD suppressed)
         var localSegments: [AttributedSegment] = []
-        if !isEcho {
+        if !isEcho && !vadSuppressed {
             if let timings = mic.tokenTimings, !timings.isEmpty {
                 localSegments = groupTokens(timings, speakerId: "local", startOffset: 0)
             } else if !mic.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -72,14 +83,19 @@ actor MeetingFinalProcessor {
             Logger.app.warning("MeetingFinalProcessor: system audio is silent — skipping diarization")
             // Still use ASR text if available (might have picked up faint audio)
             remoteSegments = makeFallbackRemoteSegments(sys: sys, duration: duration)
-        } else if let diarizer = offlineDiarizer {
-            do {
-                let diarizationResult = try await diarizer.process(systemURL)
-                let uniqueRawSpeakers = Set(diarizationResult.segments.map(\.speakerId))
-                Logger.app.info("MeetingFinalProcessor: diarizer returned \(diarizationResult.segments.count) segments, \(uniqueRawSpeakers.count) unique speakers: \(uniqueRawSpeakers)")
+        } else {
+            // Run FluidAudio CoreML/ANE diarizer on system audio
+            let diarizationResult = await runDiarization(systemURL: systemURL)
 
-                // Remap diarizer speaker IDs ("S1", "S2", ...) → "remote-1", "remote-2", ...
-                let remappedSegments = remapSpeakerIds(diarizationResult.segments)
+            if let result = diarizationResult {
+                let uniqueRawSpeakers = Set(result.segments.map(\.speakerId))
+                Logger.app.info("MeetingFinalProcessor: diarizer returned \(result.segments.count) segments, \(uniqueRawSpeakers.count) unique speakers: \(uniqueRawSpeakers)")
+
+                // Remap diarizer speaker IDs → "remote-1", "remote-2", ...
+                var remappedSegments = remapSpeakerIds(result.segments)
+
+                // Phantom speaker merge: absorb speakers with < 15% speaking time
+                remappedSegments = mergePhantomSpeakers(remappedSegments, threshold: 0.15)
 
                 // Only use fallback when diarization produced NO segments at all
                 if remappedSegments.isEmpty {
@@ -117,9 +133,8 @@ actor MeetingFinalProcessor {
                 }
 
                 // Extract speaker embeddings from diarization result
-                if let db = diarizationResult.speakerDatabase {
-                    // Remap the speaker database keys to match our remapped IDs
-                    let speakerIdMap = buildSpeakerIdMap(diarizationResult.segments)
+                if let db = result.speakerDatabase {
+                    let speakerIdMap = buildSpeakerIdMap(result.segments)
                     for (originalId, embedding) in db {
                         let remappedId = speakerIdMap[originalId] ?? originalId
                         speakerEmbeddings[remappedId] = embedding
@@ -128,13 +143,10 @@ actor MeetingFinalProcessor {
 
                 let uniqueRemappedSpeakers = Set(remappedSegments.map(\.speakerId))
                 Logger.app.info("MeetingFinalProcessor: diarization produced \(remoteSegments.count) remote segments, \(uniqueRemappedSpeakers.count) speakers")
-            } catch {
-                Logger.app.error("MeetingFinalProcessor: diarization failed, falling back: \(error)")
+            } else {
+                // Diarization failed — all system audio → single remote speaker
                 remoteSegments = makeFallbackRemoteSegments(sys: sys, duration: duration)
             }
-        } else {
-            // No diarizer — all system audio → single remote speaker
-            remoteSegments = makeFallbackRemoteSegments(sys: sys, duration: duration)
         }
 
         // Merge local + remote, sorted by startTime, then group consecutive same-speaker
@@ -148,6 +160,99 @@ actor MeetingFinalProcessor {
             speakerCount: uniqueSpeakers.count,
             speakerEmbeddings: speakerEmbeddings
         )
+    }
+
+    // MARK: - Diarization
+
+    /// Run diarization using FluidAudio (CoreML/ANE).
+    private func runDiarization(systemURL: URL) async -> DiarizationResult? {
+        guard let diarizer = offlineDiarizer else { return nil }
+
+        do {
+            let result = try await diarizer.process(systemURL)
+            Logger.app.info("MeetingFinalProcessor: diarization succeeded (\(result.segments.count) segments)")
+            return result
+        } catch {
+            Logger.app.error("MeetingFinalProcessor: diarization failed: \(error)")
+            return nil
+        }
+    }
+
+    // MARK: - Phantom Speaker Merge
+
+    /// Merge speakers with less than `threshold` (fraction) of total speaking time
+    /// into their nearest temporal neighbor. Absorbs phantom Speaker 3 from diarizer noise.
+    private func mergePhantomSpeakers(_ segments: [TimedSpeakerSegment], threshold: Float) -> [TimedSpeakerSegment] {
+        guard !segments.isEmpty else { return segments }
+
+        // Calculate total speaking time per speaker
+        var speakerDuration: [String: Float] = [:]
+        for seg in segments {
+            speakerDuration[seg.speakerId, default: 0] += seg.durationSeconds
+        }
+
+        let totalDuration = speakerDuration.values.reduce(0, +)
+        guard totalDuration > 0 else { return segments }
+
+        // Find phantom speakers (< threshold fraction of total)
+        let phantomSpeakers = speakerDuration.filter { $0.value / totalDuration < threshold }
+        guard !phantomSpeakers.isEmpty else { return segments }
+
+        // Find non-phantom speakers
+        let realSpeakers = Set(speakerDuration.keys).subtracting(phantomSpeakers.keys)
+        guard !realSpeakers.isEmpty else { return segments }
+
+        Logger.app.info("MeetingFinalProcessor: merging phantom speakers \(Array(phantomSpeakers.keys)) into nearest neighbor")
+
+        // For each phantom segment, find the nearest real-speaker segment in time
+        return segments.map { seg in
+            guard phantomSpeakers.keys.contains(seg.speakerId) else { return seg }
+
+            let segMid = (seg.startTimeSeconds + seg.endTimeSeconds) / 2.0
+            let nearest = segments
+                .filter { realSpeakers.contains($0.speakerId) }
+                .min(by: {
+                    let mid0 = ($0.startTimeSeconds + $0.endTimeSeconds) / 2.0
+                    let mid1 = ($1.startTimeSeconds + $1.endTimeSeconds) / 2.0
+                    return abs(mid0 - segMid) < abs(mid1 - segMid)
+                })
+
+            guard let nearest else { return seg }
+
+            return TimedSpeakerSegment(
+                speakerId: nearest.speakerId,
+                embedding: seg.embedding,
+                startTimeSeconds: seg.startTimeSeconds,
+                endTimeSeconds: seg.endTimeSeconds,
+                qualityScore: seg.qualityScore
+            )
+        }
+    }
+
+    // MARK: - VAD Mic Gating
+
+    /// Use VAD to check if mic audio contains meaningful speech.
+    /// Returns true (suppress) if VAD speech < 1.0s for meetings > 30s.
+    private func shouldSuppressMic(micURL: URL, duration: TimeInterval) async -> Bool {
+        guard duration > 30.0, let vad = vadManager else { return false }
+
+        do {
+            let vadResults = try await vad.process(micURL)
+            // Each VAD chunk is 4096 samples at 16kHz = 0.256s
+            let chunkDuration = Double(VadManager.chunkSize) / Double(VadManager.sampleRate)
+            let totalSpeech = vadResults.filter(\.isVoiceActive).count
+            let speechDuration = Double(totalSpeech) * chunkDuration
+            Logger.app.info("MeetingFinalProcessor: VAD detected \(String(format: "%.1f", speechDuration))s speech in mic audio")
+
+            if speechDuration < 1.0 {
+                Logger.app.info("MeetingFinalProcessor: VAD gating — suppressing mic (< 1.0s speech in \(String(format: "%.0f", duration))s meeting)")
+                return true
+            }
+        } catch {
+            Logger.app.warning("MeetingFinalProcessor: VAD check failed, allowing mic audio: \(error)")
+        }
+
+        return false
     }
 
     // MARK: - Echo Detection

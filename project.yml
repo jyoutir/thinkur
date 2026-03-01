@@ -40,6 +40,8 @@ targets:
         DEVELOPMENT_TEAM: YZ9FFMX8QS
         ENABLE_HARDENED_RUNTIME: true
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        OTHER_LDFLAGS:
+          - "-lc++"
       configs:
         debug:
           CODE_SIGN_STYLE: Automatic
