@@ -10,12 +10,10 @@ final class MeetingViewModel {
 
     let coordinator: MeetingCoordinator
     private let meetingService: MeetingService
-    private let speakerProfileService: SpeakerProfileService
 
-    init(coordinator: MeetingCoordinator, meetingService: MeetingService, speakerProfileService: SpeakerProfileService) {
+    init(coordinator: MeetingCoordinator, meetingService: MeetingService) {
         self.coordinator = coordinator
         self.meetingService = meetingService
-        self.speakerProfileService = speakerProfileService
     }
 
     func loadMeetings() {
@@ -42,13 +40,6 @@ final class MeetingViewModel {
         editError = nil
         do {
             try meetingService.updateSpeakerName(meeting: meeting, speakerId: speakerId, name: name)
-            // Also update the speaker profile so the name carries to future meetings
-            if let profile = try speakerProfileService.findProfile(
-                for: speakerId,
-                embeddings: meeting.speakerEmbeddings
-            ) {
-                try speakerProfileService.updateProfileName(profile, name: name)
-            }
         } catch {
             editError = "Failed to save speaker name: \(error.localizedDescription)"
             Logger.app.error("Failed to update speaker name: \(error)")

@@ -12,7 +12,7 @@ struct MeetingsView: View {
                 ActiveMeetingView()
             } else if viewModel.coordinator.processingState == .processing {
                 MeetingProcessingView()
-            } else if !permissionManager.screenRecordingGranted {
+            } else if !permissionManager.screenRecordingGranted || !settings.hasDeepgramKey {
                 MeetingSetupView()
             } else if let meeting = viewModel.selectedMeeting {
                 MeetingDetailView(meeting: meeting)
@@ -67,19 +67,6 @@ struct MeetingsView: View {
                         .padding(Spacing.sm)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .materialClear()
-                }
-
-                // Loading
-                if viewModel.coordinator.isDiarizerLoading {
-                    HStack(spacing: Spacing.sm) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text(viewModel.coordinator.diarizerLoadingMessage)
-                            .font(Typography.caption)
-                            .foregroundStyle(ColorTokens.textSecondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Spacing.md)
                 }
 
                 // Past meetings

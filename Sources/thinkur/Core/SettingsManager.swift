@@ -106,6 +106,18 @@ final class SettingsManager {
         didSet { defaults.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding") }
     }
 
+    // Deepgram API key (Keychain-backed, stored flag for @Observable tracking)
+    private(set) var hasDeepgramKey: Bool = false
+
+    var deepgramApiKey: String {
+        get { KeychainHelper.load(account: "deepgram-api-key").flatMap { String(data: $0, encoding: .utf8) } ?? "" }
+        set {
+            if newValue.isEmpty { KeychainHelper.delete(account: "deepgram-api-key") }
+            else { _ = KeychainHelper.save(Data(newValue.utf8), account: "deepgram-api-key") }
+            hasDeepgramKey = !newValue.isEmpty
+        }
+    }
+
     private convenience init() {
         self.init(defaults: .standard)
     }
@@ -154,5 +166,8 @@ final class SettingsManager {
 
         // Onboarding
         self.hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
+
+        // Deepgram (Keychain check)
+        self.hasDeepgramKey = KeychainHelper.load(account: "deepgram-api-key") != nil
     }
 }

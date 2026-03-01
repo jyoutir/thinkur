@@ -43,16 +43,14 @@ final class ViewModelFactory {
         self.onboardingViewModel = OnboardingViewModel(permissionManager: services.permissionManager, settings: services.settings, sharedState: services.sharedState, licenseManager: services.licenseManager, telemetryService: services.telemetryService)
         self.integrationsViewModel = IntegrationsViewModel(smartHomeService: services.smartHomeService)
         self.meetingCoordinator = MeetingCoordinator(
-            transcriptionEngine: services.transcriptionEngine,
+            settings: services.settings,
             meetingService: services.meetingService,
             permissionManager: services.permissionManager,
-            sharedState: services.sharedState,
-            speakerProfileService: services.speakerProfileService
+            sharedState: services.sharedState
         )
         self.meetingViewModel = MeetingViewModel(
             coordinator: self.meetingCoordinator,
-            meetingService: services.meetingService,
-            speakerProfileService: services.speakerProfileService
+            meetingService: services.meetingService
         )
     }
 }
