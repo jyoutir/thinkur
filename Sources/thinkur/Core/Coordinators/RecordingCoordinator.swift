@@ -223,19 +223,13 @@ final class RecordingCoordinator {
                 correctionCount = 0
             }
             // Check for smart home command (before shortcuts and text insertion)
+            // Smart home sessions are excluded from productivity analytics — they
+            // don't produce typed text and would skew time-saved calculations.
             if let smartHome = smartHomeService,
                await smartHome.tryExecuteCommand(text: text) {
                 sharedState.lastSmartHomeAction = smartHome.lastActionMessage
                 sharedState.lastTranscription = text
-                Logger.app.info("Smart home command executed, skipping text insertion")
-                analyticsService.record(
-                    rawText: rawText,
-                    processedText: text,
-                    duration: duration,
-                    appBundleID: frontmostAppDetector.bundleID,
-                    appName: frontmostAppDetector.appName,
-                    correctionCount: correctionCount
-                )
+                Logger.app.info("Smart home command executed, skipping text insertion and productivity analytics")
                 telemetryService.recordTranscription(
                     wordCount: text.split(separator: " ").count,
                     durationSeconds: duration,
@@ -257,14 +251,14 @@ final class RecordingCoordinator {
 
             analyticsService.record(
                 rawText: rawText,
-                processedText: text,
+                processedText: finalText,
                 duration: duration,
                 appBundleID: frontmostAppDetector.bundleID,
                 appName: frontmostAppDetector.appName,
                 correctionCount: correctionCount
             )
             telemetryService.recordTranscription(
-                wordCount: text.split(separator: " ").count,
+                wordCount: finalText.split(separator: " ").count,
                 durationSeconds: duration,
                 correctionCount: correctionCount,
                 fillerWordsRemoved: fillerWordsRemoved,

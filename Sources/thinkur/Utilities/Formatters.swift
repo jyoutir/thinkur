@@ -11,7 +11,7 @@ enum Formatters {
 
     /// Formats a time interval as human-readable duration: 0-59s → "0m", 1-59m → "Xm", 60m+ → "Xh Ym"
     static func formatTimeSaved(_ interval: TimeInterval) -> String {
-        let minutes = Int(interval) / 60
+        let minutes = Int(max(0, interval)) / 60
         if minutes < 1 { return "0m" }
         if minutes < 60 { return "\(minutes)m" }
         let hours = minutes / 60

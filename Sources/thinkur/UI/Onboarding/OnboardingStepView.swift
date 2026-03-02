@@ -1202,20 +1202,20 @@ private struct ROICalculatorView: View {
         min(Double(hourlyRate) ?? 25, 99999)
     }
 
-    private var dailyHoursSaved: Double {
-        typingHoursPerDay * 0.5 // 50% savings at 2x speed (80 wpm typing vs ~160 wpm dictation)
+    private var projection: ProductivitySummary {
+        ProductivityCalculator.onboardingProjection(typingHoursPerDay: typingHoursPerDay, hourlyValue: rate)
     }
 
     private var monthlyHoursSaved: Double {
-        dailyHoursSaved * 22
+        projection.displayTimeSavedSeconds / 3600.0
     }
 
     private var monthlySavings: Double {
-        monthlyHoursSaved * rate
+        projection.moneySaved ?? 0
     }
 
     private var wordsPerDay: Int {
-        Int(typingHoursPerDay * 60 * 80)
+        projection.words
     }
 
     var body: some View {
@@ -1323,7 +1323,7 @@ private struct ROICalculatorView: View {
                 }
             }
 
-            Text("Assumes 80 wpm typing \u{2014} faster than 95% of people")
+            Text("Conservative estimate based on 45 WPM typing")
                 .font(Typography.caption)
                 .foregroundStyle(ColorTokens.textTertiary)
         }

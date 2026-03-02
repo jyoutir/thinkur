@@ -81,8 +81,10 @@ final class AnalyticsService: AnalyticsRecording {
         var descriptor = FetchDescriptor<DailyAnalytics>()
         descriptor.fetchLimit = 365
         guard let records = try? context.fetch(descriptor) else { return 0 }
+        let totalWords = records.reduce(0) { $0 + $1.totalWords }
         let totalDuration = records.reduce(0.0) { $0 + $1.totalDuration }
-        return totalDuration * 0.65 // typing at 80 wpm vs ~130 wpm dictation
+        let summary = ProductivityCalculator.actualSummary(words: totalWords, durationSeconds: totalDuration)
+        return summary.displayTimeSavedSeconds
     }
 
     func fetchTotalWords() async -> Int {

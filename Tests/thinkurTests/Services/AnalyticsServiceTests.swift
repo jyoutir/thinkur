@@ -28,19 +28,36 @@ struct AnalyticsServiceTests {
         #expect(sessions == 1)
     }
 
-    @Test @MainActor func fetchTotalTimeSaved() async {
+    @Test @MainActor func fetchTotalTimeSavedUsesWordBasedFormula() async {
         let service = makeService()
+        // "one two three four five" = 5 words, 10s duration
         service.record(
-            rawText: "test",
-            processedText: "test",
+            rawText: "one two three four five",
+            processedText: "one two three four five",
             duration: 10.0,
             appBundleID: "com.test",
             appName: "Test",
             correctionCount: 0
         )
         let timeSaved = await service.fetchTotalTimeSaved()
-        // 10.0 * 0.65 = 6.5
-        #expect(timeSaved == 6.5)
+        // Expected: same as ProductivityCalculator.actualSummary(words: 5, durationSeconds: 10.0)
+        let expected = ProductivityCalculator.actualSummary(words: 5, durationSeconds: 10.0)
+        #expect(timeSaved == expected.displayTimeSavedSeconds)
+    }
+
+    @Test @MainActor func fetchTotalTimeSavedClampsNegative() async {
+        let service = makeService()
+        // 1 word, 600s — should clamp to 0
+        service.record(
+            rawText: "hello",
+            processedText: "hello",
+            duration: 600.0,
+            appBundleID: "com.test",
+            appName: "Test",
+            correctionCount: 0
+        )
+        let timeSaved = await service.fetchTotalTimeSaved()
+        #expect(timeSaved == 0)
     }
 
     @Test @MainActor func fetchTopAppsSortsByWordCount() async {
