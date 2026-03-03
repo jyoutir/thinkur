@@ -29,10 +29,6 @@ final class RecordingViewModel {
     }
 
     func setupHotkey() {
-        if let hm = hotkeyManager as? HotkeyManager {
-            hm.targetKeyCode = settings.hotkeyCode
-            hm.targetModifiers = CGEventFlags(rawValue: UInt64(settings.hotkeyModifiers))
-        }
         hotkeyManager.onKeyDown = { [weak self] in
             Task { @MainActor in
                 self?.handleKeyDown()

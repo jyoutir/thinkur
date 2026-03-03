@@ -102,6 +102,8 @@ Hotkey (CGEvent tap) → AudioCaptureManager (AVAudioEngine 16kHz)
 
 ## Critical Rules
 
+- **NEVER remove or change `LSUIElement=true` in Info.plist.** macOS 26 Tahoe breaks ALL TextField keyboard input when the app launches as a regular app (`LSUIElement=false` or absent). The dock icon is added at runtime via `NSApp.setActivationPolicy(.regular)` in AppDelegate. See `docs/lsuielement-textfield-fix.md` for the full post-mortem.
+
 - **NEVER edit thinkur.xcodeproj directly.** Edit `project.yml` and run `xcodegen generate`.
 - **Run `xcodegen generate` after adding/removing/moving source files.** Then verify with `xcodebuild -quiet`. `swift build` won't catch missing xcodegen entries.
 - **Run `xcodegen generate` after editing schemes or build actions in `project.yml`.** Pre/post actions, test targets, and archive config all live in the `schemes:` section.

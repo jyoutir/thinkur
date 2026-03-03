@@ -42,5 +42,7 @@
     <string>https://thinkur.app/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>p3XeXQXBnO5CHE4fzFsVSupt5PyW5p8P1KA6Aw6MZ+o=</string>
+    <key>LSUIElement</key>
+    <true/>
 </dict>
 </plist>

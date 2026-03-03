@@ -13,6 +13,9 @@ packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle.git
     from: "2.8.0"
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: "2.0.0"
   TelemetryDeck:
     url: https://github.com/TelemetryDeck/SwiftSDK.git
     from: "2.0.0"
@@ -25,6 +28,7 @@ targets:
       - Sources/thinkur
     dependencies:
       - package: FluidAudio
+      - package: KeyboardShortcuts
       - package: Sparkle
       - package: TelemetryDeck
         product: TelemetryDeck
@@ -78,7 +82,7 @@ schemes:
             if [ "${CONFIGURATION}" = "Debug" ]; then
               # Clear stale TCC entries so the new binary gets fresh grants.
               # Without this, duplicate csreq entries accumulate and permissions break.
-              for svc in Microphone Accessibility ListenEvent SpeechRecognition ScreenCapture; do
+              for svc in Microphone Accessibility SpeechRecognition ScreenCapture; do
                 tccutil reset "$svc" com.jyo.thinkur 2>/dev/null || true
               done
             fi

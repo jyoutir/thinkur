@@ -1,6 +1,8 @@
 import SwiftUI
 import AVFoundation
 import Cocoa
+import KeyboardShortcuts
+import Carbon.HIToolbox
 
 // MARK: - Page 1: Permissions
 
@@ -18,7 +20,7 @@ struct PermissionsPage: View {
                     .font(Typography.onboardingTitle)
                     .foregroundStyle(ColorTokens.textPrimary)
 
-                Text("Grant three permissions. Your voice stays on your Mac.")
+                Text("Grant two permissions. Your voice stays on your Mac.")
                     .font(Typography.onboardingBody)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .multilineTextAlignment(.center)
@@ -63,19 +65,6 @@ struct PermissionsPage: View {
                     ) {
                         permissionManager.requestAccessibility()
                     }
-
-                    Divider()
-
-                    PermissionRowView(
-                        icon: "keyboard",
-                        name: "Input Monitoring",
-                        description: "To detect your hotkey",
-                        isGranted: permissionManager.inputMonitoringGranted,
-                        helpText: "System Settings \u{2192} Privacy & Security \u{2192} Input Monitoring \u{2192} Enable thinkur"
-                    ) {
-                        permissionManager.requestInputMonitoring()
-                        permissionManager.openInputMonitoringSettings()
-                    }
                 }
             }
             .frame(maxWidth: 420)
@@ -109,7 +98,6 @@ struct PermissionsPage: View {
     private var currentTutorialVideo: String? {
         if !permissionManager.microphoneGranted { return "grant-microphone" }
         if !permissionManager.accessibilityGranted { return "grant-accessibility" }
-        if !permissionManager.inputMonitoringGranted { return "grant-input-monitoring" }
         return nil
     }
 }
@@ -1050,21 +1038,13 @@ private final class HotkeyRecorderState: ObservableObject {
 
     private static let standardModifiers: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
 
-    func startRecording(settings: SettingsManager, coordinator: AppCoordinator) {
+    func startRecording() {
         isRecording = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
             guard let self, self.isRecording else { return }
             self.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
                 guard let self else { return event }
                 if event.type == .flagsChanged {
-                    // Capture Fn/Globe key (keyCode 63) on either press or release
-                    if event.keyCode == 63 {
-                        settings.hotkeyCode = 63
-                        settings.hotkeyModifiers = 0
-                        coordinator.updateHotkey()
-                        self.stopRecording()
-                        return nil
-                    }
                     return event
                 }
 
@@ -1075,9 +1055,16 @@ private final class HotkeyRecorderState: ObservableObject {
                 }
 
                 let modifiers = event.modifierFlags.intersection(Self.standardModifiers)
-                settings.hotkeyCode = keyCode
-                settings.hotkeyModifiers = UInt(modifiers.rawValue)
-                coordinator.updateHotkey()
+                var carbon = 0
+                if modifiers.contains(.command) { carbon |= cmdKey }
+                if modifiers.contains(.option) { carbon |= optionKey }
+                if modifiers.contains(.control) { carbon |= controlKey }
+                if modifiers.contains(.shift) { carbon |= shiftKey }
+
+                KeyboardShortcuts.setShortcut(
+                    .init(carbonKeyCode: Int(keyCode), carbonModifiers: carbon),
+                    for: .toggleRecording
+                )
                 self.stopRecording()
                 return nil
             }
@@ -1096,7 +1083,6 @@ private final class HotkeyRecorderState: ObservableObject {
 struct QuickSettingsPage: View {
     @Environment(OnboardingViewModel.self) private var viewModel
     @Environment(SettingsManager.self) private var settings
-    @Environment(AppCoordinator.self) private var coordinator
 
     @StateObject private var recorder = HotkeyRecorderState()
 
@@ -1127,7 +1113,7 @@ struct QuickSettingsPage: View {
                                 if recorder.isRecording {
                                     recorder.stopRecording()
                                 } else {
-                                    recorder.startRecording(settings: settings, coordinator: coordinator)
+                                    recorder.startRecording()
                                 }
                             } label: {
                                 KeyboardShortcutBadge(
@@ -1185,10 +1171,13 @@ struct QuickSettingsPage: View {
     // MARK: - Hotkey Recording
 
     private var currentHotkeyLabel: String {
-        HotkeyDisplayHelper.displayName(
-            keyCode: settings.hotkeyCode,
-            modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.hotkeyModifiers))
-        )
+        if let shortcut = KeyboardShortcuts.getShortcut(for: .toggleRecording) {
+            return HotkeyDisplayHelper.displayName(
+                keyCode: UInt16(shortcut.carbonKeyCode),
+                modifiers: shortcut.toNSEventModifiers()
+            )
+        }
+        return "Not set"
     }
 }
 
