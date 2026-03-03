@@ -8,15 +8,17 @@ import ScreenCaptureKit
 final class PermissionManager: PermissionChecking {
     var accessibilityGranted = false
     var microphoneGranted = false
+    var inputMonitoringGranted = false
     var screenRecordingGranted = false
 
     var allGranted: Bool {
-        accessibilityGranted && microphoneGranted
+        accessibilityGranted && microphoneGranted && inputMonitoringGranted
     }
 
     func checkAll() {
         checkAccessibility()
         checkMicrophone()
+        checkInputMonitoring()
     }
 
     // MARK: - Accessibility
@@ -57,6 +59,19 @@ final class PermissionManager: PermissionChecking {
         }
     }
 
+    // MARK: - Input Monitoring
+
+    func checkInputMonitoring() {
+        let access = CGPreflightListenEventAccess()
+        Logger.permissions.info("checkInputMonitoring: CGPreflightListenEventAccess = \(access)")
+        inputMonitoringGranted = access
+    }
+
+    func requestInputMonitoring() {
+        CGRequestListenEventAccess()
+        Logger.permissions.info("Requested Input Monitoring access")
+    }
+
     // MARK: - Open System Settings
 
     func openMicrophoneSettings() {
@@ -68,6 +83,12 @@ final class PermissionManager: PermissionChecking {
     func openAccessibilitySettings() {
         NSWorkspace.shared.open(
             URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+        )
+    }
+
+    func openInputMonitoringSettings() {
+        NSWorkspace.shared.open(
+            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!
         )
     }
 

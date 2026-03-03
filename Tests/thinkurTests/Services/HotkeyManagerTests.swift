@@ -1,9 +1,79 @@
 import Testing
+import Cocoa
 import Carbon
 @testable import thinkur
 
 @Suite("HotkeyManager")
 struct HotkeyManagerTests {
+
+    // MARK: - Modifier Conversion
+
+    @Suite("Modifier Flag Conversion")
+    struct ModifierConversionTests {
+
+        @Test func command_converts() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers(.maskCommand)
+            #expect(result == UInt32(cmdKey))
+        }
+
+        @Test func shift_converts() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers(.maskShift)
+            #expect(result == UInt32(shiftKey))
+        }
+
+        @Test func option_converts() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers(.maskAlternate)
+            #expect(result == UInt32(optionKey))
+        }
+
+        @Test func control_converts() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers(.maskControl)
+            #expect(result == UInt32(controlKey))
+        }
+
+        @Test func emptyFlags_returnsZero() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers([])
+            #expect(result == 0)
+        }
+
+        @Test func commandShift_combinesCorrectly() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers([.maskCommand, .maskShift])
+            #expect(result == UInt32(cmdKey) | UInt32(shiftKey))
+        }
+
+        @Test func allModifiers_combinesCorrectly() {
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers([
+                .maskCommand, .maskShift, .maskAlternate, .maskControl
+            ])
+            let expected = UInt32(cmdKey) | UInt32(shiftKey) | UInt32(optionKey) | UInt32(controlKey)
+            #expect(result == expected)
+        }
+
+        @Test func nonStandardFlags_ignored() {
+            // maskSecondaryFn, maskNumericPad, etc. should not produce Carbon modifiers
+            let result = HotkeyManager.cgEventFlagsToCarbonModifiers(.maskSecondaryFn)
+            #expect(result == 0)
+        }
+    }
+
+    // MARK: - FourCharCode
+
+    @Suite("FourCharCode")
+    struct FourCharCodeTests {
+
+        @Test func thkr_producesExpectedValue() {
+            let code = HotkeyManager.fourCharCode("thkr")
+            // 't' = 0x74, 'h' = 0x68, 'k' = 0x6B, 'r' = 0x72
+            let expected: OSType = (0x74 << 24) | (0x68 << 16) | (0x6B << 8) | 0x72
+            #expect(code == expected)
+        }
+
+        @Test func truncatesToFourChars() {
+            let long = HotkeyManager.fourCharCode("thinkur")
+            let short = HotkeyManager.fourCharCode("thin")
+            #expect(long == short)
+        }
+    }
 
     // MARK: - Lifecycle
 
@@ -23,108 +93,156 @@ struct HotkeyManagerTests {
 
         @Test @MainActor func doubleStop_isNoop() {
             let manager = HotkeyManager()
+            // Even if start fails (no permissions in test), stop should be safe
             _ = manager.start()
             manager.stop()
             manager.stop() // Should not crash
             #expect(!manager.isRunning)
         }
 
-        @Test @MainActor func start_setsRunning() {
+        @Test @MainActor func targetKeyCode_defaultsToTab() {
             let manager = HotkeyManager()
-            let result = manager.start()
-            #expect(result)
-            #expect(manager.isRunning)
-            manager.stop()
+            #expect(manager.targetKeyCode == Constants.tabKeyCode)
         }
 
-        @Test @MainActor func doubleStart_returnsTrue() {
+        @Test @MainActor func targetModifiers_defaultsToEmpty() {
             let manager = HotkeyManager()
-            _ = manager.start()
-            let result = manager.start()
-            #expect(result, "Double start should return true (already running)")
-            manager.stop()
-        }
-
-        @Test @MainActor func stop_clearsCallbacks() {
-            let manager = HotkeyManager()
-            manager.onKeyDown = {}
-            manager.onKeyUp = {}
-            _ = manager.start()
-            manager.stop()
-            #expect(manager.onKeyDown == nil)
-            #expect(manager.onKeyUp == nil)
+            #expect(manager.targetModifiers == [])
         }
     }
 
-    // MARK: - Migration
+    // MARK: - Fn/Globe Key (still uses CGEvent tap)
 
-    @Suite("HotkeyMigration")
-    struct MigrationTests {
+    @Suite("Fn/Globe Key Event Handling")
+    struct FnKeyTests {
 
-        @Test func convertsCGEventFlagsToCarbonModifiers_command() {
-            let result = HotkeyMigration.convertToCarbonModifiers(.maskCommand)
-            #expect(result == cmdKey)
+        private func makeFlagsChangedEvent(keyCode: UInt16, flags: CGEventFlags) -> CGEvent? {
+            guard let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true) else {
+                return nil
+            }
+            event.type = .flagsChanged
+            event.flags = flags
+            return event
         }
 
-        @Test func convertsCGEventFlagsToCarbonModifiers_shift() {
-            let result = HotkeyMigration.convertToCarbonModifiers(.maskShift)
-            #expect(result == shiftKey)
+        @Test @MainActor func fnPress_triggersKeyDown() {
+            let manager = HotkeyManager()
+            manager.targetKeyCode = 63
+            guard let event = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
+                Issue.record("CGEvent creation failed — no event access permissions")
+                return
+            }
+
+            var fired = false
+            manager.onKeyDown = { fired = true }
+
+            let result = manager.handleFnEvent(type: .flagsChanged, event: event)
+            #expect(fired, "onKeyDown should fire for Fn press")
+            #expect(result == nil, "Event should be consumed")
         }
 
-        @Test func convertsCGEventFlagsToCarbonModifiers_option() {
-            let result = HotkeyMigration.convertToCarbonModifiers(.maskAlternate)
-            #expect(result == optionKey)
+        @Test @MainActor func fnRelease_triggersKeyUp() {
+            let manager = HotkeyManager()
+            manager.targetKeyCode = 63
+            guard let press = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn),
+                  let release = makeFlagsChangedEvent(keyCode: 63, flags: []) else {
+                Issue.record("CGEvent creation failed")
+                return
+            }
+
+            var upFired = false
+            manager.onKeyDown = {}
+            manager.onKeyUp = { upFired = true }
+
+            _ = manager.handleFnEvent(type: .flagsChanged, event: press)
+            let result = manager.handleFnEvent(type: .flagsChanged, event: release)
+            #expect(upFired, "onKeyUp should fire for Fn release")
+            #expect(result == nil, "Event should be consumed")
         }
 
-        @Test func convertsCGEventFlagsToCarbonModifiers_control() {
-            let result = HotkeyMigration.convertToCarbonModifiers(.maskControl)
-            #expect(result == controlKey)
+        @Test @MainActor func wrongKeyCode_passesThrough() {
+            let manager = HotkeyManager()
+            manager.targetKeyCode = 63
+            guard let event = makeFlagsChangedEvent(keyCode: 55, flags: .maskCommand) else {
+                Issue.record("CGEvent creation failed")
+                return
+            }
+
+            var fired = false
+            manager.onKeyDown = { fired = true }
+
+            let result = manager.handleFnEvent(type: .flagsChanged, event: event)
+            #expect(!fired, "onKeyDown should NOT fire for wrong key")
+            #expect(result != nil, "Event should pass through")
         }
 
-        @Test func convertsCGEventFlagsToCarbonModifiers_empty() {
-            let result = HotkeyMigration.convertToCarbonModifiers([])
-            #expect(result == 0)
+        @Test @MainActor func tapDisabledByTimeout_passesThrough() {
+            let manager = HotkeyManager()
+            manager.targetKeyCode = 63
+            guard let event = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
+                Issue.record("CGEvent creation failed")
+                return
+            }
+
+            var fired = false
+            manager.onKeyDown = { fired = true }
+
+            let result = manager.handleFnEvent(type: .tapDisabledByTimeout, event: event)
+            #expect(!fired, "onKeyDown should NOT fire for tap disabled event")
+            #expect(result != nil, "Event should pass through")
         }
 
-        @Test func convertsCGEventFlagsToCarbonModifiers_allFour() {
-            let result = HotkeyMigration.convertToCarbonModifiers([
-                .maskCommand, .maskShift, .maskAlternate, .maskControl
-            ])
-            let expected = cmdKey | shiftKey | optionKey | controlKey
-            #expect(result == expected)
+        @Test @MainActor func fnDoubleTap_noDoubleKeyDown() {
+            let manager = HotkeyManager()
+            manager.targetKeyCode = 63
+            guard let press1 = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn),
+                  let press2 = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
+                Issue.record("CGEvent creation failed")
+                return
+            }
+
+            var count = 0
+            manager.onKeyDown = { count += 1 }
+
+            _ = manager.handleFnEvent(type: .flagsChanged, event: press1)
+            _ = manager.handleFnEvent(type: .flagsChanged, event: press2)
+            #expect(count == 1, "onKeyDown should fire only once without release in between")
+        }
+    }
+
+    // MARK: - NSEvent ↔ CGEvent Modifier Roundtrip
+
+    @Suite("NSEvent Modifier Storage Roundtrip")
+    struct ModifierRoundtripTests {
+
+        @Test func commandShiftR_roundtrips() {
+            // Simulate what HotkeySettingsView does: store NSEvent modifiers as UInt
+            let nsFlags: NSEvent.ModifierFlags = [.command, .shift]
+            let stored = UInt(nsFlags.rawValue)
+
+            // Simulate what RecordingViewModel does: convert stored UInt → CGEventFlags
+            let cgFlags = CGEventFlags(rawValue: UInt64(stored))
+
+            // Simulate what HotkeyManager does: convert CGEventFlags → Carbon
+            let carbon = HotkeyManager.cgEventFlagsToCarbonModifiers(cgFlags)
+
+            #expect(carbon == UInt32(cmdKey) | UInt32(shiftKey))
         }
 
-        @Test func nonStandardFlags_ignored() {
-            let result = HotkeyMigration.convertToCarbonModifiers(.maskSecondaryFn)
-            #expect(result == 0)
+        @Test func noModifiers_roundtrips() {
+            let stored: UInt = 0
+            let cgFlags = CGEventFlags(rawValue: UInt64(stored))
+            let carbon = HotkeyManager.cgEventFlagsToCarbonModifiers(cgFlags)
+            #expect(carbon == 0)
         }
 
-        @Test func migrateIfNeeded_setsFlag() {
-            let defaults = UserDefaults(suiteName: "com.thinkur.test.\(UUID())")!
-            defaults.set(48, forKey: "hotkeyCode") // Tab
-            defaults.set(0, forKey: "hotkeyModifiers")
-
-            HotkeyMigration.migrateIfNeeded(defaults: defaults)
-            #expect(defaults.bool(forKey: "hotkeyMigratedToKeyboardShortcuts"))
-        }
-
-        @Test func migrateIfNeeded_skipsWhenAlreadyMigrated() {
-            let defaults = UserDefaults(suiteName: "com.thinkur.test.\(UUID())")!
-            defaults.set(true, forKey: "hotkeyMigratedToKeyboardShortcuts")
-            defaults.set(48, forKey: "hotkeyCode")
-
-            // Should be a no-op — no crash
-            HotkeyMigration.migrateIfNeeded(defaults: defaults)
-        }
-
-        @Test func migrateIfNeeded_skipsFnGlobeKey() {
-            let defaults = UserDefaults(suiteName: "com.thinkur.test.\(UUID())")!
-            defaults.set(63, forKey: "hotkeyCode") // Fn/Globe
-            defaults.set(0, forKey: "hotkeyModifiers")
-
-            // Should skip without crash — Fn can't be registered with Carbon
-            HotkeyMigration.migrateIfNeeded(defaults: defaults)
-            #expect(defaults.bool(forKey: "hotkeyMigratedToKeyboardShortcuts"))
+        @Test func allFourModifiers_roundtrip() {
+            let nsFlags: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let stored = UInt(nsFlags.rawValue)
+            let cgFlags = CGEventFlags(rawValue: UInt64(stored))
+            let carbon = HotkeyManager.cgEventFlagsToCarbonModifiers(cgFlags)
+            let expected = UInt32(cmdKey) | UInt32(shiftKey) | UInt32(optionKey) | UInt32(controlKey)
+            #expect(carbon == expected)
         }
     }
 }
