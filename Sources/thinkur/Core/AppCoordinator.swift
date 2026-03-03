@@ -40,7 +40,8 @@ final class AppCoordinator {
         self.updaterService = UpdaterService(settings: services.settings)
 
         // Check permissions synchronously so RootView has correct state on first render.
-        // Both checks (AXIsProcessTrusted, recordPermission) are synchronous — safe to call here.
+        // All three checks (AXIsProcessTrusted, recordPermission, CGPreflightListenEventAccess)
+        // are synchronous — safe to call here.
         services.permissionManager.checkAll()
 
         Task { [weak self] in
@@ -52,7 +53,6 @@ final class AppCoordinator {
         guard !hasSetup else { return }
         hasSetup = true
 
-        HotkeyMigration.migrateIfNeeded()
         MediaControlService.restoreIfNeeded()
 
         // Start model loading concurrently — runs alongside permission setup
@@ -68,9 +68,12 @@ final class AppCoordinator {
         await modelLoad
     }
 
-    /// No-op — KeyboardShortcuts updates the Carbon registration automatically
-    /// when `KeyboardShortcuts.setShortcut(...)` is called from the recorder.
-    func updateHotkey() {}
+    func updateHotkey() {
+        services.hotkeyManager.stop()
+        services.hotkeyManager.targetKeyCode = settings.hotkeyCode
+        services.hotkeyManager.targetModifiers = CGEventFlags(rawValue: UInt64(settings.hotkeyModifiers))
+        _ = services.hotkeyManager.start()
+    }
 
     func clearAllHistory() async {
         try? await services.analyticsService.clearAllHistory()

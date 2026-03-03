@@ -115,11 +115,18 @@ final class OnboardingViewModel {
         permissionManager.openAccessibilitySettings()
     }
 
+    func openInputMonitoringSettings() {
+        permissionManager.openInputMonitoringSettings()
+    }
+
     func grantNextPermission() async {
         if !permissionManager.microphoneGranted {
             await requestMicrophone()
         } else if !permissionManager.accessibilityGranted {
             permissionManager.requestAccessibility()
+        } else if !permissionManager.inputMonitoringGranted {
+            permissionManager.requestInputMonitoring()
+            permissionManager.openInputMonitoringSettings()
         }
     }
 

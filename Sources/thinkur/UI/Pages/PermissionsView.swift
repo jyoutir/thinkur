@@ -32,6 +32,20 @@ struct PermissionsView: View {
                             helpText: "Injects transcribed text into the active app.",
                             action: { viewModel.requestAccessibility() }
                         )
+
+                        Divider()
+
+                        PermissionRowView(
+                            icon: "keyboard.fill",
+                            name: "Input Monitoring",
+                            description: "Required to detect the hotkey for activating voice typing",
+                            isGranted: viewModel.inputMonitoringGranted,
+                            helpText: "Detects your hotkey to activate listening mode.",
+                            action: {
+                                viewModel.requestInputMonitoring()
+                                viewModel.openInputMonitoringSettings()
+                            }
+                        )
                     }
                 }
 

@@ -110,6 +110,26 @@ Hotkey (CGEvent tap) → AudioCaptureManager (AVAudioEngine 16kHz)
 - **Always use `-quiet` with xcodebuild.** Raw output floods context.
 - **Permissions are on the DerivedData build.** The post-build action resets stale TCC entries automatically.
 
+## Xcode MCP Bridge
+
+Claude Code connects to the running Xcode process via Apple's MCP bridge (`xcrun mcpbridge`). This is configured in `.claude.json` and available automatically each session.
+
+**Why it matters:** We can't run `xcodebuild` from `~/Downloads/thinkur` (provenance xattr issue). The MCP bridge talks to Xcode's build engine directly — builds happen in DerivedData, bypassing the restriction entirely.
+
+**What it can do:**
+- Build the project and get structured diagnostics (errors + warnings with file:line)
+- Run tests and get pass/fail results
+- Query project structure, targets, build settings, and schemes
+- Get compiler fix-it suggestions
+- Resolve Swift package dependencies
+
+**Requirements:**
+- Xcode must be running with the project open
+- Xcode Settings → Intelligence → "Enable Model Context Protocol" must be checked
+- Claude Code session must be started (or restarted) after the MCP was added
+
+**Prefer MCP over shell for builds.** Use the Xcode MCP tools for building, testing, and diagnostics instead of running `xcodebuild` in the terminal. Fall back to `xcodegen generate` in the shell (that's safe — it's not a build command).
+
 ## Gotchas
 
 - AVAudioEngine inputNode format is hardware native (48kHz) — MUST use AVAudioConverter
