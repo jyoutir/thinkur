@@ -40,8 +40,7 @@ final class AppCoordinator {
         self.updaterService = UpdaterService(settings: services.settings)
 
         // Check permissions synchronously so RootView has correct state on first render.
-        // All three checks (AXIsProcessTrusted, recordPermission, CGPreflightListenEventAccess)
-        // are synchronous system calls — safe to call here.
+        // Both checks (AXIsProcessTrusted, recordPermission) are synchronous — safe to call here.
         services.permissionManager.checkAll()
 
         Task { [weak self] in
@@ -53,6 +52,7 @@ final class AppCoordinator {
         guard !hasSetup else { return }
         hasSetup = true
 
+        HotkeyMigration.migrateIfNeeded()
         MediaControlService.restoreIfNeeded()
 
         // Start model loading concurrently — runs alongside permission setup
@@ -64,23 +64,13 @@ final class AppCoordinator {
         services.frontmostAppDetector.startObserving()
         recordingViewModel.setupHotkey()
 
-        // Wire up window visibility check so HotkeyManager doesn't hardcode window identifiers
-        services.hotkeyManager.isAppWindowVisible = {
-            NSApp.windows.contains {
-                $0.identifier?.rawValue.contains("main") == true && $0.isVisible
-            }
-        }
-
         await services.licenseManager.validateOnLaunch()
         await modelLoad
     }
 
-    func updateHotkey() {
-        services.hotkeyManager.stop()
-        services.hotkeyManager.targetKeyCode = settings.hotkeyCode
-        services.hotkeyManager.targetModifiers = CGEventFlags(rawValue: UInt64(settings.hotkeyModifiers))
-        _ = services.hotkeyManager.start()
-    }
+    /// No-op — KeyboardShortcuts updates the Carbon registration automatically
+    /// when `KeyboardShortcuts.setShortcut(...)` is called from the recorder.
+    func updateHotkey() {}
 
     func clearAllHistory() async {
         try? await services.analyticsService.clearAllHistory()

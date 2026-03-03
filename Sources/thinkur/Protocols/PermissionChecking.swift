@@ -4,7 +4,6 @@ import Foundation
 protocol PermissionChecking: AnyObject {
     var accessibilityGranted: Bool { get }
     var microphoneGranted: Bool { get }
-    var inputMonitoringGranted: Bool { get }
     var allGranted: Bool { get }
     var screenRecordingGranted: Bool { get }
     func checkAll()
@@ -12,9 +11,7 @@ protocol PermissionChecking: AnyObject {
     func checkScreenRecording()
     func requestAccessibility()
     func requestMicrophone() async
-    func requestInputMonitoring()
     func requestScreenRecording()
     func openAccessibilitySettings()
-    func openInputMonitoringSettings()
     func openScreenRecordingSettings()
 }

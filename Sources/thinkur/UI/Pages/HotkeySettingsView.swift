@@ -1,9 +1,10 @@
 import SwiftUI
 import Cocoa
+import KeyboardShortcuts
+import Carbon.HIToolbox
 
 struct HotkeySettingsView: View {
     @Environment(SettingsManager.self) private var settings
-    @Environment(AppCoordinator.self) private var coordinator
     @State private var appeared = false
     @State private var isRecording = false
     @State private var eventMonitor: Any?
@@ -77,10 +78,13 @@ struct HotkeySettingsView: View {
     // MARK: - Display
 
     private var currentHotkeyLabel: String {
-        HotkeyDisplayHelper.displayName(
-            keyCode: settings.hotkeyCode,
-            modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.hotkeyModifiers))
-        )
+        if let shortcut = KeyboardShortcuts.getShortcut(for: .toggleRecording) {
+            return HotkeyDisplayHelper.displayName(
+                keyCode: UInt16(shortcut.carbonKeyCode),
+                modifiers: shortcut.toNSEventModifiers()
+            )
+        }
+        return "Not set"
     }
 
     private var recordingLabel: String {
@@ -101,15 +105,8 @@ struct HotkeySettingsView: View {
             guard self.isRecording else { return }
             self.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
                 if event.type == .flagsChanged {
-                    // Capture Fn/Globe key (keyCode 63) on either press or release
-                    if event.keyCode == 63 {
-                        self.settings.hotkeyCode = 63
-                        self.settings.hotkeyModifiers = 0
-                        self.coordinator.updateHotkey()
-                        self.stopRecording()
-                        return nil
-                    }
                     // Track held modifiers for real-time display
+                    // (Fn/Globe key 63 dropped — Carbon can't register modifier-only keys)
                     self.currentModifiers = event.modifierFlags.intersection(Self.standardModifiers)
                     return event
                 }
@@ -122,9 +119,11 @@ struct HotkeySettingsView: View {
                 }
 
                 let modifiers = event.modifierFlags.intersection(Self.standardModifiers)
-                self.settings.hotkeyCode = keyCode
-                self.settings.hotkeyModifiers = UInt(modifiers.rawValue)
-                self.coordinator.updateHotkey()
+                let carbonMods = convertNSEventToCarbonModifiers(modifiers)
+                KeyboardShortcuts.setShortcut(
+                    .init(carbonKeyCode: Int(Int32(keyCode)), carbonModifiers: carbonMods),
+                    for: .toggleRecording
+                )
                 self.stopRecording()
                 return nil
             }
@@ -140,4 +139,26 @@ struct HotkeySettingsView: View {
         isRecording = false
     }
 
+    private func convertNSEventToCarbonModifiers(_ flags: NSEvent.ModifierFlags) -> Int {
+        var carbon = 0
+        if flags.contains(.command) { carbon |= cmdKey }
+        if flags.contains(.option) { carbon |= optionKey }
+        if flags.contains(.control) { carbon |= controlKey }
+        if flags.contains(.shift) { carbon |= shiftKey }
+        return carbon
+    }
+}
+
+// MARK: - KeyboardShortcuts.Shortcut helpers
+
+extension KeyboardShortcuts.Shortcut {
+    func toNSEventModifiers() -> NSEvent.ModifierFlags {
+        var flags: NSEvent.ModifierFlags = []
+        let carbon = carbonModifiers
+        if carbon & cmdKey != 0 { flags.insert(.command) }
+        if carbon & optionKey != 0 { flags.insert(.option) }
+        if carbon & controlKey != 0 { flags.insert(.control) }
+        if carbon & shiftKey != 0 { flags.insert(.shift) }
+        return flags
+    }
 }
