@@ -39,13 +39,11 @@ final class MeetingCoordinator {
 
     // MARK: - Recording State
 
-    // nonisolated(unsafe) allows deinit cleanup — these are still only
-    // mutated from @MainActor contexts (startMeeting/stopAudioEngine).
-    nonisolated(unsafe) private var audioEngine: AVAudioEngine?
-    nonisolated(unsafe) private var configChangeObserver: NSObjectProtocol?
+    private var audioEngine: AVAudioEngine?
+    private var configChangeObserver: NSObjectProtocol?
     private var micWriter: MeetingAudioWriter?
     private var systemWriter: MeetingAudioWriter?
-    nonisolated(unsafe) private var timerTask: Task<Void, Never>?
+    private var timerTask: Task<Void, Never>?
     private var recordingStartTime: Date?
 
     private var systemAudioManager: SystemAudioCaptureManager?
@@ -69,7 +67,7 @@ final class MeetingCoordinator {
         self.sharedState = sharedState
     }
 
-    deinit {
+    isolated deinit {
         if let observer = configChangeObserver {
             NotificationCenter.default.removeObserver(observer)
         }
@@ -217,7 +215,7 @@ final class MeetingCoordinator {
             )
 
             let title = makeMeetingTitle()
-            let record = try meetingService.saveMeeting(
+            _ = try meetingService.saveMeeting(
                 title: title,
                 duration: duration,
                 speakerCount: result.speakerCount,
