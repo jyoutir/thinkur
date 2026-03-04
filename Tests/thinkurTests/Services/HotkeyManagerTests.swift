@@ -127,7 +127,7 @@ struct HotkeyManagerTests {
 
         @Test @MainActor func fnPress_triggersKeyDown() {
             let manager = HotkeyManager()
-            manager.targetKeyCode = 63
+            manager.configure(keyCode: 63, modifiers: [])
             guard let event = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
                 Issue.record("CGEvent creation failed — no event access permissions")
                 return
@@ -143,7 +143,7 @@ struct HotkeyManagerTests {
 
         @Test @MainActor func fnRelease_triggersKeyUp() {
             let manager = HotkeyManager()
-            manager.targetKeyCode = 63
+            manager.configure(keyCode: 63, modifiers: [])
             guard let press = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn),
                   let release = makeFlagsChangedEvent(keyCode: 63, flags: []) else {
                 Issue.record("CGEvent creation failed")
@@ -162,7 +162,7 @@ struct HotkeyManagerTests {
 
         @Test @MainActor func wrongKeyCode_passesThrough() {
             let manager = HotkeyManager()
-            manager.targetKeyCode = 63
+            manager.configure(keyCode: 63, modifiers: [])
             guard let event = makeFlagsChangedEvent(keyCode: 55, flags: .maskCommand) else {
                 Issue.record("CGEvent creation failed")
                 return
@@ -178,7 +178,7 @@ struct HotkeyManagerTests {
 
         @Test @MainActor func tapDisabledByTimeout_passesThrough() {
             let manager = HotkeyManager()
-            manager.targetKeyCode = 63
+            manager.configure(keyCode: 63, modifiers: [])
             guard let event = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
                 Issue.record("CGEvent creation failed")
                 return
@@ -194,7 +194,7 @@ struct HotkeyManagerTests {
 
         @Test @MainActor func fnDoubleTap_noDoubleKeyDown() {
             let manager = HotkeyManager()
-            manager.targetKeyCode = 63
+            manager.configure(keyCode: 63, modifiers: [])
             guard let press1 = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn),
                   let press2 = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
                 Issue.record("CGEvent creation failed")

@@ -28,21 +28,37 @@ final class HotkeyManager: HotkeyListening {
     private let fnTapQueue = DispatchQueue(label: "com.thinkur.fn-tap", qos: .userInteractive)
     private var fnTapRunLoop: CFRunLoop?
 
-    // MARK: - Shared State
+    // MARK: - Shared State (thread-safe)
 
-    private var isKeyDown = false
-    private var isSelfFrontmost = false
+    private let _isKeyDown = OSAllocatedUnfairLock(initialState: false)
+    private let _isSelfFrontmost = OSAllocatedUnfairLock(initialState: false)
+
+    private var isKeyDown: Bool {
+        get { _isKeyDown.withLock { $0 } }
+        set { _isKeyDown.withLock { $0 = newValue } }
+    }
+
+    private var isSelfFrontmost: Bool {
+        get { _isSelfFrontmost.withLock { $0 } }
+        set { _isSelfFrontmost.withLock { $0 = newValue } }
+    }
+
     private let selfPID = ProcessInfo.processInfo.processIdentifier
     private var frontmostObserver: NSObjectProtocol?
 
     var onKeyDown: (() -> Void)?
     var onKeyUp: (() -> Void)?
-    var targetKeyCode: UInt16 = Constants.tabKeyCode
-    var targetModifiers: CGEventFlags = []
+    private(set) var targetKeyCode: UInt16 = Constants.tabKeyCode
+    private(set) var targetModifiers: CGEventFlags = []
 
     private(set) var isRunning = false
 
     // MARK: - Public API
+
+    func configure(keyCode: UInt16, modifiers: CGEventFlags) {
+        targetKeyCode = keyCode
+        targetModifiers = modifiers
+    }
 
     func start() -> Bool {
         guard !isRunning else {
@@ -188,7 +204,7 @@ final class HotkeyManager: HotkeyListening {
 
     // MARK: - Carbon Event Handling
 
-    func handleCarbonEvent(_ event: EventRef) {
+    fileprivate func handleCarbonEvent(_ event: EventRef) {
         var hotKeyID = EventHotKeyID()
         GetEventParameter(
             event,
