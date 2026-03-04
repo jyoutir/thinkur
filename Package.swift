@@ -11,6 +11,7 @@ let package = Package(
         .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.12.1"),
         .package(url: "https://github.com/TelemetryDeck/SwiftSDK.git", from: "2.0.0"),
         .package(url: "https://github.com/sparkle-project/Sparkle.git", from: "2.6.0"),
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.11.0"),
     ],
     targets: [
         .executableTarget(
@@ -25,10 +26,31 @@ let package = Package(
                 .swiftLanguageMode(.v5)
             ]
         ),
+        .executableTarget(
+            name: "thinkur-mcp",
+            dependencies: [
+                .product(name: "MCP", package: "swift-sdk"),
+            ],
+            path: "Sources/thinkur-mcp",
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
+            ]
+        ),
         .testTarget(
             name: "thinkurTests",
             dependencies: ["thinkur"],
             path: "Tests/thinkurTests",
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
+            ]
+        ),
+        .testTarget(
+            name: "thinkurMCPTests",
+            dependencies: [
+                "thinkur-mcp",
+                .product(name: "MCP", package: "swift-sdk"),
+            ],
+            path: "Tests/thinkurMCPTests",
             swiftSettings: [
                 .swiftLanguageMode(.v5)
             ]

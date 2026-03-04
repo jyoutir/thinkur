@@ -1,14 +1,19 @@
+import AppKit
 import SwiftUI
 
 struct IntegrationsView: View {
     @Environment(IntegrationsViewModel.self) private var viewModel
+    @State private var mcpConfigCopied = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
-                Text("Connect smart home devices to control them with your voice.")
+                Text("Connect AI tools and smart home devices.")
                     .font(Typography.callout)
                     .foregroundStyle(ColorTokens.textTertiary)
+
+                // AI Tools (MCP) Section
+                mcpSection
 
                 // Philips Hue Section
                 hueSection
@@ -31,6 +36,66 @@ struct IntegrationsView: View {
                 }
             }
             .padding(Spacing.lg)
+        }
+    }
+
+    // MARK: - MCP Section
+
+    @ViewBuilder
+    private var mcpSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            Text("AI Tools (MCP)")
+                .font(Typography.caption)
+                .foregroundStyle(ColorTokens.textSecondary)
+                .textCase(.uppercase)
+
+            GroupedSettingsSection {
+                SettingsRowView(
+                    icon: "brain",
+                    title: "Model Context Protocol",
+                    subtitle: "Let AI assistants read your transcription history"
+                ) {
+                    Button {
+                        copyMCPConfig()
+                    } label: {
+                        Text(mcpConfigCopied ? "Copied" : "Copy Config")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(mcpConfigCopied ? ColorTokens.textTertiary : ColorTokens.textPrimary)
+                }
+            }
+
+            HStack(alignment: .top, spacing: Spacing.sm) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 11))
+                    .foregroundStyle(ColorTokens.textTertiary)
+                    .padding(.top, 1)
+
+                Text("Works with Claude Desktop, Claude Code, Cursor, and other MCP-compatible tools. Copy the config and paste it into your AI tool's MCP settings. Your data stays on your device.")
+                    .font(Typography.caption)
+                    .foregroundStyle(ColorTokens.textTertiary)
+            }
+            .padding(.horizontal, Spacing.xs)
+        }
+    }
+
+    private func copyMCPConfig() {
+        let mcpPath = Bundle.main.bundlePath + "/Contents/MacOS/thinkur-mcp"
+        let config = """
+        {
+          "mcpServers": {
+            "thinkur": {
+              "command": "\(mcpPath)"
+            }
+          }
+        }
+        """
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(config, forType: .string)
+        mcpConfigCopied = true
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            mcpConfigCopied = false
         }
     }
 
