@@ -16,6 +16,9 @@ packages:
   TelemetryDeck:
     url: https://github.com/TelemetryDeck/SwiftSDK.git
     from: "2.0.0"
+  swift-sdk:
+    url: https://github.com/modelcontextprotocol/swift-sdk.git
+    from: "0.11.0"
 
 targets:
   thinkur:
@@ -28,6 +31,11 @@ targets:
       - package: Sparkle
       - package: TelemetryDeck
         product: TelemetryDeck
+      - target: thinkur-mcp
+        embed: true
+        codeSign: true
+        copy:
+          destination: executables
     settings:
       base:
         INFOPLIST_FILE: Sources/thinkur/Resources/Info.plist
@@ -55,6 +63,29 @@ targets:
       properties:
         com.apple.security.device.audio-input: true
 
+  thinkur-mcp:
+    type: tool
+    platform: macOS
+    sources:
+      - Sources/thinkur-mcp
+    dependencies:
+      - package: swift-sdk
+        product: MCP
+    settings:
+      base:
+        PRODUCT_NAME: thinkur-mcp
+        PRODUCT_BUNDLE_IDENTIFIER: com.jyo.thinkur-mcp
+        DEVELOPMENT_TEAM: YZ9FFMX8QS
+        ENABLE_HARDENED_RUNTIME: true
+      configs:
+        debug:
+          CODE_SIGN_STYLE: Automatic
+          CODE_SIGN_IDENTITY: "Apple Development"
+        release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+          OTHER_CODE_SIGN_FLAGS: "--timestamp --options runtime"
+
   thinkurTests:
     type: bundle.unit-test
     platform: macOS
@@ -72,6 +103,7 @@ schemes:
     build:
       targets:
         thinkur: all
+        thinkur-mcp: all
         thinkurTests: [test]
       postActions:
         - script: |

@@ -17,6 +17,24 @@
             "name": "Release thinkur",
             "program": "${workspaceFolder:thinkur}/.build/release/thinkur",
             "preLaunchTask": "swift: Build Release thinkur"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:thinkur}",
+            "name": "Debug thinkur-mcp",
+            "program": "${workspaceFolder:thinkur}/.build/debug/thinkur-mcp",
+            "preLaunchTask": "swift: Build Debug thinkur-mcp"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:thinkur}",
+            "name": "Release thinkur-mcp",
+            "program": "${workspaceFolder:thinkur}/.build/release/thinkur-mcp",
+            "preLaunchTask": "swift: Build Release thinkur-mcp"
         }
     ]
 }
