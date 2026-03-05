@@ -11,6 +11,7 @@ VERSION="$(read_version)"
 BUILD_NUM="$(read_build_number)"
 DMG_FILE="$(dmg_name)"
 SCHEME="thinkur"
+ENTITLEMENTS_PATH="Sources/thinkur/Resources/thinkur.entitlements"
 
 echo "=== Building ${APP_NAME} v${VERSION} (${BUILD_NUM}) ==="
 
@@ -102,8 +103,16 @@ if ! xcodebuild -exportArchive \
     -exportPath "${EXPORT_DIR}" \
     -exportOptionsPlist "${EXPORT_OPTIONS}" \
     -quiet 2>/dev/null; then
-    echo "  exportArchive failed — extracting app from archive directly"
+    echo "  exportArchive failed — extracting and re-signing manually"
     cp -R "${ARCHIVE_PATH}/Products/Applications/${APP_NAME}.app" "${APP_PATH}"
+
+    # Deep-sign all binaries with Developer ID + timestamp + hardened runtime.
+    # exportArchive normally does this; we must replicate it for notarization.
+    log_step "Re-signing app bundle (deep)..."
+    codesign --deep --force --options runtime --timestamp \
+        --sign "Developer ID Application" \
+        --entitlements "${TEMP_DIR}/${ENTITLEMENTS_PATH}" \
+        "${APP_PATH}"
 fi
 
 # ─── Verify codesign ───────────────────────────────────────────────────────────
