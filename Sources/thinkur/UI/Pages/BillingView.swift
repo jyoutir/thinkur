@@ -101,7 +101,7 @@ struct BillingView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
-                GroupedSettingsSection(title: "Activate a license key") {
+                GroupedSettingsSection(title: "Bought your key?") {
                     VStack(spacing: 0) {
                         HStack(spacing: Spacing.sm) {
                             TextField("XXXXX-XXXXX-XXXXX-XXXXX", text: $licenseKey)
