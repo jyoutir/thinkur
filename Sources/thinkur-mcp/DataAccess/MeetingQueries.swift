@@ -1,5 +1,18 @@
 import Foundation
 import SQLite3
+import os
+
+private let logger = Logger(subsystem: "com.jyo.thinkur-mcp", category: "meetings")
+
+/// Raw meeting row from SQLite, before segment attachment.
+private typealias MeetingRow = (
+    pk: Int,
+    title: String,
+    date: Double,
+    duration: Double,
+    speakerCount: Int,
+    speakerNamesData: Data?
+)
 
 enum MeetingQueries {
 
@@ -11,8 +24,7 @@ enum MeetingQueries {
     ) throws -> [MCPMeeting] {
         let cutoff = Date().addingTimeInterval(-Double(days) * 86_400).timeIntervalSinceReferenceDate
 
-        // Fetch meetings
-        let meetings = try store.query(
+        let rows = try store.query(
             """
             SELECT Z_PK, ZTITLE, ZDATE, ZDURATION, ZSPEAKERCOUNT, ZSPEAKERNAMESDATA
             FROM ZMEETINGRECORD
@@ -21,7 +33,7 @@ enum MeetingQueries {
             LIMIT ?
             """,
             bind: [cutoff, limit]
-        ) { stmt in
+        ) { stmt -> MeetingRow in
             (
                 pk: SQLiteStore.int(stmt, 0),
                 title: SQLiteStore.text(stmt, 1),
@@ -32,48 +44,7 @@ enum MeetingQueries {
             )
         }
 
-        return try meetings.map { meeting in
-            let segments = try store.query(
-                """
-                SELECT ZSPEAKERID, ZTEXT, ZSTARTTIME, ZENDTIME
-                FROM ZMEETINGSEGMENT
-                WHERE ZMEETING = ?
-                ORDER BY ZSTARTTIME ASC
-                """,
-                bind: [meeting.pk]
-            ) { stmt in
-                MCPMeetingSegment(
-                    speakerId: SQLiteStore.text(stmt, 0),
-                    text: SQLiteStore.text(stmt, 1),
-                    startTime: SQLiteStore.double(stmt, 2),
-                    endTime: SQLiteStore.double(stmt, 3)
-                )
-            }
-
-            // Resolve speaker names from JSON data
-            var speakerNames: [String: String] = [:]
-            if let data = meeting.speakerNamesData {
-                speakerNames = (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
-            }
-
-            let resolvedSegments = segments.map { seg in
-                let name = speakerNames[seg.speakerId] ?? defaultSpeakerName(seg.speakerId)
-                return MCPMeetingSegment(
-                    speakerId: name,
-                    text: seg.text,
-                    startTime: seg.startTime,
-                    endTime: seg.endTime
-                )
-            }
-
-            return MCPMeeting(
-                title: meeting.title,
-                date: coreDataDateToISO8601(meeting.date),
-                duration: meeting.duration,
-                speakerCount: meeting.speakerCount,
-                segments: resolvedSegments
-            )
-        }
+        return try buildMeetings(from: rows, store: store)
     }
 
     /// Search meeting transcripts for a query.
@@ -86,7 +57,7 @@ enum MeetingQueries {
         let cutoff = Date().addingTimeInterval(-Double(days) * 86_400).timeIntervalSinceReferenceDate
         let pattern = "%\(query)%"
 
-        // Find meetings that have segments matching the query
+        // Find meeting PKs that have matching segments
         let meetingPKs = try store.query(
             """
             SELECT DISTINCT ms.ZMEETING
@@ -104,54 +75,72 @@ enum MeetingQueries {
 
         guard !meetingPKs.isEmpty else { return [] }
 
-        // Fetch full meetings for matching PKs
-        return try meetingPKs.compactMap { pk in
-            let meetings = try store.query(
-                """
-                SELECT Z_PK, ZTITLE, ZDATE, ZDURATION, ZSPEAKERCOUNT, ZSPEAKERNAMESDATA
-                FROM ZMEETINGRECORD
-                WHERE Z_PK = ?
-                """,
-                bind: [pk]
-            ) { stmt in
-                (
-                    pk: SQLiteStore.int(stmt, 0),
-                    title: SQLiteStore.text(stmt, 1),
-                    date: SQLiteStore.double(stmt, 2),
-                    duration: SQLiteStore.double(stmt, 3),
-                    speakerCount: SQLiteStore.int(stmt, 4),
-                    speakerNamesData: SQLiteStore.optionalBlob(stmt, 5)
-                )
-            }
+        // Batch-fetch all matching meetings in one query
+        let placeholders = meetingPKs.map { _ in "?" }.joined(separator: ",")
+        let rows = try store.query(
+            """
+            SELECT Z_PK, ZTITLE, ZDATE, ZDURATION, ZSPEAKERCOUNT, ZSPEAKERNAMESDATA
+            FROM ZMEETINGRECORD
+            WHERE Z_PK IN (\(placeholders))
+            ORDER BY ZDATE DESC
+            """,
+            bind: meetingPKs
+        ) { stmt -> MeetingRow in
+            (
+                pk: SQLiteStore.int(stmt, 0),
+                title: SQLiteStore.text(stmt, 1),
+                date: SQLiteStore.double(stmt, 2),
+                duration: SQLiteStore.double(stmt, 3),
+                speakerCount: SQLiteStore.int(stmt, 4),
+                speakerNamesData: SQLiteStore.optionalBlob(stmt, 5)
+            )
+        }
 
-            guard let meeting = meetings.first else { return nil }
+        return try buildMeetings(from: rows, store: store)
+    }
 
-            let segments = try store.query(
-                """
-                SELECT ZSPEAKERID, ZTEXT, ZSTARTTIME, ZENDTIME
-                FROM ZMEETINGSEGMENT
-                WHERE ZMEETING = ?
-                ORDER BY ZSTARTTIME ASC
-                """,
-                bind: [pk]
-            ) { stmt in
+    // MARK: - Private
+
+    /// Batch-fetch segments for all meetings and assemble MCPMeeting objects.
+    /// Runs exactly 1 additional query (segments) regardless of meeting count.
+    private static func buildMeetings(from rows: [MeetingRow], store: SQLiteStore) throws -> [MCPMeeting] {
+        guard !rows.isEmpty else { return [] }
+
+        let pks = rows.map(\.pk)
+        let placeholders = pks.map { _ in "?" }.joined(separator: ",")
+
+        // Single query for ALL segments across all meetings
+        let allSegments = try store.query(
+            """
+            SELECT ZMEETING, ZSPEAKERID, ZTEXT, ZSTARTTIME, ZENDTIME
+            FROM ZMEETINGSEGMENT
+            WHERE ZMEETING IN (\(placeholders))
+            ORDER BY ZSTARTTIME ASC
+            """,
+            bind: pks
+        ) { stmt in
+            (
+                meetingPK: SQLiteStore.int(stmt, 0),
+                speakerId: SQLiteStore.text(stmt, 1),
+                text: SQLiteStore.text(stmt, 2),
+                startTime: SQLiteStore.double(stmt, 3),
+                endTime: SQLiteStore.double(stmt, 4)
+            )
+        }
+
+        // Group segments by meeting PK
+        var segmentsByMeeting: [Int: [(speakerId: String, text: String, startTime: Double, endTime: Double)]] = [:]
+        for seg in allSegments {
+            segmentsByMeeting[seg.meetingPK, default: []].append(
+                (speakerId: seg.speakerId, text: seg.text, startTime: seg.startTime, endTime: seg.endTime)
+            )
+        }
+
+        return rows.map { meeting in
+            let speakerNames = resolveSpeakerNames(meeting.speakerNamesData)
+            let segments = (segmentsByMeeting[meeting.pk] ?? []).map { seg in
                 MCPMeetingSegment(
-                    speakerId: SQLiteStore.text(stmt, 0),
-                    text: SQLiteStore.text(stmt, 1),
-                    startTime: SQLiteStore.double(stmt, 2),
-                    endTime: SQLiteStore.double(stmt, 3)
-                )
-            }
-
-            var speakerNames: [String: String] = [:]
-            if let data = meeting.speakerNamesData {
-                speakerNames = (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
-            }
-
-            let resolvedSegments = segments.map { seg in
-                let name = speakerNames[seg.speakerId] ?? defaultSpeakerName(seg.speakerId)
-                return MCPMeetingSegment(
-                    speakerId: name,
+                    speakerId: speakerNames[seg.speakerId] ?? defaultSpeakerName(seg.speakerId),
                     text: seg.text,
                     startTime: seg.startTime,
                     endTime: seg.endTime
@@ -163,8 +152,19 @@ enum MeetingQueries {
                 date: coreDataDateToISO8601(meeting.date),
                 duration: meeting.duration,
                 speakerCount: meeting.speakerCount,
-                segments: resolvedSegments
+                segments: segments
             )
+        }
+    }
+
+    /// Decode speaker name mapping from JSON blob, logging on failure.
+    private static func resolveSpeakerNames(_ data: Data?) -> [String: String] {
+        guard let data else { return [:] }
+        do {
+            return try JSONDecoder().decode([String: String].self, from: data)
+        } catch {
+            logger.warning("Failed to decode speaker names: \(error)")
+            return [:]
         }
     }
 

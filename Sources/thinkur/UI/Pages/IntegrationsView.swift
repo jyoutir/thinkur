@@ -81,6 +81,12 @@ struct IntegrationsView: View {
 
     private func copyMCPConfig() {
         let mcpPath = Bundle.main.bundlePath + "/Contents/MacOS/thinkur-mcp"
+
+        guard FileManager.default.fileExists(atPath: mcpPath) else {
+            viewModel.errorMessage = "MCP binary not found. Please build and run thinkur from Xcode first."
+            return
+        }
+
         let config = """
         {
           "mcpServers": {
