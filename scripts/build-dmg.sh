@@ -92,12 +92,19 @@ xcodebuild archive \
     -quiet
 
 # ─── Export ─────────────────────────────────────────────────────────────────────
+# Try exportArchive first; if it fails (Xcode 26 broke developer-id method),
+# fall back to extracting the already-signed app directly from the archive.
 log_step "Exporting archive..."
-xcodebuild -exportArchive \
+mkdir -p "${EXPORT_DIR}"
+
+if ! xcodebuild -exportArchive \
     -archivePath "${ARCHIVE_PATH}" \
     -exportPath "${EXPORT_DIR}" \
     -exportOptionsPlist "${EXPORT_OPTIONS}" \
-    -quiet
+    -quiet 2>/dev/null; then
+    echo "  exportArchive failed — extracting app from archive directly"
+    cp -R "${ARCHIVE_PATH}/Products/Applications/${APP_NAME}.app" "${APP_PATH}"
+fi
 
 # ─── Verify codesign ───────────────────────────────────────────────────────────
 log_step "Verifying code signature..."
