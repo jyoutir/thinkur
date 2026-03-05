@@ -135,13 +135,35 @@ struct ModelLoadingPage: View {
                         .contentTransition(.opacity)
                         .animation(.easeInOut(duration: 0.3), value: viewModel.isModelReady)
 
-                    if !viewModel.isModelReady {
+                    if viewModel.isModelReady {
+                        Text("Voice engine loaded. You\u{2019}re all set.")
+                            .font(Typography.onboardingBody)
+                            .foregroundStyle(ColorTokens.textSecondary)
+                            .transition(.opacity)
+                    } else {
                         Text(viewModel.modelLoadingMessage.isEmpty ? "Almost ready\u{2026}" : viewModel.modelLoadingMessage)
                             .font(Typography.onboardingBody)
                             .foregroundStyle(ColorTokens.textSecondary)
                             .contentTransition(.opacity)
                             .animation(.easeInOut(duration: 0.3), value: viewModel.modelLoadingMessage)
                     }
+                }
+
+                // Styled progress bar (only while loading)
+                if !viewModel.isModelReady {
+                    Capsule()
+                        .fill(ColorTokens.border)
+                        .frame(maxWidth: 280, minHeight: 6, maxHeight: 6)
+                        .overlay(alignment: .leading) {
+                            GeometryReader { geo in
+                                Capsule()
+                                    .fill(settings.accentUITint)
+                                    .frame(width: max(geo.size.width * viewModel.modelDownloadProgress, 6), height: 6)
+                            }
+                        }
+                        .clipShape(Capsule())
+                        .animation(.easeInOut(duration: 0.3), value: viewModel.modelDownloadProgress)
+                        .padding(.top, Spacing.xs)
                 }
             }
 
@@ -150,13 +172,6 @@ struct ModelLoadingPage: View {
                 .frame(maxWidth: 720)
 
             Spacer()
-
-            if !viewModel.isModelReady {
-                ProgressView(value: viewModel.modelDownloadProgress)
-                    .tint(settings.accentUITint)
-                    .frame(maxWidth: 280)
-                    .animation(.easeInOut(duration: 0.3), value: viewModel.modelDownloadProgress)
-            }
 
             Button {
                 viewModel.nextStep()
@@ -176,9 +191,6 @@ struct ModelLoadingPage: View {
             .controlSize(.large)
             .tint(settings.accentUITint)
             .disabled(!viewModel.isModelReady)
-
-            Spacer()
-                .frame(height: Spacing.xl)
         }
         .padding(.horizontal, Spacing.xl)
     }
