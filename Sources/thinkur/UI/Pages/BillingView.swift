@@ -88,7 +88,7 @@ struct BillingView: View {
                     .controlSize(.regular)
                 }
 
-                if showCheckoutNudge {
+                if sharedState.isFreeTier, showCheckoutNudge {
                     HStack(spacing: Spacing.xs) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.green)
@@ -101,52 +101,52 @@ struct BillingView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
-                GroupedSettingsSection(title: "Bought your key?") {
-                    VStack(spacing: 0) {
-                        HStack(spacing: Spacing.sm) {
-                            TextField("XXXXX-XXXXX-XXXXX-XXXXX", text: $licenseKey)
-                                .textFieldStyle(.plain)
-                                .font(Typography.body)
-                                .padding(.horizontal, Spacing.sm)
-                                .padding(.vertical, Spacing.xs)
-                                .materialClear(cornerRadius: CornerRadius.field)
+                if sharedState.isFreeTier {
+                    GroupedSettingsSection(title: "Bought your key?") {
+                        VStack(spacing: 0) {
+                            HStack(spacing: Spacing.sm) {
+                                TextField("XXXXX-XXXXX-XXXXX-XXXXX", text: $licenseKey)
+                                    .textFieldStyle(.plain)
+                                    .font(Typography.body)
+                                    .padding(.horizontal, Spacing.sm)
+                                    .padding(.vertical, Spacing.xs)
+                                    .materialClear(cornerRadius: CornerRadius.field)
 
-                            Button {
-                                Task { await activateLicense() }
-                            } label: {
-                                HStack(spacing: Spacing.xxs) {
-                                    if isActivating {
-                                        ProgressView()
-                                            .controlSize(.small)
+                                Button {
+                                    Task { await activateLicense() }
+                                } label: {
+                                    HStack(spacing: Spacing.xxs) {
+                                        if isActivating {
+                                            ProgressView()
+                                                .controlSize(.small)
+                                        }
+                                        Text("Activate")
+                                            .font(Typography.headline)
                                     }
-                                    Text("Activate")
-                                        .font(Typography.headline)
+                                    .padding(.horizontal, Spacing.md)
+                                    .padding(.vertical, Spacing.xs)
                                 }
-                                .padding(.horizontal, Spacing.md)
-                                .padding(.vertical, Spacing.xs)
+                                .buttonStyle(.borderedProminent)
+                                .tint(.primary)
+                                .disabled(licenseKey.trimmingCharacters(in: .whitespaces).isEmpty || isActivating)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.primary)
-                            .disabled(licenseKey.trimmingCharacters(in: .whitespaces).isEmpty || isActivating)
-                        }
-                        .padding(.horizontal, Spacing.md)
-                        .padding(.vertical, Spacing.sm)
-
-                        if let error = errorMessage {
-                            HStack(spacing: Spacing.xxs) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.system(size: 11))
-                                Text(error)
-                                    .font(Typography.caption)
-                            }
-                            .foregroundStyle(.red)
                             .padding(.horizontal, Spacing.md)
-                            .padding(.bottom, Spacing.sm)
+                            .padding(.vertical, Spacing.sm)
+
+                            if let error = errorMessage {
+                                HStack(spacing: Spacing.xxs) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.system(size: 11))
+                                    Text(error)
+                                        .font(Typography.caption)
+                                }
+                                .foregroundStyle(.red)
+                                .padding(.horizontal, Spacing.md)
+                                .padding(.bottom, Spacing.sm)
+                            }
                         }
                     }
-                }
 
-                if sharedState.isFreeTier {
                     Button {
                         checkoutURL = URL(string: Constants.checkoutURLLifetime)
                     } label: {
