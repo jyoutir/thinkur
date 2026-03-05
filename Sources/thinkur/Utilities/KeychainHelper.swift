@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 enum KeychainHelper {
-    private static let service = "com.jyo.thinkur.license"
+    private static let service = AppRuntimeConfiguration.sharedLicenseService
 
     static func save(_ data: Data, account: String) -> Bool {
         delete(account: account)

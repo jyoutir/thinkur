@@ -1,10 +1,10 @@
 #!/bin/bash
-# dev-permissions.sh — Reset TCC permissions and open System Settings panes
-# Run this after a debug build if macOS stops recognizing thinkur's permissions.
+# dev-reset-permissions.sh — Reset TCC permissions and open System Settings panes
+# Run this manually if macOS stops recognizing thinkur Dev's permissions.
 
 set -euo pipefail
 
-BUNDLE_ID="com.jyo.thinkur"
+BUNDLE_ID="com.jyo.thinkur.dev"
 
 echo "Resetting TCC entries for $BUNDLE_ID..."
 for svc in Microphone Accessibility ListenEvent; do
@@ -19,6 +19,6 @@ open "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEven
 
 echo ""
 echo "Next steps:"
-echo "  1. In each Settings pane, toggle thinkur ON"
+echo "  1. In each Settings pane, toggle thinkur Dev ON"
 echo "  2. Build & run from Xcode (Cmd+R)"
-echo "  3. If thinkur doesn't appear in a pane, run it once first — the OS registers it on first launch"
+echo "  3. If thinkur Dev doesn't appear in a pane, run it once first — the OS registers it on first launch"

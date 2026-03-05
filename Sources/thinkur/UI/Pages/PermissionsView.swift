@@ -7,7 +7,7 @@ struct PermissionsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
-                Text("thinkur needs these permissions to work properly.")
+                Text("\(AppRuntimeConfiguration.displayName) needs these permissions to work properly.")
                     .font(Typography.callout)
                     .foregroundStyle(ColorTokens.textTertiary)
 

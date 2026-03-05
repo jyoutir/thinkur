@@ -1,7 +1,7 @@
 import os
 
 extension Logger {
-    private static let subsystem = "com.thinkur"
+    private static let subsystem = AppRuntimeConfiguration.loggerSubsystem
 
     static let audio = Logger(subsystem: subsystem, category: "audio")
     static let transcription = Logger(subsystem: subsystem, category: "transcription")

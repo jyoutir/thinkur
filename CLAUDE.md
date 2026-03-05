@@ -6,12 +6,11 @@ Offline macOS menu bar voice typing app. Tap a hotkey to start recording, tap ag
 
 ## Build
 
+Use Xcode (Cmd+R) for Debug builds, or the Xcode MCP bridge. Release: `scripts/build-dmg.sh`.
+
 ```sh
 # If new source files were added, regenerate Xcode project first:
 xcodegen generate
-
-# Build (always use -quiet to avoid flooding context):
-xcodebuild -project thinkur.xcodeproj -scheme thinkur -configuration Debug build -quiet
 ```
 
 ## Test
@@ -38,6 +37,7 @@ thinkur/
 │   │   ├── Info.plist                   ← LSUIElement, usage descriptions
 │   │   └── thinkur.entitlements         ← audio input, bluetooth, network
 │   ├── Core/
+│   │   ├── AppRuntimeConfiguration.swift        ← reads plist keys for dev/release split
 │   │   ├── AppState/SharedAppState.swift        ← @Observable, single source of truth
 │   │   ├── DI/ServiceContainer.swift            ← dependency injection container
 │   │   ├── DI/ViewModelFactory.swift            ← creates view models with injected deps
@@ -63,14 +63,19 @@ thinkur/
 │   ├── Integration/   ← integration tests
 │   └── Utilities/     ← utility tests
 └── scripts/
-    ├── release.sh              ← orchestrator: full release or individual steps
+    ├── release.sh              ← orchestrator: prepare (build+stage) or publish
     ├── release-preflight.sh    ← pre-flight checks
     ├── bump-version.sh         ← version bump
     ├── build-dmg.sh            ← archive → sign → notarize → DMG
-    ├── publish-release.sh      ← GitHub Release + appcast
+    ├── stage-release.sh        ← create/update draft GitHub Release with DMG
+    ├── publish-appcast.sh      ← generate appcast → push → publish draft
+    ├── bootstrap-release-tools.sh ← cache Sparkle tools to ~/.cache/thinkur/
+    ├── install-dev-app.sh      ← post-build: copy Dev app to ~/Applications
+    ├── dev-reset-permissions.sh ← manual TCC reset for dev bundle ID
     ├── reset-for-testing.sh    ← wipe local state for testing
     ├── create-lifetime-key.sh  ← gift codes via LemonSqueezy
-    └── dev-permissions.sh      ← reset TCC + open Settings panes for dev
+    └── lib/
+        └── release-common.sh   ← shared helpers for release scripts
 ```
 
 ## Architecture
@@ -100,15 +105,32 @@ Hotkey (CGEvent tap) → AudioCaptureManager (AVAudioEngine 16kHz)
 - **Updates**: Sparkle (appcast.xml hosted on thinkur.app)
 - **Signing**: Developer ID Application + notarization
 
+## Dev vs Release
+
+Two build configurations produce two distinct apps:
+
+| | Debug (Dev) | Release |
+|---|---|---|
+| Bundle ID | `com.jyo.thinkur.dev` | `com.jyo.thinkur` |
+| App name | thinkur Dev | thinkur |
+| Sparkle | Disabled | Enabled |
+| Telemetry | Disabled | Enabled |
+| App Support | `~/Library/Application Support/thinkur-dev/` | `~/Library/Application Support/thinkur/` |
+| License keychain | Shared (`com.jyo.thinkur.license`) | Shared |
+| Hue keychain | `com.jyo.thinkur.dev.hue` | `com.jyo.thinkur.hue` |
+| Install location | `~/Applications/thinkur Dev.app` (post-action) | `/Applications/thinkur.app` |
+
+`AppRuntimeConfiguration` reads custom plist keys (set via `project.yml` build settings) to drive all runtime differences.
+
 ## Critical Rules
 
 - **NEVER remove or change `LSUIElement=true` in Info.plist.** macOS 26 Tahoe breaks ALL TextField keyboard input when the app launches as a regular app (`LSUIElement=false` or absent). The dock icon is added at runtime via `NSApp.setActivationPolicy(.regular)` in AppDelegate. See `docs/lsuielement-textfield-fix.md` for the full post-mortem.
 
 - **NEVER edit thinkur.xcodeproj directly.** Edit `project.yml` and run `xcodegen generate`.
-- **Run `xcodegen generate` after adding/removing/moving source files.** Then verify with `xcodebuild -quiet`. `swift build` won't catch missing xcodegen entries.
+- **Run `xcodegen generate` after adding/removing/moving source files.** Then verify with an Xcode build (Cmd+R) or Xcode MCP bridge. `swift build` won't catch missing xcodegen entries.
 - **Run `xcodegen generate` after editing schemes or build actions in `project.yml`.** Pre/post actions, test targets, and archive config all live in the `schemes:` section.
 - **Always use `-quiet` with xcodebuild.** Raw output floods context.
-- **Permissions are on the DerivedData build.** The post-build action resets stale TCC entries automatically.
+- **Permissions are on the DerivedData build.** The post-build action installs the Dev app to `~/Applications`. Run `scripts/dev-reset-permissions.sh` manually if TCC gets stale.
 
 ## Xcode MCP Bridge
 

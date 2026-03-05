@@ -6,7 +6,7 @@ import os
 @Observable
 final class TelemetryService {
     private let settings: SettingsManager
-    private let logger = Logger(subsystem: "com.jyo.thinkur", category: "TelemetryService")
+    private let logger = Logger(subsystem: AppRuntimeConfiguration.loggerSubsystem, category: "TelemetryService")
 
     // Daily digest state
     private var dailyStats = DailyStats()
@@ -17,6 +17,10 @@ final class TelemetryService {
     }
 
     func initialize() {
+        guard AppRuntimeConfiguration.isTelemetryEnabled else {
+            logger.info("Telemetry disabled for dev build")
+            return
+        }
         let config = TelemetryDeck.Config(appID: Constants.telemetryDeckAppID)
         TelemetryDeck.initialize(config: config)
         lastDigestDate = todayString()
@@ -127,6 +131,7 @@ final class TelemetryService {
     // MARK: - Private
 
     private func send(_ signalName: String, with parameters: [String: String] = [:]) {
+        guard AppRuntimeConfiguration.isTelemetryEnabled else { return }
         guard settings.analyticsEnabled else { return }
         TelemetryDeck.signal(signalName, parameters: parameters)
     }

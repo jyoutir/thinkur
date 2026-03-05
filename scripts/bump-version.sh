@@ -3,9 +3,7 @@ set -euo pipefail
 
 # Usage: ./scripts/bump-version.sh [major|minor|patch]
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-PROJECT_YML="${PROJECT_DIR}/project.yml"
+source "$(dirname "$0")/lib/release-common.sh"
 
 if [ $# -ne 1 ] || [[ ! "$1" =~ ^(major|minor|patch)$ ]]; then
     echo "Usage: $0 [major|minor|patch]"
@@ -15,8 +13,8 @@ fi
 BUMP_TYPE="$1"
 
 # Read current version
-CURRENT_VERSION=$(grep 'MARKETING_VERSION:' "$PROJECT_YML" | head -1 | sed 's/.*"\(.*\)"/\1/')
-CURRENT_BUILD=$(grep 'CURRENT_PROJECT_VERSION:' "$PROJECT_YML" | head -1 | sed 's/.*"\(.*\)"/\1/')
+CURRENT_VERSION="$(read_version)"
+CURRENT_BUILD="$(read_build_number)"
 
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
