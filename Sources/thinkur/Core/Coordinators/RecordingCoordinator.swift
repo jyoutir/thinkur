@@ -84,6 +84,12 @@ final class RecordingCoordinator {
     func startRecording() {
         guard state == .idle else { return }
 
+        // Free tier gate: block recording when words exhausted
+        guard sharedState.canTranscribe else {
+            sharedState.freeTierExhausted = true
+            return
+        }
+
         // Mutual exclusion: don't start dictation while a meeting is recording
         guard !sharedState.isMeetingActive else {
             Logger.app.info("Dictation ignored — meeting is active")
@@ -257,6 +263,11 @@ final class RecordingCoordinator {
                 appName: frontmostAppDetector.appName,
                 correctionCount: correctionCount
             )
+            if sharedState.isFreeTier {
+                let totalWords = await analyticsService.fetchTotalWords()
+                sharedState.freeWordsUsed = totalWords
+                sharedState.freeTierExhausted = totalWords >= Constants.freeWordLimit
+            }
             telemetryService.recordTranscription(
                 wordCount: finalText.split(separator: " ").count,
                 durationSeconds: duration,

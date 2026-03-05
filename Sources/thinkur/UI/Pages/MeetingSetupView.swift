@@ -23,7 +23,7 @@ struct MeetingSetupView: View {
                     .font(Typography.title)
                     .foregroundStyle(ColorTokens.textPrimary)
 
-                Text("thinkur uses Deepgram\u{2019}s Nova-3 for best-in-class transcription and speaker identification. Your audio is sent securely to Deepgram \u{2014} nothing else leaves your Mac.")
+                Text("Powered by Deepgram Nova-3 for accurate transcription and speaker identification.")
                     .font(Typography.body)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .multilineTextAlignment(.center)

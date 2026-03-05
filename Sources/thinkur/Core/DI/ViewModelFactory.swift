@@ -40,7 +40,7 @@ final class ViewModelFactory {
         self.shortcutsViewModel = ShortcutsViewModel(shortcutService: services.shortcutService)
         self.styleViewModel = StyleViewModel(stylePreferenceService: services.stylePreferenceService, analyticsService: services.analyticsService, settings: services.settings)
         self.insightsViewModel = InsightsViewModel(analyticsService: services.analyticsService)
-        self.onboardingViewModel = OnboardingViewModel(permissionManager: services.permissionManager, settings: services.settings, sharedState: services.sharedState, licenseManager: services.licenseManager, telemetryService: services.telemetryService)
+        self.onboardingViewModel = OnboardingViewModel(permissionManager: services.permissionManager, settings: services.settings, sharedState: services.sharedState, telemetryService: services.telemetryService)
         self.integrationsViewModel = IntegrationsViewModel(smartHomeService: services.smartHomeService)
         self.meetingCoordinator = MeetingCoordinator(
             settings: services.settings,
