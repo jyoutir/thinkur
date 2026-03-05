@@ -267,6 +267,7 @@ final class RecordingCoordinator {
                 let totalWords = await analyticsService.fetchTotalWords()
                 sharedState.freeWordsUsed = totalWords
                 sharedState.freeTierExhausted = totalWords >= Constants.freeWordLimit
+                sharedState.freeTimeSaved = await analyticsService.fetchTotalTimeSaved()
             }
             telemetryService.recordTranscription(
                 wordCount: finalText.split(separator: " ").count,

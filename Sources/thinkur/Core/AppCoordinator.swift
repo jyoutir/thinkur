@@ -70,6 +70,7 @@ final class AppCoordinator {
             let totalWords = await services.analyticsService.fetchTotalWords()
             sharedState.freeWordsUsed = totalWords
             sharedState.freeTierExhausted = totalWords >= Constants.freeWordLimit
+            sharedState.freeTimeSaved = await services.analyticsService.fetchTotalTimeSaved()
         }
         await modelLoad
     }
