@@ -6,19 +6,27 @@ import SwiftUI
 private struct MCPApp: Identifiable {
     let id: String
     let name: String
-    let icon: String
+    let bundleID: String?
+    let sfSymbol: String
     let instruction: String
 }
 
 private let mcpApps: [MCPApp] = [
-    MCPApp(id: "claude-desktop", name: "Claude Desktop", icon: "desktopcomputer",
+    MCPApp(id: "claude-desktop", name: "Claude Desktop", bundleID: "com.anthropic.claudefordesktop",
+           sfSymbol: "desktopcomputer",
            instruction: "Settings \u{2192} Developer \u{2192} Edit Config \u{2192} paste"),
-    MCPApp(id: "claude-code", name: "Claude Code", icon: "terminal",
+    MCPApp(id: "claude-code", name: "Claude Code", bundleID: nil,
+           sfSymbol: "terminal",
            instruction: "Paste into .claude.json or project settings"),
-    MCPApp(id: "cursor", name: "Cursor", icon: "cursorarrow.rays",
+    MCPApp(id: "cursor", name: "Cursor", bundleID: "com.todesktop.230313mzl4w4u92",
+           sfSymbol: "cursorarrow.rays",
            instruction: "Cursor Settings \u{2192} MCP \u{2192} Add Server \u{2192} paste"),
-    MCPApp(id: "windsurf", name: "Windsurf", icon: "wind",
+    MCPApp(id: "windsurf", name: "Windsurf", bundleID: "com.codeium.windsurf",
+           sfSymbol: "wind",
            instruction: "Cascade Settings \u{2192} MCP \u{2192} paste"),
+    MCPApp(id: "chatgpt", name: "ChatGPT", bundleID: "com.openai.chat",
+           sfSymbol: "bubble.left.and.text.bubble.right",
+           instruction: "Settings \u{2192} MCP Servers \u{2192} Add \u{2192} paste"),
 ]
 
 // MARK: - MCPView
@@ -97,8 +105,7 @@ struct MCPView: View {
                     }
                 } label: {
                     HStack(spacing: Spacing.xxs) {
-                        Image(systemName: app.icon)
-                            .font(.system(size: 10))
+                        appChipIcon(app)
                         Text(app.name)
                             .font(Typography.caption)
                     }
@@ -123,11 +130,34 @@ struct MCPView: View {
     }
 
     @ViewBuilder
+    private func appChipIcon(_ app: MCPApp) -> some View {
+        if let bundleID = app.bundleID {
+            AppIconView(bundleID: bundleID, appName: app.name, size: 14)
+        } else {
+            Image(systemName: app.sfSymbol)
+                .font(.system(size: 10))
+        }
+    }
+
+    private var mcpConfigJSON: String {
+        let mcpPath = Bundle.main.bundlePath + "/Contents/MacOS/thinkur-mcp"
+        return """
+        {
+          "mcpServers": {
+            "thinkur": {
+              "command": "\(mcpPath)"
+            }
+          }
+        }
+        """
+    }
+
+    @ViewBuilder
     private var configCard: some View {
         GroupedSettingsSection {
             ZStack {
                 // Normal content
-                VStack(alignment: .leading, spacing: Spacing.xs) {
+                VStack(alignment: .leading, spacing: Spacing.sm) {
                     HStack {
                         Image(systemName: "doc.on.clipboard")
                             .font(.system(size: 13))
@@ -136,17 +166,21 @@ struct MCPView: View {
                             .font(Typography.headline)
                             .foregroundStyle(ColorTokens.textPrimary)
                         Spacer()
-                    }
-
-                    HStack {
-                        Text(selectedApp.instruction)
-                            .font(Typography.caption)
-                            .foregroundStyle(ColorTokens.textSecondary)
-                        Spacer()
                         Image(systemName: "doc.on.doc")
                             .font(.system(size: 11))
                             .foregroundStyle(ColorTokens.textSecondary)
                     }
+
+                    Text(mcpConfigJSON)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(ColorTokens.textSecondary)
+                        .padding(Spacing.sm)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(ColorTokens.border.opacity(0.3), in: RoundedRectangle(cornerRadius: 6))
+
+                    Text(selectedApp.instruction)
+                        .font(Typography.caption)
+                        .foregroundStyle(ColorTokens.textTertiary)
                 }
                 .opacity(mcpConfigCopied ? 0 : 1)
 
@@ -256,17 +290,8 @@ struct MCPView: View {
             return
         }
 
-        let config = """
-        {
-          "mcpServers": {
-            "thinkur": {
-              "command": "\(mcpPath)"
-            }
-          }
-        }
-        """
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(config, forType: .string)
+        NSPasteboard.general.setString(mcpConfigJSON, forType: .string)
         mcpConfigCopied = true
         Task {
             try? await Task.sleep(for: .seconds(1.5))
