@@ -4,6 +4,7 @@ struct SystemSettingsView: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(AppCoordinator.self) private var coordinator
     @Environment(SharedAppState.self) private var sharedState
+    @Environment(UpdaterService.self) private var updaterService
     @State private var showClearConfirmation = false
     @State private var appeared = false
 
@@ -54,18 +55,20 @@ struct SystemSettingsView: View {
                         ToggleRow(
                             icon: "power",
                             title: "Launch at Login",
-                            subtitle: "Start thinkur automatically when you log in",
+                            subtitle: "Start \(AppRuntimeConfiguration.displayName) automatically when you log in",
                             isOn: $s.launchAtLogin
                         )
 
-                        Divider()
+                        if updaterService.isEnabled {
+                            Divider()
 
-                        ToggleRow(
-                            icon: "arrow.triangle.2.circlepath",
-                            title: "Automatic Updates",
-                            subtitle: "Keep thinkur up to date automatically",
-                            isOn: $s.automaticUpdates
-                        )
+                            ToggleRow(
+                                icon: "arrow.triangle.2.circlepath",
+                                title: "Automatic Updates",
+                                subtitle: "Keep \(AppRuntimeConfiguration.displayName) up to date automatically",
+                                isOn: $s.automaticUpdates
+                            )
+                        }
                     }
                 }
 
@@ -97,7 +100,7 @@ struct SystemSettingsView: View {
                     ToggleRow(
                         icon: "chart.bar",
                         title: "Share Anonymous Usage Data",
-                        subtitle: "Help improve thinkur by sharing anonymous, aggregated analytics. No personal data is collected.",
+                        subtitle: "Help improve \(AppRuntimeConfiguration.displayName) by sharing anonymous, aggregated analytics. No personal data is collected.",
                         isOn: $s.analyticsEnabled
                     )
                 }

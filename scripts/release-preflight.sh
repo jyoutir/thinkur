@@ -5,16 +5,15 @@ set -euo pipefail
 # Run standalone or as part of release.sh
 # Validates tools, auth, signing, and repo state before any work begins.
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+source "$(dirname "$0")/lib/release-common.sh"
 
 PASS=0
 FAIL=0
 WARN=0
 
-pass() { echo "  ✓ $1"; PASS=$((PASS + 1)); }
-fail() { echo "  ✗ $1"; FAIL=$((FAIL + 1)); }
-warn() { echo "  ⚠ $1"; WARN=$((WARN + 1)); }
+pass() { log_pass "$1"; PASS=$((PASS + 1)); }
+fail() { log_fail "$1"; FAIL=$((FAIL + 1)); }
+warn() { log_warn "$1"; WARN=$((WARN + 1)); }
 
 echo "=== Release Pre-flight Checks ==="
 echo ""
@@ -50,24 +49,23 @@ else
     fail "Developer ID Application identity not in keychain"
 fi
 
-# ─── generate_appcast (Sparkle tool) ─────────────────────────────────────────
+# ─── Notarization profile ───────────────────────────────────────────────────
 echo ""
-echo "Sparkle:"
-GENERATE_APPCAST=$(find ~/Library/Developer/Xcode/DerivedData -name "generate_appcast" -type f 2>/dev/null | head -1)
-if [ -n "${GENERATE_APPCAST}" ]; then
-    pass "generate_appcast found: ${GENERATE_APPCAST}"
+echo "Notarization:"
+if xcrun notarytool store-credentials --help &>/dev/null; then
+    pass "notarytool available (profile: ${NOTARIZE_PROFILE})"
 else
-    fail "generate_appcast not found in DerivedData — build project in Xcode first"
+    warn "notarytool not available — notarization may fail"
 fi
 
 # ─── thinkur-web repo ───────────────────────────────────────────────────────
 echo ""
 echo "thinkur-web:"
-THINKUR_WEB_DIR="${THINKUR_WEB_DIR:-$(cd "${PROJECT_DIR}/.." && pwd)/thinkur-web}"
-if [ -d "${THINKUR_WEB_DIR}/.git" ]; then
-    pass "thinkur-web repo found at ${THINKUR_WEB_DIR}"
+THINKUR_WEB_DIR_CHECK="${THINKUR_WEB_DIR:-$(cd "${PROJECT_DIR}/.." && pwd)/thinkur-web}"
+if [ -d "${THINKUR_WEB_DIR_CHECK}/.git" ]; then
+    pass "thinkur-web repo found at ${THINKUR_WEB_DIR_CHECK}"
 else
-    fail "thinkur-web repo not found at ${THINKUR_WEB_DIR} — set THINKUR_WEB_DIR or clone it"
+    fail "thinkur-web repo not found at ${THINKUR_WEB_DIR_CHECK} — set THINKUR_WEB_DIR or clone it"
 fi
 
 # ─── Git state ───────────────────────────────────────────────────────────────

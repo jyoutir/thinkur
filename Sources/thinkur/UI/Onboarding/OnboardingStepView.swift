@@ -14,7 +14,7 @@ struct PermissionsPage: View {
             Spacer()
 
             VStack(spacing: Spacing.sm) {
-                Text("Set up thinkur")
+                Text("Set up \(AppRuntimeConfiguration.displayName)")
                     .font(Typography.onboardingTitle)
                     .foregroundStyle(ColorTokens.textPrimary)
 
@@ -47,7 +47,7 @@ struct PermissionsPage: View {
                         name: "Microphone",
                         description: "To hear your voice",
                         isGranted: permissionManager.microphoneGranted,
-                        helpText: "If the prompt doesn\u{2019}t appear: System Settings \u{2192} Privacy & Security \u{2192} Microphone \u{2192} Enable thinkur"
+                        helpText: "If the prompt doesn\u{2019}t appear: System Settings \u{2192} Privacy & Security \u{2192} Microphone \u{2192} Enable \(AppRuntimeConfiguration.displayName)"
                     ) {
                         Task { await viewModel.requestMicrophone() }
                     }
@@ -59,7 +59,7 @@ struct PermissionsPage: View {
                         name: "Accessibility",
                         description: "To type into any app",
                         isGranted: permissionManager.accessibilityGranted,
-                        helpText: "System Settings \u{2192} Privacy & Security \u{2192} Accessibility \u{2192} Enable thinkur"
+                        helpText: "System Settings \u{2192} Privacy & Security \u{2192} Accessibility \u{2192} Enable \(AppRuntimeConfiguration.displayName)"
                     ) {
                         permissionManager.requestAccessibility()
                     }
@@ -71,7 +71,7 @@ struct PermissionsPage: View {
                         name: "Input Monitoring",
                         description: "To detect your hotkey",
                         isGranted: permissionManager.inputMonitoringGranted,
-                        helpText: "System Settings \u{2192} Privacy & Security \u{2192} Input Monitoring \u{2192} Enable thinkur"
+                        helpText: "System Settings \u{2192} Privacy & Security \u{2192} Input Monitoring \u{2192} Enable \(AppRuntimeConfiguration.displayName)"
                     ) {
                         permissionManager.requestInputMonitoring()
                         permissionManager.openInputMonitoringSettings()
@@ -259,7 +259,7 @@ struct TryItPage: View {
             Spacer()
 
             VStack(spacing: Spacing.sm) {
-                Text("Try thinkur in real apps")
+                Text("Try \(AppRuntimeConfiguration.displayName) in real apps")
                     .font(Typography.onboardingTitle)
                     .foregroundStyle(ColorTokens.textPrimary)
 

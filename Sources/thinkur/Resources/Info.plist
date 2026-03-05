@@ -15,7 +15,9 @@
     <key>CFBundleIconName</key>
     <string>AppIcon</string>
     <key>CFBundleName</key>
-    <string>thinkur</string>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundleDisplayName</key>
+    <string>$(PRODUCT_NAME)</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -25,24 +27,36 @@
     <key>LSMinimumSystemVersion</key>
     <string>$(MACOSX_DEPLOYMENT_TARGET)</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>thinkur needs microphone access to transcribe your speech.</string>
+    <string>$(PRODUCT_NAME) needs microphone access to transcribe your speech.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>thinkur uses on-device speech recognition to convert your voice to text.</string>
+    <string>$(PRODUCT_NAME) uses on-device speech recognition to convert your voice to text.</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>thinkur uses Bluetooth to discover and control your Philips Hue lights directly.</string>
+    <string>$(PRODUCT_NAME) uses Bluetooth to discover and control your Philips Hue lights directly.</string>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>thinkur needs local network access to discover and control your Philips Hue Bridge.</string>
+    <string>$(PRODUCT_NAME) needs local network access to discover and control your Philips Hue Bridge.</string>
     <key>NSBonjourServices</key>
     <array>
         <string>_hue._tcp</string>
     </array>
     <key>SUFeedURL</key>
-    <string>https://thinkur.app/appcast.xml</string>
+    <string>$(THINKUR_SU_FEED_URL)</string>
     <key>SUPublicEDKey</key>
     <string>p3XeXQXBnO5CHE4fzFsVSupt5PyW5p8P1KA6Aw6MZ+o=</string>
     <key>LSUIElement</key>
     <true/>
+    <key>ThinkurAppMode</key>
+    <string>$(THINKUR_APP_MODE)</string>
+    <key>ThinkurEnableSparkle</key>
+    <string>$(THINKUR_ENABLE_SPARKLE)</string>
+    <key>ThinkurEnableTelemetry</key>
+    <string>$(THINKUR_ENABLE_TELEMETRY)</string>
+    <key>ThinkurSupportDirName</key>
+    <string>$(THINKUR_SUPPORT_DIR_NAME)</string>
+    <key>ThinkurSharedLicenseService</key>
+    <string>$(THINKUR_SHARED_LICENSE_SERVICE)</string>
+    <key>ThinkurSecretServicePrefix</key>
+    <string>$(THINKUR_SECRET_SERVICE_PREFIX)</string>
 </dict>
 </plist>

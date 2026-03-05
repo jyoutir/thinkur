@@ -19,7 +19,7 @@ enum Constants {
     static let appSupportDirectory: URL = {
         let fm = FileManager.default
         let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = appSupport.appendingPathComponent("thinkur", isDirectory: true)
+        let dir = appSupport.appendingPathComponent(AppRuntimeConfiguration.supportDirectoryName, isDirectory: true)
         try? fm.createDirectory(
             at: dir,
             withIntermediateDirectories: true,

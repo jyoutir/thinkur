@@ -27,7 +27,7 @@ final class HueBridgeBackend: SmartHomeBackend {
 
     // MARK: - Keychain
 
-    private static let keychainService = "com.jyo.thinkur.hue"
+    private static let keychainService = "\(AppRuntimeConfiguration.secretServicePrefix).hue"
     private static let keychainAccountAPIKey = "hue-api-key"
     private static let keychainAccountBridgeIP = "hue-bridge-ip"
     private static let keychainAccountBridgeCertHash = "hue-bridge-cert-sha256"

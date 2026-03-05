@@ -2,133 +2,112 @@
 set -euo pipefail
 
 # ─── thinkur release orchestrator ────────────────────────────────────────────
-# One command for a full release, or pick individual steps.
-#
-# Usage:
-#   ./scripts/release.sh patch              # full release
-#   ./scripts/release.sh minor              # full release, minor bump
-#   ./scripts/release.sh major              # full release, major bump
-#   ./scripts/release.sh --step preflight   # just check readiness
-#   ./scripts/release.sh --step build       # just build DMG
-#   ./scripts/release.sh --step publish     # just publish (re-publish after failure)
+# Two verbs:
+#   ./scripts/release.sh prepare patch|minor|major
+#       → preflight → bump → xcodegen → commit → tag → build DMG → push → stage draft
+#   ./scripts/release.sh publish
+#       → generate appcast → push to thinkur-web → publish draft release
 
-# ─── Setup ───────────────────────────────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-cd "${PROJECT_DIR}"
-
-# Prevent stale GITHUB_TOKEN from blocking gh CLI keyring auth
-unset GITHUB_TOKEN 2>/dev/null || true
+source "$(dirname "$0")/lib/release-common.sh"
 
 # ─── Parse arguments ─────────────────────────────────────────────────────────
-STEP=""
-BUMP_TYPE=""
-
 if [ $# -eq 0 ]; then
     echo "Usage:"
-    echo "  $0 patch|minor|major          Full release with version bump"
-    echo "  $0 --step preflight           Just run pre-flight checks"
-    echo "  $0 --step build               Just build DMG"
-    echo "  $0 --step publish             Just publish (GitHub Release + appcast)"
+    echo "  $0 prepare patch|minor|major   Prepare a release (build + stage draft)"
+    echo "  $0 publish                     Publish appcast + release (makes it live)"
     exit 1
 fi
 
-if [ "$1" = "--step" ]; then
-    if [ $# -lt 2 ]; then
-        echo "Error: --step requires an argument: preflight, build, or publish"
-        exit 1
-    fi
-    STEP="$2"
-    if [[ ! "$STEP" =~ ^(preflight|build|publish)$ ]]; then
-        echo "Error: unknown step '$STEP' — use preflight, build, or publish"
-        exit 1
-    fi
-elif [[ "$1" =~ ^(major|minor|patch)$ ]]; then
-    BUMP_TYPE="$1"
-else
-    echo "Error: unknown argument '$1'"
-    echo "Use patch|minor|major for full release, or --step <step> for individual steps."
-    exit 1
-fi
+VERB="$1"
+shift
 
-# ─── Step runners ────────────────────────────────────────────────────────────
-step_preflight() {
-    "${SCRIPT_DIR}/release-preflight.sh"
-}
+case "$VERB" in
+    prepare)
+        if [ $# -lt 1 ] || [[ ! "$1" =~ ^(major|minor|patch)$ ]]; then
+            echo "Usage: $0 prepare patch|minor|major"
+            exit 1
+        fi
+        BUMP_TYPE="$1"
+        ;;
+    publish)
+        ;;
+    *)
+        echo "Error: unknown verb '$VERB' — use 'prepare' or 'publish'"
+        exit 1
+        ;;
+esac
 
-step_bump() {
-    local bump="$1"
+# ─── prepare ─────────────────────────────────────────────────────────────────
+if [ "$VERB" = "prepare" ]; then
+    CURRENT_VERSION="$(read_version)"
+
+    echo "=== thinkur Release — Prepare ==="
     echo ""
-    echo "=== Step: Bump Version (${bump}) ==="
+    echo "  Current version: ${CURRENT_VERSION}"
+    echo "  Bump type:       ${BUMP_TYPE}"
+    echo "  Steps:           preflight → bump → xcodegen → commit → tag → build DMG → push → stage draft"
+    echo ""
+    read -r -p "Proceed? [y/N] " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "Aborted."
+        exit 0
+    fi
 
-    "${SCRIPT_DIR}/bump-version.sh" "$bump"
+    # 1. Preflight
+    "${SCRIPT_DIR}/release-preflight.sh"
 
-    echo "→ Running xcodegen generate..."
+    # 2. Bump version
+    echo ""
+    echo "=== Step: Bump Version (${BUMP_TYPE}) ==="
+    "${SCRIPT_DIR}/bump-version.sh" "$BUMP_TYPE"
+
+    # 3. Regenerate Xcode project
+    log_step "Running xcodegen generate..."
+    cd "$PROJECT_DIR"
     xcodegen generate --quiet 2>/dev/null || xcodegen generate
 
-    local new_version
-    new_version=$(grep 'MARKETING_VERSION:' "${PROJECT_DIR}/project.yml" | head -1 | sed 's/.*"\(.*\)"/\1/')
-
-    echo "→ Committing version bump..."
+    # 4. Commit + tag
+    NEW_VERSION="$(read_version)"
+    log_step "Committing version bump..."
     git add project.yml thinkur.xcodeproj
-    git commit -m "Release v${new_version}"
-    git tag "v${new_version}"
+    git commit -m "Release v${NEW_VERSION}"
+    git tag "v${NEW_VERSION}"
+    log_pass "Committed and tagged v${NEW_VERSION}"
 
-    echo "  ✓ Committed and tagged v${new_version}"
-}
-
-step_build() {
+    # 5. Build DMG
     echo ""
     echo "=== Step: Build DMG ==="
     "${SCRIPT_DIR}/build-dmg.sh"
-}
 
-step_push() {
+    # 6. Push
     echo ""
     echo "=== Step: Push ==="
-    echo "→ Pushing to origin main with tags..."
+    log_step "Pushing to origin main with tags..."
     git push origin main --tags
-    echo "  ✓ Pushed"
-}
+    log_pass "Pushed"
 
-step_publish() {
+    # 7. Stage draft release
     echo ""
-    echo "=== Step: Publish ==="
-    "${SCRIPT_DIR}/publish-release.sh"
-}
+    echo "=== Step: Stage Draft Release ==="
+    "${SCRIPT_DIR}/stage-release.sh"
 
-# ─── Single step mode ────────────────────────────────────────────────────────
-if [ -n "$STEP" ]; then
-    case "$STEP" in
-        preflight) step_preflight ;;
-        build)     step_build ;;
-        publish)   step_publish ;;
-    esac
-    exit 0
+    echo ""
+    echo "========================================"
+    echo "  Prepare complete!"
+    echo "  Draft release staged for v${NEW_VERSION}"
+    echo ""
+    echo "  Next: validate the DMG, then run:"
+    echo "    ./scripts/release.sh publish"
+    echo "========================================"
 fi
 
-# ─── Full release mode ──────────────────────────────────────────────────────
-CURRENT_VERSION=$(grep 'MARKETING_VERSION:' "${PROJECT_DIR}/project.yml" | head -1 | sed 's/.*"\(.*\)"/\1/')
+# ─── publish ─────────────────────────────────────────────────────────────────
+if [ "$VERB" = "publish" ]; then
+    echo "=== thinkur Release — Publish ==="
+    "${SCRIPT_DIR}/publish-appcast.sh"
 
-echo "=== thinkur Release ==="
-echo ""
-echo "  Current version: ${CURRENT_VERSION}"
-echo "  Bump type:       ${BUMP_TYPE}"
-echo "  Steps:           preflight → bump → build → push → publish"
-echo ""
-read -r -p "Proceed? [y/N] " confirm
-if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    echo "Aborted."
-    exit 0
+    echo ""
+    echo "========================================"
+    echo "  Release published!"
+    echo "========================================"
 fi
-
-step_preflight
-step_bump "$BUMP_TYPE"
-step_build
-step_push
-step_publish
-
-echo ""
-echo "========================================"
-echo "  Release complete!"
-echo "========================================"

@@ -63,7 +63,7 @@ struct SidebarView: View {
 
             Spacer(minLength: 0)
 
-            if updaterService.updateAvailable {
+            if updaterService.isEnabled && updaterService.updateAvailable {
                 Button {
                     updaterService.checkForUpdates()
                 } label: {

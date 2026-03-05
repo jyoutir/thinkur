@@ -40,8 +40,6 @@ targets:
       base:
         INFOPLIST_FILE: Sources/thinkur/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: Sources/thinkur/Resources/thinkur.entitlements
-        PRODUCT_BUNDLE_IDENTIFIER: com.jyo.thinkur
-        PRODUCT_NAME: thinkur
         MARKETING_VERSION: "0.0.1"
         CURRENT_PROJECT_VERSION: "3"
         GENERATE_INFOPLIST_FILE: false
@@ -54,10 +52,28 @@ targets:
         debug:
           CODE_SIGN_STYLE: Automatic
           CODE_SIGN_IDENTITY: "Apple Development"
+          PRODUCT_BUNDLE_IDENTIFIER: com.jyo.thinkur.dev
+          PRODUCT_NAME: "thinkur Dev"
+          THINKUR_APP_MODE: dev
+          THINKUR_SUPPORT_DIR_NAME: thinkur-dev
+          THINKUR_ENABLE_SPARKLE: "NO"
+          THINKUR_SU_FEED_URL: ""
+          THINKUR_ENABLE_TELEMETRY: "NO"
+          THINKUR_SHARED_LICENSE_SERVICE: com.jyo.thinkur.license
+          THINKUR_SECRET_SERVICE_PREFIX: com.jyo.thinkur.dev
         release:
           CODE_SIGN_STYLE: Manual
           CODE_SIGN_IDENTITY: "Developer ID Application"
           OTHER_CODE_SIGN_FLAGS: "--timestamp --options runtime"
+          PRODUCT_BUNDLE_IDENTIFIER: com.jyo.thinkur
+          PRODUCT_NAME: thinkur
+          THINKUR_APP_MODE: release
+          THINKUR_SUPPORT_DIR_NAME: thinkur
+          THINKUR_ENABLE_SPARKLE: "YES"
+          THINKUR_SU_FEED_URL: "https://thinkur.app/appcast.xml"
+          THINKUR_ENABLE_TELEMETRY: "YES"
+          THINKUR_SHARED_LICENSE_SERVICE: com.jyo.thinkur.license
+          THINKUR_SECRET_SERVICE_PREFIX: com.jyo.thinkur
     entitlements:
       path: Sources/thinkur/Resources/thinkur.entitlements
       properties:
@@ -108,13 +124,10 @@ schemes:
       postActions:
         - script: |
             if [ "${CONFIGURATION}" = "Debug" ]; then
-              # Clear stale TCC entries so the new binary gets fresh grants.
-              # Without this, duplicate csreq entries accumulate and permissions break.
-              for svc in Microphone Accessibility ListenEvent SpeechRecognition ScreenCapture; do
-                tccutil reset "$svc" com.jyo.thinkur 2>/dev/null || true
-              done
+              "${PROJECT_DIR}/scripts/install-dev-app.sh" \
+                "${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}"
             fi
-          name: "Reset TCC permissions (Debug only)"
+          name: "Install Dev app (Debug only)"
           settingsTarget: thinkur
     test:
       targets:

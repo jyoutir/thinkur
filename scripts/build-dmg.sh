@@ -1,26 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ─── Configuration ──────────────────────────────────────────────────────────────
-APP_NAME="thinkur"
+# ─── build-dmg.sh ────────────────────────────────────────────────────────────
+# Archives, signs, notarizes, and creates a DMG for release.
+# Builds in /tmp to avoid macOS provenance xattr issues.
+
+source "$(dirname "$0")/lib/release-common.sh"
+
+VERSION="$(read_version)"
+BUILD_NUM="$(read_build_number)"
+DMG_FILE="$(dmg_name)"
 SCHEME="thinkur"
-BUNDLE_ID="com.jyo.thinkur"
-TEAM_ID="YZ9FFMX8QS"
-NOTARIZE_PROFILE="thinkur-notarize"
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-BUILD_DIR="${PROJECT_DIR}/build"
-
-# Read version from project.yml (safe read-only access to source tree)
-VERSION=$(grep 'MARKETING_VERSION:' "${PROJECT_DIR}/project.yml" | head -1 | sed 's/.*"\(.*\)"/\1/')
-BUILD_NUM=$(grep 'CURRENT_PROJECT_VERSION:' "${PROJECT_DIR}/project.yml" | head -1 | sed 's/.*"\(.*\)"/\1/')
-DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 
 echo "=== Building ${APP_NAME} v${VERSION} (${BUILD_NUM}) ==="
 
 # ─── Generate Xcode project (in source tree — writes .xcodeproj, safe) ────────
-echo "→ Running xcodegen..."
+log_step "Running xcodegen..."
 cd "${PROJECT_DIR}"
 xcodegen generate
 
@@ -28,9 +23,8 @@ xcodegen generate
 # Copy the project to /tmp so xcodebuild/codesign never touch the source tree.
 # macOS Sequoia adds com.apple.macl and com.apple.provenance xattrs when
 # xcodebuild reads files, which locks out Terminal, editors, git, etc.
-# Building from /tmp avoids this entirely.
 TEMP_DIR=$(mktemp -d /tmp/thinkur-release-XXXX)
-echo "→ Copying project to isolated build dir: ${TEMP_DIR}"
+log_step "Copying project to isolated build dir: ${TEMP_DIR}"
 
 rsync -a \
     --exclude '.git' \
@@ -50,7 +44,7 @@ TEMP_BUILD_DIR="${TEMP_DIR}/build"
 ARCHIVE_PATH="${TEMP_BUILD_DIR}/${APP_NAME}.xcarchive"
 EXPORT_DIR="${TEMP_BUILD_DIR}/export"
 APP_PATH="${EXPORT_DIR}/${APP_NAME}.app"
-DMG_PATH="${TEMP_BUILD_DIR}/${DMG_NAME}"
+DMG_PATH="${TEMP_BUILD_DIR}/${DMG_FILE}"
 DERIVED_DATA="${TEMP_DIR}/DerivedData"
 EXPORT_OPTIONS="${TEMP_BUILD_DIR}/ExportOptions.plist"
 
@@ -64,7 +58,7 @@ trap cleanup EXIT
 mkdir -p "${TEMP_BUILD_DIR}"
 
 # ─── Create export options plist ────────────────────────────────────────────────
-cat > "${EXPORT_OPTIONS}" << 'PLIST'
+cat > "${EXPORT_OPTIONS}" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -72,7 +66,7 @@ cat > "${EXPORT_OPTIONS}" << 'PLIST'
     <key>method</key>
     <string>developer-id</string>
     <key>teamID</key>
-    <string>YZ9FFMX8QS</string>
+    <string>${TEAM_ID}</string>
     <key>signingStyle</key>
     <string>manual</string>
     <key>signingCertificate</key>
@@ -82,7 +76,7 @@ cat > "${EXPORT_OPTIONS}" << 'PLIST'
 PLIST
 
 # ─── Archive (from temp copy) ──────────────────────────────────────────────────
-echo "→ Archiving (Release)..."
+log_step "Archiving (Release)..."
 cd "${TEMP_DIR}"
 xcodebuild archive \
     -scheme "${SCHEME}" \
@@ -98,7 +92,7 @@ xcodebuild archive \
     -quiet
 
 # ─── Export ─────────────────────────────────────────────────────────────────────
-echo "→ Exporting archive..."
+log_step "Exporting archive..."
 xcodebuild -exportArchive \
     -archivePath "${ARCHIVE_PATH}" \
     -exportPath "${EXPORT_DIR}" \
@@ -106,12 +100,12 @@ xcodebuild -exportArchive \
     -quiet
 
 # ─── Verify codesign ───────────────────────────────────────────────────────────
-echo "→ Verifying code signature..."
+log_step "Verifying code signature..."
 codesign --verify --deep --strict "${APP_PATH}"
-echo "  ✓ Code signature valid"
+log_pass "Code signature valid"
 
 # ─── Create DMG ─────────────────────────────────────────────────────────────────
-echo "→ Creating DMG..."
+log_step "Creating DMG..."
 rm -f "${DMG_PATH}"
 
 create-dmg \
@@ -128,39 +122,39 @@ create-dmg \
     || true  # create-dmg exits 2 on "image already exists" which is fine
 
 if [ ! -f "${DMG_PATH}" ]; then
-    echo "✗ DMG creation failed"
+    log_fail "DMG creation failed"
     exit 1
 fi
 
 # ─── Sign DMG ──────────────────────────────────────────────────────────────────
-echo "→ Signing DMG..."
+log_step "Signing DMG..."
 codesign --sign "Developer ID Application" \
     --timestamp \
     "${DMG_PATH}"
-echo "  ✓ DMG signed"
+log_pass "DMG signed"
 
 # ─── Notarize ──────────────────────────────────────────────────────────────────
-echo "→ Submitting for notarization (this may take 5-15 minutes)..."
+log_step "Submitting for notarization (this may take 5-15 minutes)..."
 xcrun notarytool submit "${DMG_PATH}" \
     --keychain-profile "${NOTARIZE_PROFILE}" \
     --wait
 
 # ─── Staple ────────────────────────────────────────────────────────────────────
-echo "→ Stapling notarization ticket..."
+log_step "Stapling notarization ticket..."
 xcrun stapler staple "${DMG_PATH}"
 
 # ─── Final verification ───────────────────────────────────────────────────────
-echo "→ Final Gatekeeper check..."
+log_step "Final Gatekeeper check..."
 spctl --assess --type open --context context:primary-signature -v "${DMG_PATH}"
 
 # ─── Copy DMG back to source tree ─────────────────────────────────────────────
-echo "→ Copying DMG to ${BUILD_DIR}..."
+log_step "Copying DMG to ${BUILD_DIR}..."
 mkdir -p "${BUILD_DIR}"
-cp "${DMG_PATH}" "${BUILD_DIR}/${DMG_NAME}"
+cp "${DMG_PATH}" "${BUILD_DIR}/${DMG_FILE}"
 
 # Temp directory is cleaned up by the EXIT trap
 
 echo ""
 echo "=== Done ==="
-echo "DMG: ${BUILD_DIR}/${DMG_NAME}"
-echo "Size: $(du -h "${BUILD_DIR}/${DMG_NAME}" | cut -f1)"
+echo "DMG: ${BUILD_DIR}/${DMG_FILE}"
+echo "Size: $(du -h "${BUILD_DIR}/${DMG_FILE}" | cut -f1)"

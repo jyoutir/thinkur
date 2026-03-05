@@ -4,16 +4,26 @@ import os
 @MainActor
 @Observable
 final class UpdaterService {
-    private let controller: SPUStandardUpdaterController
-    private let updaterDelegate: UpdaterDelegate
-    private let userDriverDelegate: UserDriverDelegate
+    private let controller: SPUStandardUpdaterController?
+    private let updaterDelegate: UpdaterDelegate?
+    private let userDriverDelegate: UserDriverDelegate?
+
+    let isEnabled: Bool = AppRuntimeConfiguration.isSparkleEnabled
 
     private(set) var updateAvailable = false
     private(set) var availableVersion: String?
 
-    private var updater: SPUUpdater { controller.updater }
+    private var updater: SPUUpdater? { controller?.updater }
 
     init(settings: SettingsManager) {
+        guard isEnabled else {
+            self.controller = nil
+            self.updaterDelegate = nil
+            self.userDriverDelegate = nil
+            Logger.app.info("Sparkle updater disabled for dev build")
+            return
+        }
+
         let updaterDelegate = UpdaterDelegate()
         let userDriverDelegate = UserDriverDelegate()
         self.updaterDelegate = updaterDelegate
@@ -34,7 +44,7 @@ final class UpdaterService {
             self?.availableVersion = version
         }
 
-        let u = updater
+        guard let u = updater else { return }
         u.automaticallyChecksForUpdates = settings.automaticUpdates
         u.updateCheckInterval = 4 * 60 * 60
 
@@ -48,14 +58,15 @@ final class UpdaterService {
         // checkForUpdateInformation() fires didFindValidUpdate without showing any UI.
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(5))
-            self?.updater.checkForUpdateInformation()
+            self?.updater?.checkForUpdateInformation()
         }
 
         observeSettings(settings)
     }
 
     func checkForUpdates() {
-        updater.checkForUpdates()
+        guard isEnabled else { return }
+        updater?.checkForUpdates()
     }
 
     // MARK: - Settings Observation
@@ -65,8 +76,8 @@ final class UpdaterService {
             _ = settings.automaticUpdates
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.updater.automaticallyChecksForUpdates = settings.automaticUpdates
+                guard let self, let updater = self.updater else { return }
+                updater.automaticallyChecksForUpdates = settings.automaticUpdates
                 self.observeSettings(settings)
             }
         }
