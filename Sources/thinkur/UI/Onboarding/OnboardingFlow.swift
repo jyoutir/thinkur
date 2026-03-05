@@ -69,7 +69,6 @@ struct OnboardingFlow: View {
                             .frame(width: 50, height: 1)
                     }
                     .padding(.horizontal, Spacing.xl)
-                    .padding(.bottom, Spacing.lg)
                 }
             }
             .padding(.horizontal, Spacing.xl)
