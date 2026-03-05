@@ -16,8 +16,10 @@ struct ContentRouter: View {
                 InsightsView()
             case .meetings:
                 MeetingsView()
-            case .integrations:
-                IntegrationsView()
+            case .mcp:
+                MCPView()
+            case .hue:
+                HueView()
             case .hotkey:
                 HotkeySettingsView()
             case .dictation:

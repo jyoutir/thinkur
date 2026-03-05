@@ -195,7 +195,9 @@ struct SidebarView: View {
             if settingsExpanded {
                 ScrollView {
                     VStack(spacing: 2) {
-                        ForEach(NavigationPage.settingsPages) { page in
+                        ForEach(NavigationPage.settingsPages.filter { page in
+                            page != .hue || settings.smartHomeEnabled
+                        }) { page in
                             settingsRow(for: page)
                         }
                     }

@@ -11,10 +11,11 @@ enum NavigationPage: String, CaseIterable, Identifiable, Hashable {
     case style
     case insights
     case meetings
-    case integrations
+    case mcp
     case hotkey
     case dictation
     case system
+    case hue
     case permissions
     case billing
     case support
@@ -28,10 +29,11 @@ enum NavigationPage: String, CaseIterable, Identifiable, Hashable {
         case .style: return "Style"
         case .insights: return "Insights"
         case .meetings: return "Meetings"
-        case .integrations: return "Integrations"
+        case .mcp: return "MCP"
         case .hotkey: return "Hotkey"
         case .dictation: return "Dictation"
         case .system: return "System"
+        case .hue: return "Hue Bulbs"
         case .permissions: return "Permissions"
         case .billing: return "Billing"
         case .support: return "Support"
@@ -45,10 +47,11 @@ enum NavigationPage: String, CaseIterable, Identifiable, Hashable {
         case .style: return "paintbrush"
         case .insights: return "chart.bar"
         case .meetings: return "person.2.wave.2"
-        case .integrations: return "lightbulb.led.wide"
+        case .mcp: return "brain"
         case .hotkey: return "keyboard"
         case .dictation: return "mic"
         case .system: return "gearshape"
+        case .hue: return "lightbulb.led.wide"
         case .permissions: return "lock.shield"
         case .billing: return "creditcard"
         case .support: return "ladybug"
@@ -57,9 +60,9 @@ enum NavigationPage: String, CaseIterable, Identifiable, Hashable {
 
     var section: NavigationSection {
         switch self {
-        case .home, .shortcuts, .style, .insights, .meetings, .integrations:
+        case .home, .shortcuts, .style, .insights, .meetings, .mcp:
             return .main
-        case .hotkey, .dictation, .system, .permissions, .billing, .support:
+        case .hotkey, .dictation, .system, .hue, .permissions, .billing, .support:
             return .settings
         }
     }

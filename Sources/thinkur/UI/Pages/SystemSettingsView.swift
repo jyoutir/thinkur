@@ -72,6 +72,15 @@ struct SystemSettingsView: View {
                     }
                 }
 
+                GroupedSettingsSection(title: "Integrations") {
+                    ToggleRow(
+                        icon: "lightbulb.led.wide",
+                        title: "Philips Hue",
+                        subtitle: "Control lights with your voice",
+                        isOn: $s.smartHomeEnabled
+                    )
+                }
+
                 GroupedSettingsSection(title: "Aesthetics") {
                     AccentColorPicker(selectedColor: $s.accentColorName)
                 }
