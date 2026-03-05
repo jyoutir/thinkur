@@ -136,7 +136,7 @@ struct ModelLoadingPage: View {
                         .animation(.easeInOut(duration: 0.3), value: viewModel.isModelReady)
 
                     if viewModel.isModelReady {
-                        Text("Voice engine loaded. You\u{2019}re all set.")
+                        Text("Voice engine loaded. Your first 5,000 words are free.")
                             .font(Typography.onboardingBody)
                             .foregroundStyle(ColorTokens.textSecondary)
                             .transition(.opacity)
@@ -165,16 +165,6 @@ struct ModelLoadingPage: View {
                         .animation(.easeInOut(duration: 0.3), value: viewModel.modelDownloadProgress)
                         .padding(.top, Spacing.xs)
                 }
-            }
-
-            // Free tier welcome
-            VStack(spacing: Spacing.xxs) {
-                Text("Your first 5,000 words are free")
-                    .font(Typography.headline)
-                    .foregroundStyle(ColorTokens.textPrimary)
-                Text("No credit card needed. Use at your own pace.")
-                    .font(Typography.callout)
-                    .foregroundStyle(ColorTokens.textTertiary)
             }
 
             // ROI Calculator (interactive content while waiting)
