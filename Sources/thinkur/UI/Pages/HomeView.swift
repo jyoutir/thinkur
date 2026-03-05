@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @Environment(HomeViewModel.self) private var viewModel
     @Environment(SettingsManager.self) private var settings
+    @Environment(SharedAppState.self) private var sharedState
     @State private var appeared = false
     @State private var calendarExpanded = false
 
@@ -11,6 +12,34 @@ struct HomeView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
+                // Upgrade banner when free tier exhausted
+                if sharedState.freeTierExhausted && sharedState.isFreeTier {
+                    HStack(spacing: Spacing.sm) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.orange)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("You\u{2019}ve used your 5,000 free words!")
+                                .font(Typography.headline)
+                                .foregroundStyle(ColorTokens.textPrimary)
+                            Text("Upgrade to keep dictating.")
+                                .font(Typography.caption)
+                                .foregroundStyle(ColorTokens.textSecondary)
+                        }
+                        Spacer()
+                        Button("Upgrade") {
+                            if let url = URL(string: Constants.customerPortalURL) {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(settings.accentUITint)
+                        .controlSize(.small)
+                    }
+                    .padding(Spacing.md)
+                    .interactiveCard()
+                }
+
                 Text("Your recent voice typing activity.")
                     .font(Typography.callout)
                     .foregroundStyle(ColorTokens.textTertiary)
@@ -18,7 +47,11 @@ struct HomeView: View {
                 // Summary stats + calendar toggle + Press Tab prompt
                 HStack(spacing: Spacing.sm) {
                     StatPill(value: Formatters.formatTimeSaved(viewModel.totalTimeSaved), label: "saved")
-                    StatPill(value: Formatters.compactNumber(viewModel.totalWords), label: "words")
+                    if sharedState.isFreeTier {
+                        StatPill(value: "\(Formatters.compactNumber(viewModel.totalWords)) / \(Formatters.compactNumber(Constants.freeWordLimit))", label: "words")
+                    } else {
+                        StatPill(value: Formatters.compactNumber(viewModel.totalWords), label: "words")
+                    }
 
                     Button {
                         withAnimation(Animations.glassMorph) {

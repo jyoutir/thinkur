@@ -12,4 +12,13 @@ final class SharedAppState {
     var transcriptionVersion: Int = 0
     var lastSmartHomeAction: String?
     var isMeetingActive: Bool = false
+
+    // MARK: - Free Tier
+    var freeTierExhausted: Bool = false
+    var freeWordsUsed: Int = 0
+    var isUserLicensed: Bool = false
+
+    var canTranscribe: Bool { isUserLicensed || !freeTierExhausted }
+    var freeWordsRemaining: Int { max(0, Constants.freeWordLimit - freeWordsUsed) }
+    var isFreeTier: Bool { !isUserLicensed }
 }

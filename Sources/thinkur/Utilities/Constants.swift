@@ -3,6 +3,7 @@ import Foundation
 
 enum Constants {
     static let sampleRate: Double = 16_000
+    static let freeWordLimit: Int = 5_000
     static let tabKeyCode: CGKeyCode = 48
     static let vKeyCode: CGKeyCode = 9
     static let clipboardRestoreDelay: TimeInterval = 0.15

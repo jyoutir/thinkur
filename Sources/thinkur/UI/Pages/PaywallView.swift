@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PaywallView: View {
     @Environment(LicenseManager.self) private var licenseManager
+    @Environment(SharedAppState.self) private var sharedState
     @Environment(TelemetryService.self) private var telemetryService
 
     @State private var licenseKey = ""
@@ -21,7 +22,7 @@ struct PaywallView: View {
                 Spacer()
 
                 VStack(spacing: Spacing.sm) {
-                    Text("Your license has expired")
+                    Text(licenseManager.status == .expired ? "Your subscription has expired" : "You\u{2019}ve used your free words")
                         .font(Typography.onboardingTitle)
                         .foregroundStyle(ColorTokens.textPrimary)
 
@@ -159,7 +160,10 @@ struct PaywallView: View {
 
         do {
             let success = try await licenseManager.activate(key: licenseKey.trimmingCharacters(in: .whitespaces))
-            if !success {
+            if success {
+                sharedState.isUserLicensed = true
+                sharedState.freeTierExhausted = false
+            } else {
                 errorMessage = "Invalid license key. Please check and try again."
             }
         } catch {

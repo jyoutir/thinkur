@@ -65,6 +65,12 @@ final class AppCoordinator {
         recordingViewModel.setupHotkey()
 
         await services.licenseManager.validateOnLaunch()
+        sharedState.isUserLicensed = services.licenseManager.isLicensed
+        if sharedState.isFreeTier {
+            let totalWords = await services.analyticsService.fetchTotalWords()
+            sharedState.freeWordsUsed = totalWords
+            sharedState.freeTierExhausted = totalWords >= Constants.freeWordLimit
+        }
         await modelLoad
     }
 

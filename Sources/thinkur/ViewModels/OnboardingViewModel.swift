@@ -5,7 +5,7 @@ import SwiftUI
 @Observable
 final class OnboardingViewModel {
     var currentStep: Int = 0
-    private let totalSteps = 5
+    private let totalSteps = 4
 
     var isComplete: Bool {
         get { settings.hasCompletedOnboarding }
@@ -15,17 +15,15 @@ final class OnboardingViewModel {
     private let permissionManager: PermissionManager
     private let settings: SettingsManager
     private let sharedState: SharedAppState
-    let licenseManager: LicenseManager
     private let telemetryService: TelemetryService
     private var pollingTimer: Timer?
     private var stepEnteredAt: Date?
     private var onboardingStartedAt: Date?
 
-    init(permissionManager: PermissionManager, settings: SettingsManager, sharedState: SharedAppState, licenseManager: LicenseManager, telemetryService: TelemetryService) {
+    init(permissionManager: PermissionManager, settings: SettingsManager, sharedState: SharedAppState, telemetryService: TelemetryService) {
         self.permissionManager = permissionManager
         self.settings = settings
         self.sharedState = sharedState
-        self.licenseManager = licenseManager
         self.telemetryService = telemetryService
     }
 
@@ -43,7 +41,6 @@ final class OnboardingViewModel {
         switch currentStep {
         case 0: return allPermissionsGranted
         case 1: return isModelReady
-        case 4: return licenseManager.isLicensed
         default: return true
         }
     }
@@ -54,7 +51,7 @@ final class OnboardingViewModel {
             return
         }
 
-        let stepNames = ["Permissions", "Model", "QuickSettings", "TryIt", "Activate"]
+        let stepNames = ["Permissions", "Model", "QuickSettings", "TryIt"]
         let durationOnStep = Int(Date().timeIntervalSince(stepEnteredAt ?? Date()))
         telemetryService.trackOnboardingStep(
             step: currentStep,

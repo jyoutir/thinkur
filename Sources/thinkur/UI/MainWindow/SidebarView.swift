@@ -116,7 +116,18 @@ struct SidebarView: View {
 
                 Spacer()
 
-                if let plan = licenseManager.planName {
+                if sharedState.isFreeTier {
+                    let remaining = sharedState.freeWordsRemaining
+                    HStack(spacing: Spacing.xxs) {
+                        Image(systemName: "text.word.spacing")
+                            .font(.system(size: 8))
+                        Text("\(remaining.formatted()) words left")
+                            .font(Typography.caption)
+                    }
+                    .foregroundStyle(remaining < 500 ? .orange : ColorTokens.textSecondary)
+                    .padding(.horizontal, Spacing.xs)
+                    .padding(.vertical, Spacing.xxs)
+                } else if let plan = licenseManager.planName {
                     HStack(spacing: Spacing.xxs) {
                         Image(systemName: plan == "Lifetime" ? "infinity" : "arrow.triangle.2.circlepath")
                             .font(.system(size: 8))

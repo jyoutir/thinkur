@@ -167,6 +167,16 @@ struct ModelLoadingPage: View {
                 }
             }
 
+            // Free tier welcome
+            VStack(spacing: Spacing.xxs) {
+                Text("Your first 5,000 words are free")
+                    .font(Typography.headline)
+                    .foregroundStyle(ColorTokens.textPrimary)
+                Text("No credit card needed. Use at your own pace.")
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textTertiary)
+            }
+
             // ROI Calculator (interactive content while waiting)
             ROICalculatorView()
                 .frame(maxWidth: 720)
