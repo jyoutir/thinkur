@@ -29,11 +29,16 @@ log_pass "thinkur-web repo found: ${THINKUR_WEB_DIR}"
 # ─── Generate appcast.xml ────────────────────────────────────────────────────
 log_step "Generating appcast.xml..."
 
-# Create a staging directory with the DMG for appcast generation
+# Create a staging directory with the DMG for appcast generation.
+# Seed with the existing appcast so generate_appcast preserves older entries.
 APPCAST_STAGING="${BUILD_DIR}/appcast_staging"
 rm -rf "${APPCAST_STAGING}"
 mkdir -p "${APPCAST_STAGING}"
 cp "${DMG_FULL}" "${APPCAST_STAGING}/"
+EXISTING_APPCAST="${THINKUR_WEB_DIR}/public/appcast.xml"
+if [ -f "${EXISTING_APPCAST}" ]; then
+    cp "${EXISTING_APPCAST}" "${APPCAST_STAGING}/appcast.xml"
+fi
 
 # If RELEASE_NOTES.md exists, convert to HTML for Sparkle release notes.
 # Sparkle's generate_appcast picks up *.html files named to match the DMG.
