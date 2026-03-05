@@ -106,6 +106,11 @@ final class SettingsManager {
         didSet { defaults.set(Array(hiddenStyleApps), forKey: "hiddenStyleApps") }
     }
 
+    // Smart home
+    var smartHomeEnabled: Bool {
+        didSet { defaults.set(smartHomeEnabled, forKey: "smartHomeEnabled") }
+    }
+
     // Onboarding
     var hasCompletedOnboarding: Bool {
         didSet { defaults.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding") }
@@ -168,6 +173,9 @@ final class SettingsManager {
         // Accent color (migrate removed "black" to green)
         let storedColor = defaults.string(forKey: "accentColorName") ?? AccentColor.defaultGreen.rawValue
         self.accentColorName = AccentColor(rawValue: storedColor) != nil ? storedColor : AccentColor.defaultGreen.rawValue
+
+        // Smart home
+        self.smartHomeEnabled = defaults.bool(forKey: "smartHomeEnabled")
 
         // Hidden style apps
         self.hiddenStyleApps = Set(defaults.stringArray(forKey: "hiddenStyleApps") ?? [])
