@@ -4,8 +4,11 @@
 /// Uses GetApplicationEventTarget() (not GetEventDispatcherTarget()) for LSUIElement compatibility.
 /// Supports both keyDown (kEventHotKeyPressed) and keyUp (kEventHotKeyReleased) for push-to-talk.
 ///
-/// When thinkur is frontmost, the hotkey is unregistered so keyboard events pass through to
-/// TextFields normally. When another app takes focus, the hotkey re-registers immediately.
+/// When thinkur is frontmost, the Carbon hotkey is unregistered so keyboard events pass through
+/// to TextFields normally. A local NSEvent monitor takes over instead — it fires the hotkey
+/// callback unless the key window's first responder is a text input (NSText/NSTextField),
+/// so the hotkey still works during onboarding and other non-text-editing screens.
+/// When another app takes focus, the Carbon hotkey re-registers and the local monitor is removed.
 ///
 /// Fn/Globe key (keyCode 63) uses a minimal CGEvent tap fallback since Carbon can't register
 /// modifier-only keys.
@@ -27,6 +30,11 @@ final class HotkeyManager: HotkeyListening {
     private var fnRetainedSelf: Unmanaged<HotkeyManager>?
     private let fnTapQueue = DispatchQueue(label: "com.thinkur.fn-tap", qos: .userInteractive)
     private var fnTapRunLoop: CFRunLoop?
+
+    // MARK: - Local Event Monitor (active when thinkur is frontmost)
+
+    private var localKeyDownMonitor: Any?
+    private var localKeyUpMonitor: Any?
 
     // MARK: - Shared State (thread-safe)
 
@@ -326,10 +334,90 @@ final class HotkeyManager: HotkeyListening {
         return Unmanaged.passRetained(event)
     }
 
+    // MARK: - Local Event Monitor (thinkur frontmost)
+
+    /// Install a local NSEvent monitor for keyDown + keyUp so the hotkey works while thinkur
+    /// is frontmost. If the key window's first responder is a text input (NSText / NSTextField),
+    /// the event passes through so Tab navigation in TextFields still works.
+    private func installLocalMonitor() {
+        guard localKeyDownMonitor == nil else { return }
+
+        let requiredNSMods = Self.cgEventFlagsToNSModifiers(targetModifiers)
+
+        localKeyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            guard event.keyCode == self.targetKeyCode,
+                  !event.isARepeat,
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+                      .subtracting([.capsLock, .numericPad, .function]) == requiredNSMods
+            else { return event }
+
+            // Let text fields handle the key normally
+            if Self.firstResponderIsTextInput { return event }
+
+            guard !self.isKeyDown else { return nil }
+            self.isKeyDown = true
+            Logger.hotkey.info("LOCAL MONITOR keyDown — firing onKeyDown")
+            self.onKeyDown?()
+            return nil // swallow event so SwiftUI doesn't see it
+        }
+
+        localKeyUpMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyUp) { [weak self] event in
+            guard let self else { return event }
+            guard event.keyCode == self.targetKeyCode,
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+                      .subtracting([.capsLock, .numericPad, .function]) == requiredNSMods
+            else { return event }
+
+            if Self.firstResponderIsTextInput { return event }
+
+            guard self.isKeyDown else { return nil }
+            self.isKeyDown = false
+            Logger.hotkey.info("LOCAL MONITOR keyUp — firing onKeyUp")
+            self.onKeyUp?()
+            return nil
+        }
+
+        Logger.hotkey.debug("installLocalMonitor — installed")
+    }
+
+    private func removeLocalMonitor() {
+        if let m = localKeyDownMonitor {
+            NSEvent.removeMonitor(m)
+            localKeyDownMonitor = nil
+        }
+        if let m = localKeyUpMonitor {
+            NSEvent.removeMonitor(m)
+            localKeyUpMonitor = nil
+        }
+        Logger.hotkey.debug("removeLocalMonitor — removed")
+    }
+
+    /// Check whether the key window's first responder is a text editing view.
+    /// Returns true for NSTextField (field editor), NSTextView, and any NSText subclass.
+    private static var firstResponderIsTextInput: Bool {
+        guard let responder = NSApp.keyWindow?.firstResponder else { return false }
+        // The field editor is an NSTextView that appears as first responder when
+        // an NSTextField is being edited. Checking for NSText covers both.
+        return responder is NSText
+    }
+
+    /// Convert CGEventFlags to NSEvent.ModifierFlags for local monitor matching.
+    private static func cgEventFlagsToNSModifiers(_ flags: CGEventFlags) -> NSEvent.ModifierFlags {
+        var mods: NSEvent.ModifierFlags = []
+        if flags.contains(.maskCommand)   { mods.insert(.command) }
+        if flags.contains(.maskShift)     { mods.insert(.shift) }
+        if flags.contains(.maskAlternate) { mods.insert(.option) }
+        if flags.contains(.maskControl)   { mods.insert(.control) }
+        return mods
+    }
+
     // MARK: - Frontmost App Tracking
 
-    /// When thinkur is frontmost, unregister the hotkey so keyboard events pass through
-    /// to TextFields normally. Re-register when another app takes focus.
+    /// When thinkur is frontmost, unregister the Carbon hotkey and install a local NSEvent
+    /// monitor instead. The local monitor fires the hotkey unless a text field has focus.
+    /// When another app takes focus, the Carbon hotkey re-registers and the local monitor
+    /// is removed.
     private func startObservingFrontmostApp() {
         let selfFrontmost = NSWorkspace.shared.frontmostApplication?.processIdentifier == selfPID
         isSelfFrontmost = selfFrontmost
@@ -339,6 +427,7 @@ final class HotkeyManager: HotkeyListening {
                 if let tap = fnEventTap { CGEvent.tapEnable(tap: tap, enable: false) }
             } else {
                 unregisterHotkey()
+                installLocalMonitor()
             }
         }
 
@@ -359,9 +448,11 @@ final class HotkeyManager: HotkeyListening {
                     if let tap = self.fnEventTap { CGEvent.tapEnable(tap: tap, enable: false) }
                 } else {
                     self.unregisterHotkey()
+                    self.installLocalMonitor()
                 }
-                Logger.hotkey.debug("thinkur activated — hotkey unregistered")
+                Logger.hotkey.debug("thinkur activated — Carbon hotkey unregistered, local monitor installed")
             } else {
+                self.removeLocalMonitor()
                 if self.targetKeyCode == 63 {
                     if let tap = self.fnEventTap { CGEvent.tapEnable(tap: tap, enable: true) }
                 } else {
@@ -377,6 +468,7 @@ final class HotkeyManager: HotkeyListening {
             NSWorkspace.shared.notificationCenter.removeObserver(frontmostObserver)
         }
         frontmostObserver = nil
+        removeLocalMonitor()
     }
 
     // MARK: - Modifier Conversion
