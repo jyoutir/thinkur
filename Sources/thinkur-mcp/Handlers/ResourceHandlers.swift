@@ -34,7 +34,7 @@ enum ResourceHandlers {
                         store: store, days: 7, limit: 50
                     )
                     return .init(contents: [
-                        .text(encode(records), uri: params.uri, mimeType: "application/json")
+                        .text(encodeJSON(records), uri: params.uri, mimeType: "application/json")
                     ])
                 } catch {
                     logger.error("Failed to read recent transcriptions: \(error)")
@@ -48,7 +48,7 @@ enum ResourceHandlers {
                     let store = try SQLiteStore(path: analyticsPath)
                     let summary = try AnalyticsQueries.getSummary(store: store)
                     return .init(contents: [
-                        .text(encode(summary), uri: params.uri, mimeType: "application/json")
+                        .text(encodeJSON(summary), uri: params.uri, mimeType: "application/json")
                     ])
                 } catch {
                     logger.error("Failed to read analytics summary: \(error)")
@@ -65,13 +65,4 @@ enum ResourceHandlers {
         }
     }
 
-    private static func encode<T: Encodable>(_ value: T) -> String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(value),
-              let str = String(data: data, encoding: .utf8) else {
-            return "[]"
-        }
-        return str
-    }
 }

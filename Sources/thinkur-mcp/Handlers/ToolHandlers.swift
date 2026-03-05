@@ -226,40 +226,40 @@ enum ToolHandlers {
             let results = try TranscriptionQueries.searchTranscriptions(
                 store: store,
                 query: query,
-                days: intArg(args["days"]) ?? 30,
-                limit: intArg(args["limit"]) ?? 50,
+                days: clampedInt(args["days"], default: 30, in: 1...365),
+                limit: clampedInt(args["limit"], default: 50, in: 1...10_000),
                 app: args["app"]?.stringValue
             )
-            return .init(content: [.text(encode(results))])
+            return .init(content: [.text(encodeJSON(results))])
 
         case "get_transcriptions":
             let store = try SQLiteStore(path: analyticsPath)
             let results = try TranscriptionQueries.getTranscriptions(
                 store: store,
-                days: intArg(args["days"]) ?? 7,
-                limit: intArg(args["limit"]) ?? 50,
+                days: clampedInt(args["days"], default: 7, in: 1...365),
+                limit: clampedInt(args["limit"], default: 50, in: 1...10_000),
                 app: args["app"]?.stringValue
             )
-            return .init(content: [.text(encode(results))])
+            return .init(content: [.text(encodeJSON(results))])
 
         case "get_sessions":
             let store = try SQLiteStore(path: analyticsPath)
             let results = try TranscriptionQueries.getSessions(
                 store: store,
-                days: intArg(args["days"]) ?? 7,
-                gapMinutes: intArg(args["gap_minutes"]) ?? 5,
+                days: clampedInt(args["days"], default: 7, in: 1...365),
+                gapMinutes: clampedInt(args["gap_minutes"], default: 5, in: 1...120),
                 app: args["app"]?.stringValue
             )
-            return .init(content: [.text(encode(results))])
+            return .init(content: [.text(encodeJSON(results))])
 
         case "get_meetings":
             let store = try SQLiteStore(path: meetingsPath)
             let results = try MeetingQueries.getMeetings(
                 store: store,
-                days: intArg(args["days"]) ?? 30,
-                limit: intArg(args["limit"]) ?? 20
+                days: clampedInt(args["days"], default: 30, in: 1...365),
+                limit: clampedInt(args["limit"], default: 20, in: 1...10_000)
             )
-            return .init(content: [.text(encode(results))])
+            return .init(content: [.text(encodeJSON(results))])
 
         case "search_meetings":
             guard let query = args["query"]?.stringValue, !query.isEmpty else {
@@ -269,10 +269,10 @@ enum ToolHandlers {
             let results = try MeetingQueries.searchMeetings(
                 store: store,
                 query: query,
-                days: intArg(args["days"]) ?? 30,
-                limit: intArg(args["limit"]) ?? 20
+                days: clampedInt(args["days"], default: 30, in: 1...365),
+                limit: clampedInt(args["limit"], default: 20, in: 1...10_000)
             )
-            return .init(content: [.text(encode(results))])
+            return .init(content: [.text(encodeJSON(results))])
 
         case "get_analytics":
             let store = try SQLiteStore(path: analyticsPath)
@@ -284,21 +284,21 @@ enum ToolHandlers {
             default: days = 30
             }
             let results = try AnalyticsQueries.getDailyAnalytics(store: store, days: days)
-            return .init(content: [.text(encode(results))])
+            return .init(content: [.text(encodeJSON(results))])
 
         case "get_top_apps":
             let store = try SQLiteStore(path: analyticsPath)
             let results = try AnalyticsQueries.getTopApps(
                 store: store,
-                limit: intArg(args["limit"]) ?? 5
+                limit: clampedInt(args["limit"], default: 5, in: 1...10_000)
             )
-            return .init(content: [.text(encode(results))])
+            return .init(content: [.text(encodeJSON(results))])
 
         case "export_transcriptions":
             let store = try SQLiteStore(path: analyticsPath)
             let result = try TranscriptionQueries.exportTranscriptions(
                 store: store,
-                days: intArg(args["days"]) ?? 30,
+                days: clampedInt(args["days"], default: 30, in: 1...365),
                 format: args["format"]?.stringValue ?? "json"
             )
             return .init(content: [.text(result)])
@@ -306,7 +306,7 @@ enum ToolHandlers {
         case "get_shortcuts":
             let store = try SQLiteStore(path: shortcutsPath)
             let results = try ShortcutQueries.getShortcuts(store: store)
-            return .init(content: [.text(encode(results))])
+            return .init(content: [.text(encodeJSON(results))])
 
         default:
             return .init(content: [.text("Unknown tool: \(params.name)")], isError: true)
@@ -321,13 +321,10 @@ enum ToolHandlers {
         return Int(value, strict: false)
     }
 
-    private static func encode<T: Encodable>(_ value: T) -> String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(value),
-              let str = String(data: data, encoding: .utf8) else {
-            return "[]"
-        }
-        return str
+    /// Extract and clamp an Int parameter to a safe range.
+    private static func clampedInt(_ value: Value?, default defaultValue: Int, in range: ClosedRange<Int>) -> Int {
+        guard let raw = intArg(value) else { return defaultValue }
+        return min(max(raw, range.lowerBound), range.upperBound)
     }
+
 }

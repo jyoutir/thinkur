@@ -38,7 +38,9 @@ struct ThinkurMCP {
         if let override = ProcessInfo.processInfo.environment["THINKUR_DATA_DIR"] {
             return URL(fileURLWithPath: override, isDirectory: true)
         }
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            fatalError("No Application Support directory found")
+        }
         return appSupport.appendingPathComponent("thinkur", isDirectory: true)
     }
 }

@@ -151,8 +151,8 @@ enum TranscriptionQueries {
     }
 
     private static func buildSession(from rows: [SessionRow]) -> MCPSession {
-        let first = rows.first!
-        let last = rows.last!
+        let first = rows[0]
+        let last = rows[rows.count - 1]
         let totalWords = rows.reduce(0) { $0 + $1.wordCount }
         let totalDuration = rows.reduce(0.0) { $0 + $1.duration }
         let combinedText = rows.map(\.text).joined(separator: " ")

@@ -8,7 +8,7 @@ enum AnalyticsQueries {
         store: SQLiteStore,
         days: Int = 30
     ) throws -> [MCPDailyAnalytics] {
-        let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         let cutoffString = formatter.string(from: cutoffDate)
@@ -59,7 +59,7 @@ enum AnalyticsQueries {
 
     /// Get summary stats (total words, sessions, duration, time saved).
     static func getSummary(store: SQLiteStore) throws -> MCPAnalyticsSummary {
-        let cutoffDate = Calendar.current.date(byAdding: .day, value: -365, to: Date())!
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -365, to: Date()) ?? Date()
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         let cutoffString = formatter.string(from: cutoffDate)
