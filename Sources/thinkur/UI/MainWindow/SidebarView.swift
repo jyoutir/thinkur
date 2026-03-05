@@ -118,15 +118,25 @@ struct SidebarView: View {
 
                 if sharedState.isFreeTier {
                     let remaining = sharedState.freeWordsRemaining
-                    HStack(spacing: Spacing.xxs) {
-                        Image(systemName: "text.word.spacing")
-                            .font(.system(size: 8))
-                        Text("\(remaining.formatted()) words left")
-                            .font(Typography.caption)
+                    Button {
+                        if !settingsExpanded {
+                            withAnimation(Animations.glassMorph) {
+                                settingsExpanded = true
+                            }
+                        }
+                        selectedPage = .billing
+                    } label: {
+                        HStack(spacing: Spacing.xxs) {
+                            Image(systemName: "text.word.spacing")
+                                .font(.system(size: 8))
+                            Text("\(remaining.formatted()) words left")
+                                .font(Typography.caption)
+                        }
+                        .foregroundStyle(remaining < 500 ? .orange : ColorTokens.textSecondary)
+                        .padding(.horizontal, Spacing.xs)
+                        .padding(.vertical, Spacing.xxs)
                     }
-                    .foregroundStyle(remaining < 500 ? .orange : ColorTokens.textSecondary)
-                    .padding(.horizontal, Spacing.xs)
-                    .padding(.vertical, Spacing.xxs)
+                    .buttonStyle(.plain)
                 } else if let plan = licenseManager.planName {
                     HStack(spacing: Spacing.xxs) {
                         Image(systemName: plan == "Lifetime" ? "infinity" : "arrow.triangle.2.circlepath")

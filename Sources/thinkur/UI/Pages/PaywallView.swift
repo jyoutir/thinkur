@@ -22,39 +22,43 @@ struct PaywallView: View {
                 Spacer()
 
                 VStack(spacing: Spacing.sm) {
-                    Text(licenseManager.status == .expired ? "Your subscription has expired" : "You\u{2019}ve used your free words")
-                        .font(Typography.onboardingTitle)
-                        .foregroundStyle(ColorTokens.textPrimary)
+                    if licenseManager.status == .expired || licenseManager.status == .invalid {
+                        Text("Your license has expired")
+                            .font(Typography.onboardingTitle)
+                            .foregroundStyle(ColorTokens.textPrimary)
 
-                    Text("Pick a plan to keep using thinkur.")
-                        .font(Typography.onboardingBody)
-                        .foregroundStyle(ColorTokens.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 460)
-                }
+                        Text("Reactivate to keep using thinkur.")
+                            .font(Typography.onboardingBody)
+                            .foregroundStyle(ColorTokens.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 460)
+                    } else {
+                        Text("You\u{2019}ve dictated \(sharedState.freeWordsUsed.formatted()) words with thinkur \u{2014} saving you ~\(Formatters.formatTimeSaved(sharedState.freeTimeSaved)) of typing.")
+                            .font(Typography.onboardingTitle)
+                            .foregroundStyle(ColorTokens.textPrimary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 520)
 
-                HStack(spacing: Spacing.md) {
-                    PlanCardCompact(
-                        title: "Monthly",
-                        price: "£5/mo",
-                        action: "Subscribe"
-                    ) {
-                        telemetryService.trackCheckoutOpened(planType: "monthly", source: "paywall")
-                        checkoutURL = URL(string: Constants.checkoutURLMonthly)
-                    }
-
-                    PlanCardCompact(
-                        title: "Lifetime",
-                        price: "£28",
-                        action: "Purchase",
-                        highlighted: true,
-                        badge: "Best value"
-                    ) {
-                        telemetryService.trackCheckoutOpened(planType: "lifetime", source: "paywall")
-                        checkoutURL = URL(string: Constants.checkoutURLLifetime)
+                        Text("Get thinkur for life to keep going.")
+                            .font(Typography.onboardingBody)
+                            .foregroundStyle(ColorTokens.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 460)
                     }
                 }
-                .frame(maxWidth: 460)
+
+                Button {
+                    telemetryService.trackCheckoutOpened(planType: "lifetime", source: "paywall")
+                    checkoutURL = URL(string: Constants.checkoutURLLifetime)
+                } label: {
+                    Text("Purchase \u{2014} \u{00A3}28")
+                        .font(Typography.headline)
+                        .frame(maxWidth: 280)
+                        .padding(.vertical, Spacing.sm)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(.primary)
 
                 if showCheckoutNudge {
                     HStack(spacing: Spacing.xs) {
@@ -171,60 +175,5 @@ struct PaywallView: View {
         }
 
         isActivating = false
-    }
-}
-
-// MARK: - Compact Plan Card
-
-private struct PlanCardCompact: View {
-    let title: String
-    let price: String
-    let action: String
-    var highlighted: Bool = false
-    var badge: String? = nil
-    let onTap: () -> Void
-
-    var body: some View {
-        VStack(spacing: Spacing.sm) {
-            VStack(spacing: Spacing.xxs) {
-                Text(title)
-                    .font(Typography.headline)
-                    .foregroundStyle(ColorTokens.textSecondary)
-
-                Text(price)
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(ColorTokens.textPrimary)
-            }
-
-            Button(action: onTap) {
-                Text(action)
-                    .font(Typography.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Spacing.xs)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.primary)
-        }
-        .padding(Spacing.md)
-        .frame(maxWidth: .infinity)
-        .interactiveCard()
-        .overlay(alignment: .top) {
-            if let badge {
-                Text(badge)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, Spacing.sm)
-                    .padding(.vertical, 2)
-                    .background(Color.accentColor, in: Capsule())
-                    .offset(y: -10)
-            }
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: CornerRadius.card)
-                .strokeBorder(
-                    highlighted ? ColorTokens.textPrimary.opacity(0.3) : Color.clear,
-                    lineWidth: 1
-                )
-        )
     }
 }

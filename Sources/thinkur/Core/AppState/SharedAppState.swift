@@ -16,6 +16,7 @@ final class SharedAppState {
     // MARK: - Free Tier
     var freeTierExhausted: Bool = false
     var freeWordsUsed: Int = 0
+    var freeTimeSaved: TimeInterval = 0
     var isUserLicensed: Bool = false
 
     var canTranscribe: Bool { isUserLicensed || !freeTierExhausted }

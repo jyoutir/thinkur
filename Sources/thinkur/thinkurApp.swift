@@ -53,7 +53,8 @@ private struct RootView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(.ultraThinMaterial)
                     .ignoresSafeArea()
-            } else if licenseManager.status == .expired || licenseManager.status == .invalid {
+            } else if licenseManager.status == .expired || licenseManager.status == .invalid
+                      || (coordinator.sharedState.freeTierExhausted && coordinator.sharedState.isFreeTier) {
                 PaywallView()
             } else {
                 MainWindowView()
