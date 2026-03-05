@@ -3,6 +3,7 @@ import SwiftUI
 struct PaywallView: View {
     @Environment(LicenseManager.self) private var licenseManager
     @Environment(SharedAppState.self) private var sharedState
+    @Environment(SettingsManager.self) private var settings
     @Environment(TelemetryService.self) private var telemetryService
 
     @State private var licenseKey = ""
@@ -11,6 +12,10 @@ struct PaywallView: View {
     @State private var checkoutURL: URL?
     @State private var showCheckoutNudge = false
     @State private var reachedReceipt = false
+
+    private var isExpiredLicense: Bool {
+        licenseManager.status == .expired || licenseManager.status == .invalid
+    }
 
     var body: some View {
         ZStack {
@@ -21,8 +26,9 @@ struct PaywallView: View {
             VStack(spacing: Spacing.xl) {
                 Spacer()
 
+                // Header
                 VStack(spacing: Spacing.sm) {
-                    if licenseManager.status == .expired || licenseManager.status == .invalid {
+                    if isExpiredLicense {
                         Text("Your license has expired")
                             .font(Typography.onboardingTitle)
                             .foregroundStyle(ColorTokens.textPrimary)
@@ -31,34 +37,35 @@ struct PaywallView: View {
                             .font(Typography.onboardingBody)
                             .foregroundStyle(ColorTokens.textSecondary)
                             .multilineTextAlignment(.center)
-                            .frame(maxWidth: 460)
+                            .frame(maxWidth: 420)
                     } else {
-                        Text("You\u{2019}ve dictated \(sharedState.freeWordsUsed.formatted()) words with thinkur \u{2014} saving you ~\(Formatters.formatTimeSaved(sharedState.freeTimeSaved)) of typing.")
+                        Text("\(sharedState.freeWordsUsed.formatted()) words dictated, ~\(Formatters.formatTimeSaved(sharedState.freeTimeSaved)) saved")
                             .font(Typography.onboardingTitle)
                             .foregroundStyle(ColorTokens.textPrimary)
                             .multilineTextAlignment(.center)
-                            .frame(maxWidth: 520)
+                            .frame(maxWidth: 420)
 
                         Text("Get thinkur for life to keep going.")
                             .font(Typography.onboardingBody)
                             .foregroundStyle(ColorTokens.textSecondary)
                             .multilineTextAlignment(.center)
-                            .frame(maxWidth: 460)
+                            .frame(maxWidth: 420)
                     }
                 }
 
+                // Purchase button
                 Button {
                     telemetryService.trackCheckoutOpened(planType: "lifetime", source: "paywall")
                     checkoutURL = URL(string: Constants.checkoutURLLifetime)
                 } label: {
-                    Text("Purchase \u{2014} \u{00A3}28")
+                    Text("Get Lifetime \u{00A3}28")
                         .font(Typography.headline)
                         .frame(maxWidth: 280)
                         .padding(.vertical, Spacing.sm)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .tint(.primary)
+                .tint(settings.accentUITint)
 
                 if showCheckoutNudge {
                     HStack(spacing: Spacing.xs) {
@@ -69,11 +76,12 @@ struct PaywallView: View {
                             .foregroundStyle(ColorTokens.textSecondary)
                     }
                     .padding(Spacing.sm)
-                    .frame(maxWidth: 460)
+                    .frame(maxWidth: 420)
                     .interactiveCard()
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
+                // License key activation
                 GroupedSettingsSection(title: "Already have a key?") {
                     VStack(spacing: 0) {
                         HStack(spacing: Spacing.sm) {
@@ -118,7 +126,7 @@ struct PaywallView: View {
                         }
                     }
                 }
-                .frame(maxWidth: 460)
+                .frame(maxWidth: 420)
 
                 VStack(spacing: Spacing.xxs) {
                     Text((try? AttributedString(markdown: "Already purchased? Check [your orders](https://app.lemonsqueezy.com/my-orders) for your key.")) ?? AttributedString())
@@ -127,13 +135,13 @@ struct PaywallView: View {
                 .font(Typography.caption)
                 .foregroundStyle(ColorTokens.textTertiary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 460)
+                .frame(maxWidth: 420)
 
                 Spacer()
             }
             .padding(.horizontal, Spacing.xl)
         }
-        .frame(minWidth: 920, minHeight: 620)
+        .frame(minWidth: 760, minHeight: 650)
         .sheet(isPresented: Binding(
             get: { checkoutURL != nil },
             set: { if !$0 { checkoutURL = nil } }
