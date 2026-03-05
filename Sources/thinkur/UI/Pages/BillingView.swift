@@ -123,6 +123,8 @@ struct BillingView: View {
                 Button("Reset to Onboarding (Debug)") {
                     Task {
                         await licenseManager.deactivate()
+                        sharedState.isUserLicensed = false
+                        sharedState.freeTierExhausted = false
                         settings.hasCompletedOnboarding = false
                     }
                 }
