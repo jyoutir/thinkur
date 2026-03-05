@@ -1,10 +1,39 @@
 import AppKit
 import SwiftUI
 
+// MARK: - MCP App Data
+
+private struct MCPApp: Identifiable {
+    let id: String
+    let name: String
+    let icon: String
+    let instruction: String
+}
+
+private let mcpApps: [MCPApp] = [
+    MCPApp(id: "claude-desktop", name: "Claude Desktop", icon: "desktopcomputer",
+           instruction: "Settings \u{2192} Developer \u{2192} Edit Config \u{2192} paste"),
+    MCPApp(id: "claude-code", name: "Claude Code", icon: "terminal",
+           instruction: "Paste into .claude.json or project settings"),
+    MCPApp(id: "cursor", name: "Cursor", icon: "cursorarrow.rays",
+           instruction: "Cursor Settings \u{2192} MCP \u{2192} Add Server \u{2192} paste"),
+    MCPApp(id: "windsurf", name: "Windsurf", icon: "wind",
+           instruction: "Cascade Settings \u{2192} MCP \u{2192} paste"),
+]
+
+// MARK: - MCPView
+
 struct MCPView: View {
     @Environment(IntegrationsViewModel.self) private var viewModel
+    @Environment(SettingsManager.self) private var settings
+    @State private var selectedAppID = "claude-desktop"
     @State private var mcpConfigCopied = false
     @State private var copiedPromptIndex: Int?
+    @State private var appeared = false
+
+    private var selectedApp: MCPApp {
+        mcpApps.first { $0.id == selectedAppID } ?? mcpApps[0]
+    }
 
     var body: some View {
         ScrollView {
@@ -13,9 +42,9 @@ struct MCPView: View {
                     .font(Typography.callout)
                     .foregroundStyle(ColorTokens.textTertiary)
 
-                mcpSection
+                setupSection
 
-                useCasesSection
+                promptsSection
 
                 if let error = viewModel.errorMessage {
                     Text(error)
@@ -24,52 +53,33 @@ struct MCPView: View {
                 }
             }
             .padding(Spacing.lg)
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 6)
+            .animation(Animations.glassMaterialize, value: appeared)
         }
+        .navigationTitle("MCP")
+        .onAppear { appeared = true }
     }
 
-    // MARK: - MCP Section
+    // MARK: - Setup
 
     @ViewBuilder
-    private var mcpSection: some View {
+    private var setupSection: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("Setup")
                 .font(Typography.caption)
                 .foregroundStyle(ColorTokens.textSecondary)
                 .textCase(.uppercase)
 
-            GroupedSettingsSection {
-                VStack(spacing: 0) {
-                    stepRow(number: "1", text: "Copy the config below")
-                    Divider()
-                    stepRow(number: "2", text: "Open your AI tool's MCP settings")
-                    Divider()
-                    stepRow(number: "3", text: "Paste and save — you're connected")
-                }
-            }
+            appChips
 
-            GroupedSettingsSection {
-                SettingsRowView(
-                    icon: "doc.on.clipboard",
-                    title: "MCP Config",
-                    subtitle: "For Claude Desktop, Claude Code, Cursor, Windsurf, and others"
-                ) {
-                    Button {
-                        copyMCPConfig()
-                    } label: {
-                        Text(mcpConfigCopied ? "Copied" : "Copy")
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(mcpConfigCopied ? ColorTokens.textTertiary : ColorTokens.textPrimary)
-                }
-            }
+            configCard
 
-            HStack(alignment: .top, spacing: Spacing.sm) {
+            HStack(spacing: Spacing.xs) {
                 Image(systemName: "lock.shield")
                     .font(.system(size: 11))
                     .foregroundStyle(ColorTokens.textTertiary)
-                    .padding(.top, 1)
-
-                Text("Read-only access to your local transcription history. Nothing leaves your device.")
+                Text("Read-only. Nothing leaves your device.")
                     .font(Typography.caption)
                     .foregroundStyle(ColorTokens.textTertiary)
             }
@@ -78,23 +88,89 @@ struct MCPView: View {
     }
 
     @ViewBuilder
-    private func stepRow(number: String, text: String) -> some View {
-        HStack(spacing: Spacing.sm) {
-            Text(number)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(ColorTokens.textTertiary)
-                .frame(width: 20, height: 20)
-                .background(ColorTokens.border, in: Circle())
-            Text(text)
-                .font(Typography.body)
-                .foregroundStyle(ColorTokens.textPrimary)
-            Spacer()
+    private var appChips: some View {
+        HStack(spacing: Spacing.xs) {
+            ForEach(mcpApps) { app in
+                Button {
+                    withAnimation(Animations.glassMorph) {
+                        selectedAppID = app.id
+                    }
+                } label: {
+                    HStack(spacing: Spacing.xxs) {
+                        Image(systemName: app.icon)
+                            .font(.system(size: 10))
+                        Text(app.name)
+                            .font(Typography.caption)
+                    }
+                    .padding(.horizontal, Spacing.sm)
+                    .padding(.vertical, Spacing.xs)
+                    .background {
+                        if selectedAppID == app.id {
+                            Capsule().fill(.regularMaterial)
+                        } else {
+                            Capsule().strokeBorder(ColorTokens.border, lineWidth: 1)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(
+                    selectedAppID == app.id
+                        ? ColorTokens.textPrimary
+                        : ColorTokens.textSecondary
+                )
+            }
         }
-        .padding(.horizontal, Spacing.md)
-        .padding(.vertical, 10)
     }
 
-    // MARK: - Try It
+    @ViewBuilder
+    private var configCard: some View {
+        GroupedSettingsSection {
+            ZStack {
+                // Normal content
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    HStack {
+                        Image(systemName: "doc.on.clipboard")
+                            .font(.system(size: 13))
+                            .foregroundStyle(ColorTokens.textTertiary)
+                        Text("MCP Config")
+                            .font(Typography.headline)
+                            .foregroundStyle(ColorTokens.textPrimary)
+                        Spacer()
+                    }
+
+                    HStack {
+                        Text(selectedApp.instruction)
+                            .font(Typography.caption)
+                            .foregroundStyle(ColorTokens.textSecondary)
+                        Spacer()
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 11))
+                            .foregroundStyle(ColorTokens.textSecondary)
+                    }
+                }
+                .opacity(mcpConfigCopied ? 0 : 1)
+
+                // Copied overlay
+                HStack(spacing: Spacing.xs) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(settings.accentUITint)
+                    Text("Copied to clipboard")
+                        .font(Typography.body)
+                        .foregroundStyle(ColorTokens.textPrimary)
+                }
+                .opacity(mcpConfigCopied ? 1 : 0)
+                .scaleEffect(mcpConfigCopied ? 1 : 0.8)
+            }
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.sm)
+            .contentShape(Rectangle())
+            .onTapGesture { copyMCPConfig() }
+            .animation(.spring(duration: 0.4, bounce: 0.2), value: mcpConfigCopied)
+        }
+    }
+
+    // MARK: - Prompts
 
     private static let prompts: [(icon: String, label: String, prompt: String)] = [
         (
@@ -115,9 +191,9 @@ struct MCPView: View {
     ]
 
     @ViewBuilder
-    private var useCasesSection: some View {
+    private var promptsSection: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            Text("Try it — copy a prompt")
+            Text("Prompts")
                 .font(Typography.caption)
                 .foregroundStyle(ColorTokens.textSecondary)
                 .textCase(.uppercase)
@@ -159,6 +235,8 @@ struct MCPView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Actions
+
     private func copyPrompt(_ prompt: String, index: Int) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(prompt, forType: .string)
@@ -170,6 +248,7 @@ struct MCPView: View {
     }
 
     private func copyMCPConfig() {
+        guard !mcpConfigCopied else { return }
         let mcpPath = Bundle.main.bundlePath + "/Contents/MacOS/thinkur-mcp"
 
         guard FileManager.default.fileExists(atPath: mcpPath) else {
