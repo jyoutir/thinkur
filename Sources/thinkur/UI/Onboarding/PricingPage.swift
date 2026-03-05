@@ -108,7 +108,7 @@ struct PricingPage: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
-            GroupedSettingsSection(title: "Already have a key?") {
+            GroupedSettingsSection(title: "Bought your key?") {
                 VStack(spacing: 0) {
                     HStack(spacing: Spacing.sm) {
                         TextField("XXXXX-XXXXX-XXXXX-XXXXX", text: $licenseKey)

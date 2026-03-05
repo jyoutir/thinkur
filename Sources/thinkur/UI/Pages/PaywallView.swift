@@ -82,7 +82,7 @@ struct PaywallView: View {
                 }
 
                 // License key activation
-                GroupedSettingsSection(title: "Already have a key?") {
+                GroupedSettingsSection(title: "Bought your key?") {
                     VStack(spacing: 0) {
                         HStack(spacing: Spacing.sm) {
                             TextField("XXXXX-XXXXX-XXXXX-XXXXX", text: $licenseKey)
@@ -129,8 +129,8 @@ struct PaywallView: View {
                 .frame(maxWidth: 420)
 
                 VStack(spacing: Spacing.xxs) {
-                    Text((try? AttributedString(markdown: "Already purchased? Check [your orders](https://app.lemonsqueezy.com/my-orders) for your key.")) ?? AttributedString())
-                    Text((try? AttributedString(markdown: "Need help? [jyo@thinkur.app](mailto:jyo@thinkur.app)")) ?? AttributedString())
+                    Text((try? AttributedString(markdown: "Check [your orders](https://app.lemonsqueezy.com/my-orders) for your key.")) ?? AttributedString())
+                    Text((try? AttributedString(markdown: "Student? Email [jyo@thinkur.app](mailto:jyo@thinkur.app) for a free key.")) ?? AttributedString())
                 }
                 .font(Typography.caption)
                 .foregroundStyle(ColorTokens.textTertiary)
