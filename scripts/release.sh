@@ -69,7 +69,8 @@ if [ "$VERB" = "prepare" ]; then
     # 4. Commit + tag
     NEW_VERSION="$(read_version)"
     log_step "Committing version bump..."
-    git add project.yml thinkur.xcodeproj
+    git add project.yml
+    git add thinkur.xcodeproj 2>/dev/null || true
     git commit -m "Release v${NEW_VERSION}"
     git tag "v${NEW_VERSION}"
     log_pass "Committed and tagged v${NEW_VERSION}"
