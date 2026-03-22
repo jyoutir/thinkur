@@ -47,8 +47,8 @@ struct SupportView: View {
 
                         Divider()
 
-                        SettingsRowView(icon: "envelope", title: "Contact") {
-                            Link("jyo@thinkur.app", destination: URL(string: "mailto:jyo@thinkur.app")!)
+                        SettingsRowView(icon: "exclamationmark.bubble", title: "Report an Issue") {
+                            Link("GitHub Issues", destination: URL(string: "https://github.com/jyoutir/thinkur/issues")!)
                                 .font(Typography.body)
                                 .foregroundStyle(settings.accentUITint)
                         }
@@ -274,7 +274,7 @@ struct SupportView: View {
         self.sharingDelegate = delegate
         service.delegate = delegate
 
-        service.recipients = ["jyo@thinkur.app"]
+        service.recipients = ["support@thinkur.app"]
         service.subject = subject
 
         var items: [Any] = [body]
@@ -294,7 +294,7 @@ struct SupportView: View {
     private func openMailto(subject: String, body: String) {
         var components = URLComponents()
         components.scheme = "mailto"
-        components.path = "jyo@thinkur.app"
+        components.path = "support@thinkur.app"
         components.queryItems = [
             URLQueryItem(name: "subject", value: subject),
             URLQueryItem(name: "body", value: body),

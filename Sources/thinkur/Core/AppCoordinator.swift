@@ -15,7 +15,6 @@ final class AppCoordinator {
     var settings: SettingsManager { services.settings }
     var sharedState: SharedAppState { services.sharedState }
     var permissionManager: PermissionManager { services.permissionManager }
-    var licenseManager: LicenseManager { services.licenseManager }
     var telemetryService: TelemetryService { services.telemetryService }
 
     var recordingViewModel: RecordingViewModel { viewModels.recordingViewModel }
@@ -64,14 +63,6 @@ final class AppCoordinator {
         services.frontmostAppDetector.startObserving()
         recordingViewModel.setupHotkey()
 
-        await services.licenseManager.validateOnLaunch()
-        sharedState.isUserLicensed = services.licenseManager.isLicensed
-        if sharedState.isFreeTier {
-            let totalWords = await services.analyticsService.fetchTotalWords()
-            sharedState.freeWordsUsed = totalWords
-            sharedState.freeTierExhausted = totalWords >= Constants.freeWordLimit
-            sharedState.freeTimeSaved = await services.analyticsService.fetchTotalTimeSaved()
-        }
         await modelLoad
     }
 

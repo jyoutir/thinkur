@@ -43,26 +43,6 @@ final class TelemetryService {
         ])
     }
 
-    func trackCheckoutOpened(planType: String, source: String) {
-        send("license.checkoutOpened", with: [
-            "planType": planType,
-            "source": source,
-        ])
-    }
-
-    func trackLicenseActivated(planType: String, source: String) {
-        send("license.activated", with: [
-            "planType": planType,
-            "source": source,
-        ])
-    }
-
-    func trackLicenseActivationFailed(reason: String) {
-        send("license.activationFailed", with: [
-            "reason": reason,
-        ])
-    }
-
     // MARK: - Daily Digest
 
     func recordTranscription(wordCount: Int, durationSeconds: Double, correctionCount: Int, fillerWordsRemoved: Int, selfCorrectionsUsed: Int) {

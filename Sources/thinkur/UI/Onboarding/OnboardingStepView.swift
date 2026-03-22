@@ -136,7 +136,7 @@ struct ModelLoadingPage: View {
                         .animation(.easeInOut(duration: 0.3), value: viewModel.isModelReady)
 
                     if viewModel.isModelReady {
-                        Text("Voice engine loaded. Your first 5,000 words are free.")
+                        Text("Voice engine loaded. Ready to go.")
                             .font(Typography.onboardingBody)
                             .foregroundStyle(ColorTokens.textSecondary)
                             .transition(.opacity)

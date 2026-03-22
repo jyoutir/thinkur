@@ -5,7 +5,6 @@ struct SidebarView: View {
     @Environment(ShortcutsViewModel.self) private var shortcutsVM
     @Environment(SettingsManager.self) private var settings
     @Environment(SharedAppState.self) private var sharedState
-    @Environment(LicenseManager.self) private var licenseManager
     @Environment(UpdaterService.self) private var updaterService
     @Environment(MeetingViewModel.self) private var meetingVM
     @State private var settingsExpanded = false
@@ -115,40 +114,6 @@ struct SidebarView: View {
                 .buttonStyle(.plain)
 
                 Spacer()
-
-                if sharedState.isFreeTier {
-                    let remaining = sharedState.freeWordsRemaining
-                    Button {
-                        if !settingsExpanded {
-                            withAnimation(Animations.glassMorph) {
-                                settingsExpanded = true
-                            }
-                        }
-                        selectedPage = .billing
-                    } label: {
-                        HStack(spacing: Spacing.xxs) {
-                            Image(systemName: "text.word.spacing")
-                                .font(.system(size: 8))
-                            Text("\(remaining.formatted()) words left")
-                                .font(Typography.caption)
-                        }
-                        .foregroundStyle(remaining < 500 ? .orange : ColorTokens.textSecondary)
-                        .padding(.horizontal, Spacing.xs)
-                        .padding(.vertical, Spacing.xxs)
-                    }
-                    .buttonStyle(.plain)
-                } else if let plan = licenseManager.planName {
-                    HStack(spacing: Spacing.xxs) {
-                        Image(systemName: plan == "Lifetime" ? "infinity" : "arrow.triangle.2.circlepath")
-                            .font(.system(size: 8))
-                        Text(plan)
-                            .font(Typography.caption)
-                    }
-                    .foregroundStyle(Color(light: .white, dark: .black))
-                    .padding(.horizontal, Spacing.xs)
-                    .padding(.vertical, Spacing.xxs)
-                    .background(ColorTokens.textPrimary, in: Capsule())
-                }
             }
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, Spacing.sm)

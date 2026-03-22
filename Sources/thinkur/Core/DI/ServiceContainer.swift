@@ -16,7 +16,6 @@ final class ServiceContainer {
     let stylePreferenceService: StylePreferenceService
     let textPostProcessor: TextPostProcessor
     let smartHomeService: SmartHomeService
-    let licenseManager: LicenseManager
     let telemetryService: TelemetryService
     let meetingService: MeetingService
 
@@ -33,10 +32,8 @@ final class ServiceContainer {
         self.analyticsService = AnalyticsService()
         self.shortcutService = ShortcutService()
         self.smartHomeService = SmartHomeService()
-        self.licenseManager = LicenseManager()
         self.telemetryService = TelemetryService(settings: self.settings)
         self.meetingService = MeetingService()
-        self.licenseManager.telemetryService = self.telemetryService
         self.stylePreferenceService = StylePreferenceService()
         self.textPostProcessor = TextPostProcessor(processors: [
             SelfCorrectionProcessor(),
@@ -64,7 +61,6 @@ final class ServiceContainer {
         stylePreferenceService: StylePreferenceService,
         textPostProcessor: TextPostProcessor,
         smartHomeService: SmartHomeService,
-        licenseManager: LicenseManager,
         telemetryService: TelemetryService,
         meetingService: MeetingService
     ) {
@@ -82,7 +78,6 @@ final class ServiceContainer {
         self.stylePreferenceService = stylePreferenceService
         self.textPostProcessor = textPostProcessor
         self.smartHomeService = smartHomeService
-        self.licenseManager = licenseManager
         self.telemetryService = telemetryService
         self.meetingService = meetingService
     }

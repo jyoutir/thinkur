@@ -28,8 +28,6 @@ struct ContentRouter: View {
                 SystemSettingsView()
             case .permissions:
                 PermissionsView()
-            case .billing:
-                BillingView()
             case .support:
                 SupportView()
             }

@@ -23,10 +23,8 @@ struct OnboardingFlow: View {
                             ModelLoadingPage()
                         case 2:
                             QuickSettingsPage()
-                        case 3:
-                            TryItPage()
                         default:
-                            PricingPage()
+                            TryItPage()
                         }
                     }
                     .id(viewModel.currentStep)
@@ -85,8 +83,7 @@ struct OnboardingFlow: View {
             "Permissions",
             "Model + Value",
             "Quick Settings",
-            "Try It",
-            "Get Started"
+            "Try It"
         ]
     }
 }

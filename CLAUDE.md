@@ -73,7 +73,6 @@ thinkur/
     ├── install-dev-app.sh      ← post-build: copy Dev app to ~/Applications
     ├── dev-reset-permissions.sh ← manual TCC reset for dev bundle ID
     ├── reset-for-testing.sh    ← wipe local state for testing
-    ├── create-lifetime-key.sh  ← gift codes via LemonSqueezy
     └── lib/
         └── release-common.sh   ← shared helpers for release scripts
 ```
@@ -116,7 +115,6 @@ Two build configurations produce two distinct apps:
 | Sparkle | Disabled | Enabled |
 | Telemetry | Disabled | Enabled |
 | App Support | `~/Library/Application Support/thinkur-dev/` | `~/Library/Application Support/thinkur/` |
-| License keychain | Shared (`com.jyo.thinkur.license`) | Shared |
 | Hue keychain | `com.jyo.thinkur.dev.hue` | `com.jyo.thinkur.hue` |
 | Install location | `~/Applications/thinkur Dev.app` (post-action) | `/Applications/thinkur.app` |
 

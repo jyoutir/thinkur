@@ -24,7 +24,6 @@ struct thinkurApp: App {
                 .environment(coordinator.meetingViewModel)
                 .environment(coordinator.settings)
                 .environment(coordinator.sharedState)
-                .environment(coordinator.licenseManager)
                 .environment(coordinator.telemetryService)
                 .environment(coordinator.updaterService)
                 .tint(coordinator.settings.accentUITint)
@@ -41,21 +40,11 @@ struct thinkurApp: App {
 private struct RootView: View {
     @Environment(AppCoordinator.self) private var coordinator
     @Environment(SettingsManager.self) private var settings
-    @Environment(LicenseManager.self) private var licenseManager
 
     var body: some View {
         Group {
             if !coordinator.onboardingViewModel.isComplete || !coordinator.permissionManager.allGranted {
                 OnboardingFlow()
-            } else if licenseManager.status == .validating {
-                ProgressView()
-                    .controlSize(.regular)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(.ultraThinMaterial)
-                    .ignoresSafeArea()
-            } else if licenseManager.status == .expired || licenseManager.status == .invalid
-                      || (coordinator.sharedState.freeTierExhausted && coordinator.sharedState.isFreeTier) {
-                PaywallView()
             } else {
                 MainWindowView()
             }

@@ -17,7 +17,6 @@ enum NavigationPage: String, CaseIterable, Identifiable, Hashable {
     case system
     case hue
     case permissions
-    case billing
     case support
 
     var id: String { rawValue }
@@ -35,7 +34,6 @@ enum NavigationPage: String, CaseIterable, Identifiable, Hashable {
         case .system: return "System"
         case .hue: return "Hue Bulbs"
         case .permissions: return "Permissions"
-        case .billing: return "Billing"
         case .support: return "Support"
         }
     }
@@ -53,7 +51,6 @@ enum NavigationPage: String, CaseIterable, Identifiable, Hashable {
         case .system: return "gearshape"
         case .hue: return "lightbulb.led.wide"
         case .permissions: return "lock.shield"
-        case .billing: return "creditcard"
         case .support: return "ladybug"
         }
     }
@@ -62,7 +59,7 @@ enum NavigationPage: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .home, .shortcuts, .style, .insights, .meetings, .mcp:
             return .main
-        case .hotkey, .dictation, .system, .hue, .permissions, .billing, .support:
+        case .hotkey, .dictation, .system, .hue, .permissions, .support:
             return .settings
         }
     }
