@@ -478,8 +478,7 @@ struct SmartFormattingProcessor: TextProcessor {
 
     // MARK: - Phone Number Parsing
 
-    private func tryParsePhoneNumber(words: [String], from start: Int) -> (String, Int)? {
-        // Collect consecutive single-digit number words
+    private func collectSpokenDigits(words: [String], from start: Int) -> (digits: [Int], endIndex: Int) {
         var digits: [Int] = []
         var j = start
         while j < words.count {
@@ -494,53 +493,32 @@ struct SmartFormattingProcessor: TextProcessor {
                 break
             }
         }
+        return (digits, j)
+    }
 
+    private func formatPhoneDigits(_ digits: [Int]) -> String? {
         if digits.count == 7 {
-            let formatted = digits[0..<3].map(String.init).joined() + "-" +
-                           digits[3..<7].map(String.init).joined()
-            return (formatted, j)
+            return digits[0..<3].map(String.init).joined() + "-" +
+                   digits[3..<7].map(String.init).joined()
         }
-
         if digits.count == 10 {
-            let formatted = "(\(digits[0..<3].map(String.init).joined())) " +
-                           digits[3..<6].map(String.init).joined() + "-" +
-                           digits[6..<10].map(String.init).joined()
-            return (formatted, j)
+            return "(\(digits[0..<3].map(String.init).joined())) " +
+                   digits[3..<6].map(String.init).joined() + "-" +
+                   digits[6..<10].map(String.init).joined()
         }
-
         return nil
     }
 
+    private func tryParsePhoneNumber(words: [String], from start: Int) -> (String, Int)? {
+        let (digits, endIndex) = collectSpokenDigits(words: words, from: start)
+        guard let formatted = formatPhoneDigits(digits) else { return nil }
+        return (formatted, endIndex)
+    }
+
     private func tryParsePhoneWithAreaCode(words: [String], from start: Int) -> (String, Int)? {
-        // After "area code", collect digits
-        var digits: [Int] = []
-        var j = start
-        while j < words.count {
-            let w = words[j].lowercased()
-            if let d = SmartFormattingRules.ones[w], d >= 0, d <= 9 {
-                digits.append(d)
-                j += 1
-            } else if w == "oh" || w == "o" {
-                digits.append(0)
-                j += 1
-            } else {
-                break
-            }
-        }
-
-        if digits.count == 10 {
-            let formatted = "(\(digits[0..<3].map(String.init).joined())) " +
-                           digits[3..<6].map(String.init).joined() + "-" +
-                           digits[6..<10].map(String.init).joined()
-            return (formatted, j)
-        }
-
-        if digits.count == 7 {
-            // Area code was the first 3 of a 10-digit sequence, but collected as separate group
-            return nil
-        }
-
-        return nil
+        let (digits, endIndex) = collectSpokenDigits(words: words, from: start)
+        guard digits.count == 10, let formatted = formatPhoneDigits(digits) else { return nil }
+        return (formatted, endIndex)
     }
 
     // MARK: - Number Word Collection
