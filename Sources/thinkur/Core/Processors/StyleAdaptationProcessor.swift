@@ -26,35 +26,23 @@ struct StyleAdaptationProcessor: TextProcessor {
 
         // Apply contractions: "I am" → "I'm", "do not" → "don't"
         for contraction in StyleAdaptationRules.casualContractions {
-            // Skip "have" contractions when followed by: digit, "to", or noun-phrase starters
-            // (articles, number words) — "i've a question" / "i've one question" is unnatural
+            let escaped = NSRegularExpression.escapedPattern(for: contraction.expanded)
+            let pattern: String
             if contraction.expanded.hasSuffix(" have") {
-                let pattern = #"(?i)\b"# + NSRegularExpression.escapedPattern(for: contraction.expanded) + #"\b(?!\s+(\d|to\b|a\b|an\b|the\b|one\b|two\b|three\b|four\b|five\b|some\b|any\b|no\b))"#
-                let (newText, mutations) = TextMutator.replaceAll(in: result, pattern: pattern, replacement: contraction.contracted)
-                if !mutations.isEmpty {
-                    for mutation in mutations {
-                        corrections.append(CorrectionEntry(
-                            processorName: name, ruleName: "casual_contraction",
-                            originalFragment: mutation.original, replacement: contraction.contracted,
-                            confidence: 0.85
-                        ))
-                    }
-                    result = newText
-                }
+                // Skip "have" contractions before digit, "to", or noun-phrase starters
+                pattern = #"(?i)\b"# + escaped + #"\b(?!\s+(\d|to\b|a\b|an\b|the\b|one\b|two\b|three\b|four\b|five\b|some\b|any\b|no\b))"#
             } else {
-                let pattern = #"(?i)\b"# + NSRegularExpression.escapedPattern(for: contraction.expanded) + #"\b"#
-                let (newText, mutations) = TextMutator.replaceAll(in: result, pattern: pattern, replacement: contraction.contracted)
-                if !mutations.isEmpty {
-                    for mutation in mutations {
-                        corrections.append(CorrectionEntry(
-                            processorName: name, ruleName: "casual_contraction",
-                            originalFragment: mutation.original, replacement: contraction.contracted,
-                            confidence: 0.85
-                        ))
-                    }
-                    result = newText
-                }
+                pattern = #"(?i)\b"# + escaped + #"\b"#
             }
+            let (newText, mutations) = TextMutator.replaceAll(in: result, pattern: pattern, replacement: contraction.contracted)
+            for mutation in mutations {
+                corrections.append(CorrectionEntry(
+                    processorName: name, ruleName: "casual_contraction",
+                    originalFragment: mutation.original, replacement: contraction.contracted,
+                    confidence: 0.85
+                ))
+            }
+            if !mutations.isEmpty { result = newText }
         }
 
         // Strip sign-offs in casual mode
@@ -338,44 +326,25 @@ struct StyleAdaptationProcessor: TextProcessor {
     private func insertIntroductoryCommas(_ text: String, corrections: inout [CorrectionEntry]) -> String {
         var result = text
 
-        // Split into sentences and process each
+        // Apply introductory phrases to each sentence
         let sentences = result.components(separatedBy: ". ")
-        if sentences.count > 1 {
-            var rebuilt: [String] = []
-            for sentence in sentences {
-                var s = sentence
-                for (pattern, replacement) in Self.introductoryPhrases {
-                    if let regex = RegexCache.shared.regex(for: pattern) {
-                        let nsRange = NSRange(s.startIndex..., in: s)
-                        let newS = regex.stringByReplacingMatches(in: s, range: nsRange, withTemplate: replacement)
-                        if newS != s {
-                            corrections.append(CorrectionEntry(
-                                processorName: name, ruleName: "introductory_comma",
-                                originalFragment: "", replacement: ",", confidence: 0.75
-                            ))
-                            s = newS
-                        }
-                    }
-                }
-                rebuilt.append(s)
-            }
-            result = rebuilt.joined(separator: ". ")
-        } else {
-            // Single sentence
+        let rebuilt = sentences.map { sentence -> String in
+            var s = sentence
             for (pattern, replacement) in Self.introductoryPhrases {
-                if let regex = RegexCache.shared.regex(for: pattern) {
-                    let nsRange = NSRange(result.startIndex..., in: result)
-                    let newResult = regex.stringByReplacingMatches(in: result, range: nsRange, withTemplate: replacement)
-                    if newResult != result {
-                        corrections.append(CorrectionEntry(
-                            processorName: name, ruleName: "introductory_comma",
-                            originalFragment: "", replacement: ",", confidence: 0.75
-                        ))
-                        result = newResult
-                    }
+                guard let regex = RegexCache.shared.regex(for: pattern) else { continue }
+                let nsRange = NSRange(s.startIndex..., in: s)
+                let newS = regex.stringByReplacingMatches(in: s, range: nsRange, withTemplate: replacement)
+                if newS != s {
+                    corrections.append(CorrectionEntry(
+                        processorName: name, ruleName: "introductory_comma",
+                        originalFragment: "", replacement: ",", confidence: 0.75
+                    ))
+                    s = newS
                 }
             }
+            return s
         }
+        result = rebuilt.joined(separator: ". ")
 
         // Trailing comma phrases
         for (pattern, replacement) in Self.trailingCommaPhrases {
@@ -439,15 +408,4 @@ struct StyleAdaptationProcessor: TextProcessor {
         return resultWords.joined(separator: " ")
     }
 
-    // MARK: - Helpers
-
-    private func isSpecialCasedStart(_ text: String) -> Bool {
-        let firstWord = text.split(separator: " ").first?.lowercased() ?? ""
-        return CapitalizationRules.specialCasing[firstWord] != nil
-    }
-
-    private func isProperNounStart(_ text: String) -> Bool {
-        let firstWord = String(text.split(separator: " ").first ?? "").lowercased().trimmingCharacters(in: .punctuationCharacters)
-        return CapitalizationRules.supplementaryProperNouns.contains(firstWord)
-    }
 }
