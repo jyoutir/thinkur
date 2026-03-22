@@ -118,10 +118,12 @@ final class MeetingAudioWriter {
 
     /// Delete the audio file from disk.
     static func deleteAudioFile(relativePath: String) {
-        let url = Constants.appSupportDirectory
+        let meetingsDir = Constants.appSupportDirectory
             .appendingPathComponent("meetings", isDirectory: true)
-            .appendingPathComponent(relativePath)
-        try? FileManager.default.removeItem(at: url)
+        let resolved = meetingsDir.appendingPathComponent(relativePath).standardized
+        // security: prevent path traversal outside the meetings directory
+        guard resolved.path.hasPrefix(meetingsDir.standardized.path) else { return }
+        try? FileManager.default.removeItem(at: resolved)
     }
 
     /// Delete multiple audio files from disk, skipping nil paths.
