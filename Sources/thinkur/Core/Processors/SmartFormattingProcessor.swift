@@ -11,18 +11,21 @@ struct SmartFormattingProcessor: TextProcessor {
         var corrections: [CorrectionEntry] = []
         var i = 0
 
+        func emit(_ original: String, _ formatted: String, rule: String, confidence: Float = 0.9) {
+            corrections.append(CorrectionEntry(
+                processorName: name, ruleName: rule,
+                originalFragment: original, replacement: formatted, confidence: confidence
+            ))
+            result.append(formatted)
+        }
+
         while i < words.count {
             let lower = words[i].lowercased()
 
             // 0. Date: "month day year" patterns
             if let month = SmartFormattingRules.months[lower] {
                 if let (formatted, endIdx) = tryParseDate(words: words, monthIndex: i, month: month) {
-                    let original = words[i..<endIdx].joined(separator: " ")
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "date",
-                        originalFragment: original, replacement: formatted, confidence: 0.9
-                    ))
-                    result.append(formatted)
+                    emit(words[i..<endIdx].joined(separator: " "), formatted, rule: "date")
                     i = endIdx
                     continue
                 }
@@ -36,13 +39,7 @@ struct SmartFormattingProcessor: TextProcessor {
                     let monthWord = words[i + 3].lowercased()
                     if let month = SmartFormattingRules.months[monthWord] {
                         let dayNum = ordinalToNumber(ordWord)
-                        let formatted = "\(month.name) \(dayNum)"
-                        let original = words[i..<(i + 4)].joined(separator: " ")
-                        corrections.append(CorrectionEntry(
-                            processorName: name, ruleName: "date",
-                            originalFragment: original, replacement: formatted, confidence: 0.9
-                        ))
-                        result.append(formatted)
+                        emit(words[i..<(i + 4)].joined(separator: " "), "\(month.name) \(dayNum)", rule: "date")
                         i += 4
                         continue
                     }
@@ -53,13 +50,7 @@ struct SmartFormattingProcessor: TextProcessor {
             if lower == "quarter" && i + 2 < words.count && words[i + 1].lowercased() == "past" {
                 let hourWord = words[i + 2].lowercased()
                 if let hour = SmartFormattingRules.ones[hourWord], hour >= 1, hour <= 12 {
-                    let formatted = "\(hour):15"
-                    let original = words[i...(i + 2)].joined(separator: " ")
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "time",
-                        originalFragment: original, replacement: formatted, confidence: 0.9
-                    ))
-                    result.append(formatted)
+                    emit(words[i...(i + 2)].joined(separator: " "), "\(hour):15", rule: "time")
                     i += 3
                     continue
                 }
@@ -67,13 +58,7 @@ struct SmartFormattingProcessor: TextProcessor {
             if lower == "half" && i + 2 < words.count && words[i + 1].lowercased() == "past" {
                 let hourWord = words[i + 2].lowercased()
                 if let hour = SmartFormattingRules.ones[hourWord], hour >= 1, hour <= 12 {
-                    let formatted = "\(hour):30"
-                    let original = words[i...(i + 2)].joined(separator: " ")
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "time",
-                        originalFragment: original, replacement: formatted, confidence: 0.9
-                    ))
-                    result.append(formatted)
+                    emit(words[i...(i + 2)].joined(separator: " "), "\(hour):30", rule: "time")
                     i += 3
                     continue
                 }
@@ -82,12 +67,7 @@ struct SmartFormattingProcessor: TextProcessor {
             // 0d. "area code NNN NNN NNNN" phone numbers
             if lower == "area" && i + 1 < words.count && words[i + 1].lowercased() == "code" {
                 if let (formatted, endIdx) = tryParsePhoneWithAreaCode(words: words, from: i + 2) {
-                    let original = words[i..<endIdx].joined(separator: " ")
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "phone",
-                        originalFragment: original, replacement: formatted, confidence: 0.9
-                    ))
-                    result.append(formatted)
+                    emit(words[i..<endIdx].joined(separator: " "), formatted, rule: "phone")
                     i = endIdx
                     continue
                 }
@@ -99,13 +79,7 @@ struct SmartFormattingProcessor: TextProcessor {
                 if SmartFormattingRules.ones[nextLower] != nil || SmartFormattingRules.tens[nextLower] != nil {
                     let (numberWords, endIndex) = collectNumberWords(words, from: i + 1)
                     let value = parseNumber(numberWords)
-                    let original = words[i..<endIndex].joined(separator: " ")
-                    let formatted = "-\(value)"
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "negative",
-                        originalFragment: original, replacement: formatted, confidence: 0.9
-                    ))
-                    result.append(formatted)
+                    emit(words[i..<endIndex].joined(separator: " "), "-\(value)", rule: "negative")
                     i = endIndex
                     continue
                 }
@@ -114,12 +88,7 @@ struct SmartFormattingProcessor: TextProcessor {
             // 2. Check for ordinal words (standalone)
             if let ordinal = SmartFormattingRules.ordinalOnes[lower] {
                 if !shouldKeepOrdinal(lower, words: words, index: i) {
-                    let original = words[i]
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "ordinal",
-                        originalFragment: original, replacement: ordinal, confidence: 0.8
-                    ))
-                    result.append(ordinal)
+                    emit(words[i], ordinal, rule: "ordinal", confidence: 0.8)
                     i += 1
                     continue
                 }
@@ -133,21 +102,11 @@ struct SmartFormattingProcessor: TextProcessor {
                         let onesValue = Int(onesOrdinal.filter(\.isNumber)) ?? 0
                         let suffix = ordinalSuffix(for: onesValue)
                         let compound = "\(tensValue + onesValue)\(suffix)"
-                        let original = "\(words[i]) \(words[i + 1])"
-                        corrections.append(CorrectionEntry(
-                            processorName: name, ruleName: "ordinal",
-                            originalFragment: original, replacement: compound, confidence: 0.85
-                        ))
-                        result.append(compound)
+                        emit("\(words[i]) \(words[i + 1])", compound, rule: "ordinal", confidence: 0.85)
                         i += 2
                         continue
                     }
-                    let original = words[i]
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "ordinal",
-                        originalFragment: original, replacement: ordinal, confidence: 0.8
-                    ))
-                    result.append(ordinal)
+                    emit(words[i], ordinal, rule: "ordinal", confidence: 0.8)
                     i += 1
                     continue
                 }
@@ -161,13 +120,7 @@ struct SmartFormattingProcessor: TextProcessor {
                 // 3a. Percentage: "fifty percent" → "50%"
                 if afterWord == "percent" || afterWord == "percentage" {
                     let value = parseNumber(numberWords)
-                    let original = words[i...endIndex].joined(separator: " ")
-                    let formatted = "\(value)%"
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "percentage",
-                        originalFragment: original, replacement: formatted, confidence: 0.95
-                    ))
-                    result.append(formatted)
+                    emit(words[i...endIndex].joined(separator: " "), "\(value)%", rule: "percentage", confidence: 0.95)
                     i = endIndex + 1
                     continue
                 }
@@ -176,7 +129,6 @@ struct SmartFormattingProcessor: TextProcessor {
                 if let currency = SmartFormattingRules.currencyWords[afterWord],
                    currency.placement == .prefix,
                    (afterWord == "dollar" || afterWord == "dollars") {
-                    // Check for "and N cents" after
                     let value = parseNumber(numberWords)
                     var consumeEnd = endIndex + 1
                     var centsValue: Int? = nil
@@ -195,18 +147,13 @@ struct SmartFormattingProcessor: TextProcessor {
                         }
                     }
 
-                    let original = words[i..<consumeEnd].joined(separator: " ")
                     let formatted: String
                     if let cents = centsValue {
                         formatted = "\(currency.symbol)\(formatWithCommas(value)).\(String(format: "%02d", cents))"
                     } else {
                         formatted = "\(currency.symbol)\(formatWithCommas(value))"
                     }
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "currency",
-                        originalFragment: original, replacement: formatted, confidence: 0.9
-                    ))
-                    result.append(formatted)
+                    emit(words[i..<consumeEnd].joined(separator: " "), formatted, rule: "currency")
                     i = consumeEnd
                     continue
                 }
@@ -219,18 +166,13 @@ struct SmartFormattingProcessor: TextProcessor {
                         // Fall through to cardinal
                     } else {
                         let value = parseNumber(numberWords)
-                        let original = words[i...endIndex].joined(separator: " ")
                         let formatted: String
                         if currency.placement == .prefix {
                             formatted = "\(currency.symbol)\(formatWithCommas(value))"
                         } else {
                             formatted = "\(formatWithCommas(value))\(currency.symbol)"
                         }
-                        corrections.append(CorrectionEntry(
-                            processorName: name, ruleName: "currency",
-                            originalFragment: original, replacement: formatted, confidence: 0.9
-                        ))
-                        result.append(formatted)
+                        emit(words[i...endIndex].joined(separator: " "), formatted, rule: "currency")
                         i = endIndex + 1
                         continue
                     }
@@ -240,20 +182,13 @@ struct SmartFormattingProcessor: TextProcessor {
                 if afterWord == "feet" || afterWord == "foot" {
                     let feetValue = parseNumber(numberWords)
                     let consumeEnd = endIndex + 1
-                    // Check for inches after
                     if consumeEnd < words.count {
                         let (inchWords, inchEnd) = collectNumberWords(words, from: consumeEnd)
                         if !inchWords.isEmpty && inchEnd < words.count {
                             let inchAfter = words[inchEnd].lowercased()
                             if inchAfter == "inches" || inchAfter == "inch" {
                                 let inchValue = parseNumber(inchWords)
-                                let original = words[i..<(inchEnd + 1)].joined(separator: " ")
-                                let formatted = "\(feetValue)'\(inchValue)\""
-                                corrections.append(CorrectionEntry(
-                                    processorName: name, ruleName: "measurement",
-                                    originalFragment: original, replacement: formatted, confidence: 0.9
-                                ))
-                                result.append(formatted)
+                                emit(words[i..<(inchEnd + 1)].joined(separator: " "), "\(feetValue)'\(inchValue)\"", rule: "measurement")
                                 i = inchEnd + 1
                                 continue
                             }
@@ -266,23 +201,11 @@ struct SmartFormattingProcessor: TextProcessor {
                     let value = parseNumber(numberWords)
                     let afterDegrees = endIndex + 1 < words.count ? words[endIndex + 1].lowercased() : ""
                     if afterDegrees == "fahrenheit" {
-                        let original = words[i...(endIndex + 1)].joined(separator: " ")
-                        let formatted = "\(value)\u{00B0}F"
-                        corrections.append(CorrectionEntry(
-                            processorName: name, ruleName: "measurement",
-                            originalFragment: original, replacement: formatted, confidence: 0.9
-                        ))
-                        result.append(formatted)
+                        emit(words[i...(endIndex + 1)].joined(separator: " "), "\(value)\u{00B0}F", rule: "measurement")
                         i = endIndex + 2
                         continue
                     } else if afterDegrees == "celsius" {
-                        let original = words[i...(endIndex + 1)].joined(separator: " ")
-                        let formatted = "\(value)\u{00B0}C"
-                        corrections.append(CorrectionEntry(
-                            processorName: name, ruleName: "measurement",
-                            originalFragment: original, replacement: formatted, confidence: 0.9
-                        ))
-                        result.append(formatted)
+                        emit(words[i...(endIndex + 1)].joined(separator: " "), "\(value)\u{00B0}C", rule: "measurement")
                         i = endIndex + 2
                         continue
                     }
@@ -292,13 +215,7 @@ struct SmartFormattingProcessor: TextProcessor {
                 if afterWord == "hundred" && endIndex + 1 < words.count && words[endIndex + 1].lowercased() == "hours" {
                     let hourValue = parseNumber(numberWords)
                     if hourValue >= 0 && hourValue <= 23 {
-                        let original = words[i...(endIndex + 1)].joined(separator: " ")
-                        let formatted = "\(hourValue):00"
-                        corrections.append(CorrectionEntry(
-                            processorName: name, ruleName: "time",
-                            originalFragment: original, replacement: formatted, confidence: 0.85
-                        ))
-                        result.append(formatted)
+                        emit(words[i...(endIndex + 1)].joined(separator: " "), "\(hourValue):00", rule: "time", confidence: 0.85)
                         i = endIndex + 2
                         continue
                     }
@@ -307,13 +224,7 @@ struct SmartFormattingProcessor: TextProcessor {
                 // 3c. Unit: "ten kilometers" → "10 km"
                 if let unit = SmartFormattingRules.unitAbbreviations[afterWord] {
                     let value = parseNumber(numberWords)
-                    let original = words[i...endIndex].joined(separator: " ")
-                    let formatted = "\(value) \(unit)"
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "unit",
-                        originalFragment: original, replacement: formatted, confidence: 0.85
-                    ))
-                    result.append(formatted)
+                    emit(words[i...endIndex].joined(separator: " "), "\(value) \(unit)", rule: "unit", confidence: 0.85)
                     i = endIndex + 1
                     continue
                 }
@@ -322,7 +233,6 @@ struct SmartFormattingProcessor: TextProcessor {
                 if afterWord == "point" && endIndex + 1 < words.count {
                     let decimalWord = words[endIndex + 1].lowercased()
                     if let decimalDigit = SmartFormattingRules.ones[decimalWord], decimalDigit <= 9 {
-                        // Collect all decimal digits
                         let wholePart = parseNumber(numberWords)
                         var decimalPart = "\(decimalDigit)"
                         var j = endIndex + 2
@@ -335,7 +245,6 @@ struct SmartFormattingProcessor: TextProcessor {
                                 break
                             }
                         }
-                        let original = words[i..<j].joined(separator: " ")
                         let formatted = "\(wholePart).\(decimalPart)"
 
                         // Check for decimal currency: "12.3 million dollars"
@@ -344,24 +253,14 @@ struct SmartFormattingProcessor: TextProcessor {
                             if let mag = SmartFormattingRules.magnitudes[nextW], mag >= 1000 {
                                 if j + 1 < words.count, let curr = SmartFormattingRules.currencyWords[words[j + 1].lowercased()],
                                    curr.placement == .prefix {
-                                    let fullOriginal = words[i...(j + 1)].joined(separator: " ")
-                                    let decimalFormatted = "\(curr.symbol)\(formatted) \(nextW)"
-                                    corrections.append(CorrectionEntry(
-                                        processorName: name, ruleName: "currency",
-                                        originalFragment: fullOriginal, replacement: decimalFormatted, confidence: 0.9
-                                    ))
-                                    result.append(decimalFormatted)
+                                    emit(words[i...(j + 1)].joined(separator: " "), "\(curr.symbol)\(formatted) \(nextW)", rule: "currency")
                                     i = j + 2
                                     continue
                                 }
                             }
                         }
 
-                        corrections.append(CorrectionEntry(
-                            processorName: name, ruleName: "decimal",
-                            originalFragment: original, replacement: formatted, confidence: 0.9
-                        ))
-                        result.append(formatted)
+                        emit(words[i..<j].joined(separator: " "), formatted, rule: "decimal")
                         i = j
                         continue
                     }
@@ -370,25 +269,14 @@ struct SmartFormattingProcessor: TextProcessor {
                 // 3e. Fraction: "one half" / "three quarters" → "1/2" / "3/4"
                 if let denominator = SmartFormattingRules.fractionWords[afterWord] {
                     let numerator = parseNumber(numberWords)
-                    let original = words[i...endIndex].joined(separator: " ")
-                    let formatted = "\(numerator)/\(denominator)"
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "fraction",
-                        originalFragment: original, replacement: formatted, confidence: 0.85
-                    ))
-                    result.append(formatted)
+                    emit(words[i...endIndex].joined(separator: " "), "\(numerator)/\(denominator)", rule: "fraction", confidence: 0.85)
                     i = endIndex + 1
                     continue
                 }
 
                 // 3f. Time: "N thirty pm" / "N forty five am" / "N pm" / "N am"
                 if let (timeFormatted, timeEndIdx) = tryParseTime(words: words, numberWords: numberWords, numberEndIndex: endIndex) {
-                    let original = words[i..<timeEndIdx].joined(separator: " ")
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "time",
-                        originalFragment: original, replacement: timeFormatted, confidence: 0.85
-                    ))
-                    result.append(timeFormatted)
+                    emit(words[i..<timeEndIdx].joined(separator: " "), timeFormatted, rule: "time", confidence: 0.85)
                     i = timeEndIdx
                     continue
                 }
@@ -397,13 +285,7 @@ struct SmartFormattingProcessor: TextProcessor {
                 if afterWord == "o'clock" || afterWord == "oclock" {
                     let value = parseNumber(numberWords)
                     if value >= 1 && value <= 12 {
-                        let original = words[i...endIndex].joined(separator: " ")
-                        let formatted = "\(value):00"
-                        corrections.append(CorrectionEntry(
-                            processorName: name, ruleName: "time",
-                            originalFragment: original, replacement: formatted, confidence: 0.85
-                        ))
-                        result.append(formatted)
+                        emit(words[i...endIndex].joined(separator: " "), "\(value):00", rule: "time", confidence: 0.85)
                         i = endIndex + 1
                         continue
                     }
@@ -411,12 +293,7 @@ struct SmartFormattingProcessor: TextProcessor {
 
                 // 3g. Phone number: sequence of 7+ single digits
                 if let (phoneFormatted, phoneEnd) = tryParsePhoneNumber(words: words, from: i) {
-                    let original = words[i..<phoneEnd].joined(separator: " ")
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "phone",
-                        originalFragment: original, replacement: phoneFormatted, confidence: 0.85
-                    ))
-                    result.append(phoneFormatted)
+                    emit(words[i..<phoneEnd].joined(separator: " "), phoneFormatted, rule: "phone", confidence: 0.85)
                     i = phoneEnd
                     continue
                 }
@@ -424,12 +301,7 @@ struct SmartFormattingProcessor: TextProcessor {
                 // 3h. Cardinal: number words → digits
                 if numberWords.count >= 2 {
                     let value = parseNumber(numberWords)
-                    let original = words[i..<endIndex].joined(separator: " ")
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "cardinal",
-                        originalFragment: original, replacement: String(value), confidence: 0.9
-                    ))
-                    result.append(String(value))
+                    emit(words[i..<endIndex].joined(separator: " "), String(value), rule: "cardinal")
                     i = endIndex
                     continue
                 }
@@ -437,12 +309,7 @@ struct SmartFormattingProcessor: TextProcessor {
                 // 3i. Single number word → digit (unless small number before noun, or idiomatic)
                 if !shouldKeepNumberWord(lower, words: words, index: i) {
                     let value = parseNumber(numberWords)
-                    let original = words[i]
-                    corrections.append(CorrectionEntry(
-                        processorName: name, ruleName: "cardinal_single",
-                        originalFragment: original, replacement: String(value), confidence: 0.8
-                    ))
-                    result.append(String(value))
+                    emit(words[i], String(value), rule: "cardinal_single", confidence: 0.8)
                     i = endIndex
                     continue
                 }
@@ -611,8 +478,7 @@ struct SmartFormattingProcessor: TextProcessor {
 
     // MARK: - Phone Number Parsing
 
-    private func tryParsePhoneNumber(words: [String], from start: Int) -> (String, Int)? {
-        // Collect consecutive single-digit number words
+    private func collectSpokenDigits(words: [String], from start: Int) -> (digits: [Int], endIndex: Int) {
         var digits: [Int] = []
         var j = start
         while j < words.count {
@@ -627,53 +493,32 @@ struct SmartFormattingProcessor: TextProcessor {
                 break
             }
         }
+        return (digits, j)
+    }
 
+    private func formatPhoneDigits(_ digits: [Int]) -> String? {
         if digits.count == 7 {
-            let formatted = digits[0..<3].map(String.init).joined() + "-" +
-                           digits[3..<7].map(String.init).joined()
-            return (formatted, j)
+            return digits[0..<3].map(String.init).joined() + "-" +
+                   digits[3..<7].map(String.init).joined()
         }
-
         if digits.count == 10 {
-            let formatted = "(\(digits[0..<3].map(String.init).joined())) " +
-                           digits[3..<6].map(String.init).joined() + "-" +
-                           digits[6..<10].map(String.init).joined()
-            return (formatted, j)
+            return "(\(digits[0..<3].map(String.init).joined())) " +
+                   digits[3..<6].map(String.init).joined() + "-" +
+                   digits[6..<10].map(String.init).joined()
         }
-
         return nil
     }
 
+    private func tryParsePhoneNumber(words: [String], from start: Int) -> (String, Int)? {
+        let (digits, endIndex) = collectSpokenDigits(words: words, from: start)
+        guard let formatted = formatPhoneDigits(digits) else { return nil }
+        return (formatted, endIndex)
+    }
+
     private func tryParsePhoneWithAreaCode(words: [String], from start: Int) -> (String, Int)? {
-        // After "area code", collect digits
-        var digits: [Int] = []
-        var j = start
-        while j < words.count {
-            let w = words[j].lowercased()
-            if let d = SmartFormattingRules.ones[w], d >= 0, d <= 9 {
-                digits.append(d)
-                j += 1
-            } else if w == "oh" || w == "o" {
-                digits.append(0)
-                j += 1
-            } else {
-                break
-            }
-        }
-
-        if digits.count == 10 {
-            let formatted = "(\(digits[0..<3].map(String.init).joined())) " +
-                           digits[3..<6].map(String.init).joined() + "-" +
-                           digits[6..<10].map(String.init).joined()
-            return (formatted, j)
-        }
-
-        if digits.count == 7 {
-            // Area code was the first 3 of a 10-digit sequence, but collected as separate group
-            return nil
-        }
-
-        return nil
+        let (digits, endIndex) = collectSpokenDigits(words: words, from: start)
+        guard digits.count == 10, let formatted = formatPhoneDigits(digits) else { return nil }
+        return (formatted, endIndex)
     }
 
     // MARK: - Number Word Collection
