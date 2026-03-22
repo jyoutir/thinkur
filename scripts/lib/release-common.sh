@@ -14,8 +14,8 @@ BUILD_DIR="${PROJECT_DIR}/build"
 # ─── Constants ──────────────────────────────────────────────────────────────
 APP_NAME="thinkur"
 GITHUB_REPO="jyoutir/thinkur-web"
-TEAM_ID="${THINKUR_TEAM_ID:?Set THINKUR_TEAM_ID to your Apple Developer Team ID}"
-NOTARIZE_PROFILE="${THINKUR_NOTARIZE_PROFILE:-thinkur-notarize}"
+TEAM_ID="YZ9FFMX8QS"
+NOTARIZE_PROFILE="thinkur-notarize"
 SPARKLE_TOOLS_DIR="${HOME}/.cache/thinkur/tools"
 
 # ─── Version reading ───────────────────────────────────────────────────────

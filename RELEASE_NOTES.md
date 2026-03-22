@@ -1,8 +1,8 @@
 ## What's New
 
-- Meeting recording with speaker diarisation (for @Simon)
-- thinkur MCP — let Claude, ChatGPT, and Cursor talk to your speech data
-- Free tier — try thinkur without a license
-- Reliable multi-key hotkeys
-- Dropped minimum to macOS 15.0 (for @super_bavario)
-- Bug fixes (thanks @johnway___, @fhreire)
+thinkur is now completely free and open-source!
+
+- Removed all licensing — no word limits, no paywall, completely free
+- Open-source on GitHub: https://github.com/jyoutir/thinkur
+- Removed telemetry tracking for license events
+- Support moved to GitHub Issues
