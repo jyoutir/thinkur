@@ -124,11 +124,8 @@ struct SelfCorrectionProcessor: TextProcessor {
         if rule.confidence >= 1.0 {
             // Certain corrections (scratch that, delete that): delete to sentence boundary or start
             clauseStart = findSentenceBoundary(in: beforeCorrection, fullText: text) ?? text.startIndex
-        } else if rule.confidence < 0.9 {
-            // Medium/contextual: delete back to nearest structural boundary word
-            clauseStart = findStructuralBoundary(in: beforeCorrection) ?? findSentenceBoundary(in: beforeCorrection, fullText: text) ?? text.startIndex
         } else {
-            // High confidence (0.85-0.99): structural boundary, then sentence, then start
+            // All other confidence levels: structural boundary, then sentence, then start
             clauseStart = findStructuralBoundary(in: beforeCorrection) ?? findSentenceBoundary(in: beforeCorrection, fullText: text) ?? text.startIndex
         }
 
