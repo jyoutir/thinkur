@@ -152,6 +152,11 @@ final class OnboardingViewModel {
 
     private func completeOnboarding() {
         stopPermissionPolling()
-        isComplete = true
+        // Defer to next run loop cycle so the button gesture can finish
+        // before RootView tears down OnboardingFlow (avoids EXC_BAD_ACCESS
+        // in _ButtonGesture.internalBody when the AG node is deallocated).
+        DispatchQueue.main.async {
+            self.isComplete = true
+        }
     }
 }
