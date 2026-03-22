@@ -85,26 +85,6 @@ struct SystemSettingsView: View {
                     AccentColorPicker(selectedColor: $s.accentColorName)
                 }
 
-                // TODO: Remove this debug section before shipping
-                GroupedSettingsSection(title: "Debug") {
-                    Button {
-                        coordinator.onboardingViewModel.currentStep = 0
-                        coordinator.onboardingViewModel.isComplete = false
-                    } label: {
-                        HStack {
-                            Image(systemName: "arrow.counterclockwise")
-                                .foregroundStyle(settings.accentUITint)
-                                .frame(width: 20)
-                            Text("Replay Onboarding")
-                                .foregroundStyle(ColorTokens.textPrimary)
-                            Spacer()
-                        }
-                        .padding(.horizontal, Spacing.md)
-                        .padding(.vertical, Spacing.sm)
-                    }
-                    .buttonStyle(.plain)
-                }
-
                 GroupedSettingsSection(title: "Privacy") {
                     ToggleRow(
                         icon: "chart.bar",
