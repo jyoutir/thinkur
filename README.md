@@ -47,9 +47,7 @@ i didn't want to pay $12/month for wispr flow or have my audio sent to the cloud
 
 ## Demo
 
-https://github.com/user-attachments/assets/thinkur-demo-dubbed.mp4
-
-> *Full demo with audio — dictation, meeting recording, and MCP in action*
+> **[Watch the full demo with audio on thinkur.app](https://thinkur.app)** — dictation, meeting recording, and MCP in action
 
 ## In Action
 
