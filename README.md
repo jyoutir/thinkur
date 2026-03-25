@@ -22,7 +22,7 @@
 
 ## Why thinkur?
 
-i didn't want to pay $12/month for wispr flow or have my audio sent to the cloud. so i built my own.
+Opensource & free alternative to (1) dictation & (2) meeting summarisation apps. 
 
 | | thinkur | Wispr Flow | Otter.ai | Superwhisper |
 |---|---|---|---|---|
