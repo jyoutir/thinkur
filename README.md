@@ -49,38 +49,6 @@ Opensource & free alternative to (1) dictation & (2) meeting summarisation apps.
 
 https://github.com/user-attachments/assets/cefb3dee-498d-4938-8af5-93e49cd2728a
 
-## In Action
-
-<p align="center">
-  <img src="assets/thinkur-all.gif" width="700" alt="dictation with shortcuts and clipboard">
-  <br>
-  <em>Dictation — speak naturally, clean text appears</em>
-</p>
-
-<details>
-<summary>Meeting recording with speaker labels</summary>
-<br>
-<p align="center">
-  <img src="assets/thinkur-meeting.gif" width="700" alt="meeting recording with speaker labels">
-</p>
-</details>
-
-<details>
-<summary>MCP — Claude & ChatGPT reading your transcripts</summary>
-<br>
-<p align="center">
-  <img src="assets/thinkur-mcp.gif" width="700" alt="MCP integration with Claude">
-</p>
-</details>
-
-<details>
-<summary>Full app walkthrough</summary>
-<br>
-<p align="center">
-  <img src="assets/thinkur-demo-1.gif" width="700" alt="thinkur app walkthrough">
-</p>
-</details>
-
 ## Install
 
 Download the latest DMG from [**thinkur.app**](https://thinkur.app) or [Releases](https://github.com/jyoutir/thinkur-web/releases/latest).
