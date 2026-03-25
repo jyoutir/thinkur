@@ -47,7 +47,7 @@ Opensource & free alternative to (1) dictation & (2) meeting summarisation apps.
 
 ## Demo
 
-> **[Watch the full demo with audio on thinkur.app](https://thinkur.app)** — dictation, meeting recording, and MCP in action
+https://github.com/user-attachments/assets/cefb3dee-498d-4938-8af5-93e49cd2728a
 
 ## In Action
 
