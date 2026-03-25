@@ -66,24 +66,13 @@ open thinkur.xcodeproj
 
 Set your `DEVELOPMENT_TEAM` in `project.yml`, then **Cmd+R**.
 
-## How It Works
+## Setup
 
-Press your hotkey (default: Tab) → speak naturally → press again → cleaned text is pasted at your cursor.
-
-| Stage | What it does |
-|-------|-------------|
-| Self-correction | "no wait, I meant..." → keeps only the correction |
-| Filler removal | "um", "like", "you know" → removed |
-| Smart formatting | "twenty five dollars" → "$25" |
-| Pause punctuation | Natural pauses → commas and periods |
-| Style adaptation | Learns formatting per app |
-
-## Architecture
-
-```
-Hotkey → AudioCapture → TranscriptionEngine → PostProcessor → PasteAtCursor
-         (AVAudioEngine)  (Parakeet TDT 0.6B)   (9 stages)    (Cmd+V)
-```
+1. Download from [thinkur.app](https://thinkur.app) and drag to Applications
+2. Open thinkur — grant microphone access when prompted
+3. Press **Tab** to start dictating. Press again to stop. Text appears at your cursor.
+4. To record a meeting, click **Meetings → Start** in the sidebar
+5. To connect AI tools, go to **MCP** in the sidebar and follow the setup for Claude/ChatGPT
 
 ## Contributing
 
