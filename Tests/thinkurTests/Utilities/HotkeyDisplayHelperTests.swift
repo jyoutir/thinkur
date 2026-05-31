@@ -12,6 +12,11 @@ struct HotkeyDisplayHelperTests {
         #expect(HotkeyDisplayHelper.keyName(for: 49) == "Space")
     }
 
+    @Test func keyNameReturnsRightModifierPresetNames() {
+        #expect(HotkeyDisplayHelper.keyName(for: Constants.rightOptionKeyCode) == "Right Option")
+        #expect(HotkeyDisplayHelper.keyName(for: Constants.rightCommandKeyCode) == "Right Command")
+    }
+
     @Test func keyNameReturnsLetterForLetterKeyCodes() {
         #expect(HotkeyDisplayHelper.keyName(for: 0) == "A")
         #expect(HotkeyDisplayHelper.keyName(for: 1) == "S")

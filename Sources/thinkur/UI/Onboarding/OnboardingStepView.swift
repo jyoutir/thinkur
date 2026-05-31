@@ -427,8 +427,8 @@ struct TryItPage: View {
 
             KeyboardShortcutBadge(
                 key: HotkeyDisplayHelper.displayName(
-                    keyCode: settings.hotkeyCode,
-                    modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.hotkeyModifiers))
+                    keyCode: settings.effectiveHotkeyCode,
+                    modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.effectiveHotkeyModifiers))
                 )
             )
 
@@ -447,8 +447,8 @@ struct TryItPage: View {
 
     private var hotkeyLabel: String {
         HotkeyDisplayHelper.displayName(
-            keyCode: settings.hotkeyCode,
-            modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.hotkeyModifiers))
+            keyCode: settings.effectiveHotkeyCode,
+            modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.effectiveHotkeyModifiers))
         )
     }
 
@@ -1055,62 +1055,12 @@ private struct NotesDemoView: View {
 
 // MARK: - Page 4: Quick Settings
 
-@MainActor
-private final class HotkeyRecorderState: ObservableObject {
-    @Published var isRecording = false
-    private var eventMonitor: Any?
-
-    private static let standardModifiers: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
-
-    func startRecording(settings: SettingsManager, coordinator: AppCoordinator) {
-        isRecording = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-            guard let self, self.isRecording else { return }
-            self.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
-                guard let self else { return event }
-                if event.type == .flagsChanged {
-                    // Capture Fn/Globe key (keyCode 63) on either press or release
-                    if event.keyCode == 63 {
-                        settings.hotkeyCode = 63
-                        settings.hotkeyModifiers = 0
-                        coordinator.updateHotkey()
-                        self.stopRecording()
-                        return nil
-                    }
-                    return event
-                }
-
-                let keyCode = event.keyCode
-                guard keyCode != 53 else {
-                    self.stopRecording()
-                    return nil
-                }
-
-                let modifiers = event.modifierFlags.intersection(Self.standardModifiers)
-                settings.hotkeyCode = keyCode
-                settings.hotkeyModifiers = UInt(modifiers.rawValue)
-                coordinator.updateHotkey()
-                self.stopRecording()
-                return nil
-            }
-        }
-    }
-
-    func stopRecording() {
-        if let monitor = eventMonitor {
-            NSEvent.removeMonitor(monitor)
-            eventMonitor = nil
-        }
-        isRecording = false
-    }
-}
-
 struct QuickSettingsPage: View {
     @Environment(OnboardingViewModel.self) private var viewModel
     @Environment(SettingsManager.self) private var settings
     @Environment(AppCoordinator.self) private var coordinator
 
-    @StateObject private var recorder = HotkeyRecorderState()
+    @StateObject private var recorder = HotkeyRecordingSession()
 
     var body: some View {
         @Bindable var s = settings
@@ -1135,18 +1085,15 @@ struct QuickSettingsPage: View {
                     VStack(spacing: 0) {
                         // Hotkey recorder
                         SettingsRowView(icon: "keyboard", title: "Record Shortcut") {
-                            Button {
-                                if recorder.isRecording {
-                                    recorder.stopRecording()
-                                } else {
-                                    recorder.startRecording(settings: settings, coordinator: coordinator)
-                                }
-                            } label: {
-                                KeyboardShortcutBadge(
-                                    key: recorder.isRecording ? "Type shortcut\u{2026}" : currentHotkeyLabel
-                                )
-                            }
-                            .buttonStyle(.plain)
+                            HotkeyShortcutControl(
+                                selection: settings.hotkeyShortcutOption,
+                                isRecording: recorder.isRecording,
+                                shortcutLabel: currentHotkeyLabel,
+                                recordingLabel: recorder.recordingLabel,
+                                accentTint: settings.accentUITint,
+                                onSelect: selectHotkeyShortcutOption,
+                                onToggleRecording: toggleRecording
+                            )
                         }
 
                         Divider()
@@ -1198,9 +1145,21 @@ struct QuickSettingsPage: View {
 
     private var currentHotkeyLabel: String {
         HotkeyDisplayHelper.displayName(
-            keyCode: settings.hotkeyCode,
-            modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.hotkeyModifiers))
+            keyCode: settings.effectiveHotkeyCode,
+            modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.effectiveHotkeyModifiers))
         )
+    }
+
+    private func selectHotkeyShortcutOption(_ option: HotkeyShortcutOption) {
+        recorder.selectShortcutOption(
+            option,
+            applySelection: coordinator.selectHotkeyShortcutOption,
+            onCustomCommit: coordinator.applyCustomHotkey
+        )
+    }
+
+    private func toggleRecording() {
+        recorder.toggleRecording(onCommit: coordinator.applyCustomHotkey)
     }
 }
 

@@ -26,7 +26,7 @@ final class ParakeetTranscriptionEngine: Transcribing {
 
         // If switching versions, reset
         if isLoaded {
-            asrManager?.cleanup()
+            await asrManager?.cleanup()
             asrManager = nil
             isLoaded = false
         }
@@ -59,8 +59,7 @@ final class ParakeetTranscriptionEngine: Transcribing {
 
             progressTask.cancel()
             loadingMessage = "Preparing voice engine\u{2026}"
-            let manager = AsrManager()
-            try await manager.initialize(models: models)
+            let manager = AsrManager(models: models)
 
             asrManager = manager
             currentVersion = version
@@ -89,7 +88,8 @@ final class ParakeetTranscriptionEngine: Transcribing {
         Logger.transcription.info("Parakeet transcribing \(sampleCount) samples (\(String(format: "%.1f", duration))s)")
 
         do {
-            let result = try await asrManager.transcribe(audioSamples, source: .microphone)
+            var decoderState = TdtDecoderState.make(decoderLayers: await asrManager.decoderLayerCount)
+            let result = try await asrManager.transcribe(audioSamples, decoderState: &decoderState)
 
             // Map token timings to WordTimingInfo
             if let tokenTimings = result.tokenTimings {

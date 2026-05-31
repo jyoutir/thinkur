@@ -22,7 +22,10 @@ enum HotkeyDisplayHelper {
             53: "Esc", 76: "Enter", 123: "\u{2190}", 124: "\u{2192}",
             125: "\u{2193}", 126: "\u{2191}", 115: "Home", 119: "End",
             116: "Page Up", 121: "Page Down", 117: "\u{2326}",
-            63: "Fn", 122: "F1", 120: "F2", 99: "F3", 118: "F4",
+            Constants.rightCommandKeyCode: "Right Command",
+            Constants.rightOptionKeyCode: "Right Option",
+            Constants.fnKeyCode: "Fn",
+            122: "F1", 120: "F2", 99: "F3", 118: "F4",
             96: "F5", 97: "F6", 98: "F7", 100: "F8",
             101: "F9", 109: "F10", 103: "F11", 111: "F12",
         ]

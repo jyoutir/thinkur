@@ -1,4 +1,5 @@
 import SwiftUI
+import Cocoa
 
 struct HomeView: View {
     @Environment(HomeViewModel.self) private var viewModel
@@ -15,7 +16,7 @@ struct HomeView: View {
                     .font(Typography.callout)
                     .foregroundStyle(ColorTokens.textTertiary)
 
-                // Summary stats + calendar toggle + Press Tab prompt
+                // Summary stats + calendar toggle + activation prompt
                 HStack(spacing: Spacing.sm) {
                     StatPill(value: Formatters.formatTimeSaved(viewModel.totalTimeSaved), label: "saved")
                     StatPill(value: Formatters.compactNumber(viewModel.totalWords), label: "words")
@@ -66,7 +67,7 @@ struct HomeView: View {
                         Text("Press")
                             .font(Typography.callout)
                             .foregroundStyle(ColorTokens.textTertiary)
-                        KeyboardShortcutBadge(key: "Tab")
+                        KeyboardShortcutBadge(key: hotkeyLabel)
                         Text("to start")
                             .font(Typography.callout)
                             .foregroundStyle(ColorTokens.textTertiary)
@@ -103,7 +104,7 @@ struct HomeView: View {
                     GlassEmptyState(
                         icon: "mic",
                         title: "No transcriptions yet",
-                        subtitle: "Press Tab to start dictating"
+                        subtitle: "Press \(hotkeyLabel) to start dictating"
                     )
                 } else {
                     ForEach(viewModel.groupedTranscriptions, id: \.id) { group in
@@ -169,6 +170,13 @@ struct HomeView: View {
         .onAppear { appeared = true }
     }
 
+    private var hotkeyLabel: String {
+        HotkeyDisplayHelper.displayName(
+            keyCode: settings.effectiveHotkeyCode,
+            modifiers: NSEvent.ModifierFlags(rawValue: UInt(settings.effectiveHotkeyModifiers))
+        )
+    }
+
 }
 
 // MARK: - Stat Pill
@@ -191,6 +199,7 @@ private struct StatPill: View {
         .padding(.vertical, Spacing.sm)
         .interactiveCard()
     }
+
 }
 
 // MARK: - Hover Brightness Modifier

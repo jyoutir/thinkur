@@ -8,7 +8,7 @@ let package = Package(
         .macOS("15.0")
     ],
     dependencies: [
-        .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.12.1"),
+        .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.14.7"),
         .package(url: "https://github.com/TelemetryDeck/SwiftSDK.git", from: "2.0.0"),
         .package(url: "https://github.com/sparkle-project/Sparkle.git", from: "2.8.0"),
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.11.0"),

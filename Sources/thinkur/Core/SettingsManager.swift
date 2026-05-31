@@ -2,6 +2,41 @@ import Foundation
 import SwiftUI
 import ServiceManagement
 
+struct HotkeyBinding: Equatable, Hashable {
+    let keyCode: UInt16
+    let modifiers: UInt
+}
+
+enum HotkeyShortcutOption: String, CaseIterable, Identifiable, Hashable {
+    case rightOption
+    case rightCommand
+    case custom
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .rightOption:
+            return "Right Option"
+        case .rightCommand:
+            return "Right Command"
+        case .custom:
+            return "Custom"
+        }
+    }
+
+    var presetBinding: HotkeyBinding? {
+        switch self {
+        case .rightOption:
+            return HotkeyBinding(keyCode: Constants.rightOptionKeyCode, modifiers: 0)
+        case .rightCommand:
+            return HotkeyBinding(keyCode: Constants.rightCommandKeyCode, modifiers: 0)
+        case .custom:
+            return nil
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class SettingsManager {
@@ -15,6 +50,26 @@ final class SettingsManager {
 
     var hotkeyModifiers: UInt {
         didSet { defaults.set(Int(hotkeyModifiers), forKey: "hotkeyModifiers") }
+    }
+
+    var hotkeyShortcutOption: HotkeyShortcutOption {
+        didSet { defaults.set(hotkeyShortcutOption.rawValue, forKey: "hotkeyShortcutOption") }
+    }
+
+    var customHotkeyBinding: HotkeyBinding {
+        HotkeyBinding(keyCode: hotkeyCode, modifiers: hotkeyModifiers)
+    }
+
+    var effectiveHotkeyBinding: HotkeyBinding {
+        hotkeyShortcutOption.presetBinding ?? customHotkeyBinding
+    }
+
+    var effectiveHotkeyCode: UInt16 {
+        effectiveHotkeyBinding.keyCode
+    }
+
+    var effectiveHotkeyModifiers: UInt {
+        effectiveHotkeyBinding.modifiers
     }
 
     var vadThreshold: Float {
@@ -147,6 +202,9 @@ final class SettingsManager {
 
         self.hotkeyCode = UInt16(defaults.integer(forKey: "hotkeyCode"))
         self.hotkeyModifiers = UInt(defaults.integer(forKey: "hotkeyModifiers"))
+        self.hotkeyShortcutOption = HotkeyShortcutOption(
+            rawValue: defaults.string(forKey: "hotkeyShortcutOption") ?? ""
+        ) ?? .custom
         self.vadThreshold = defaults.float(forKey: "vadThreshold")
         self.postProcessingEnabled = defaults.bool(forKey: "postProcessingEnabled")
         // Hotkey
@@ -185,5 +243,19 @@ final class SettingsManager {
 
         // Deepgram (Keychain check)
         self.hasDeepgramKey = KeychainHelper.load(account: "deepgram-api-key") != nil
+    }
+
+    func selectHotkeyShortcutOption(_ option: HotkeyShortcutOption) {
+        hotkeyShortcutOption = option
+    }
+
+    func applyCustomHotkey(keyCode: UInt16, modifiers: UInt) {
+        applyCustomHotkey(HotkeyBinding(keyCode: keyCode, modifiers: modifiers))
+    }
+
+    func applyCustomHotkey(_ binding: HotkeyBinding) {
+        hotkeyShortcutOption = .custom
+        hotkeyCode = binding.keyCode
+        hotkeyModifiers = binding.modifiers
     }
 }

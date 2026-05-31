@@ -111,10 +111,12 @@ struct HotkeyManagerTests {
         }
     }
 
-    // MARK: - Fn/Globe Key (still uses CGEvent tap)
+    // MARK: - Modifier-Only Keys (CGEvent tap)
 
-    @Suite("Fn/Globe Key Event Handling")
-    struct FnKeyTests {
+    @Suite("Modifier-Only Key Event Handling")
+    struct ModifierOnlyKeyTests {
+        private let rightCommandDeviceMask: UInt64 = 0x00000010
+        private let rightOptionDeviceMask: UInt64 = 0x00000040
 
         private func makeFlagsChangedEvent(keyCode: UInt16, flags: CGEventFlags) -> CGEvent? {
             guard let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true) else {
@@ -125,10 +127,14 @@ struct HotkeyManagerTests {
             return event
         }
 
+        private func flags(_ flags: CGEventFlags, deviceMask: UInt64) -> CGEventFlags {
+            CGEventFlags(rawValue: flags.rawValue | deviceMask)
+        }
+
         @Test @MainActor func fnPress_triggersKeyDown() {
             let manager = HotkeyManager()
-            manager.configure(keyCode: 63, modifiers: [])
-            guard let event = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
+            manager.configure(keyCode: Constants.fnKeyCode, modifiers: [])
+            guard let event = makeFlagsChangedEvent(keyCode: Constants.fnKeyCode, flags: .maskSecondaryFn) else {
                 Issue.record("CGEvent creation failed — no event access permissions")
                 return
             }
@@ -136,16 +142,16 @@ struct HotkeyManagerTests {
             var fired = false
             manager.onKeyDown = { fired = true }
 
-            let result = manager.handleFnEvent(type: .flagsChanged, event: event)
+            let result = manager.handleModifierKeyEvent(type: .flagsChanged, event: event)
             #expect(fired, "onKeyDown should fire for Fn press")
             #expect(result == nil, "Event should be consumed")
         }
 
         @Test @MainActor func fnRelease_triggersKeyUp() {
             let manager = HotkeyManager()
-            manager.configure(keyCode: 63, modifiers: [])
-            guard let press = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn),
-                  let release = makeFlagsChangedEvent(keyCode: 63, flags: []) else {
+            manager.configure(keyCode: Constants.fnKeyCode, modifiers: [])
+            guard let press = makeFlagsChangedEvent(keyCode: Constants.fnKeyCode, flags: .maskSecondaryFn),
+                  let release = makeFlagsChangedEvent(keyCode: Constants.fnKeyCode, flags: []) else {
                 Issue.record("CGEvent creation failed")
                 return
             }
@@ -154,15 +160,83 @@ struct HotkeyManagerTests {
             manager.onKeyDown = {}
             manager.onKeyUp = { upFired = true }
 
-            _ = manager.handleFnEvent(type: .flagsChanged, event: press)
-            let result = manager.handleFnEvent(type: .flagsChanged, event: release)
+            _ = manager.handleModifierKeyEvent(type: .flagsChanged, event: press)
+            let result = manager.handleModifierKeyEvent(type: .flagsChanged, event: release)
             #expect(upFired, "onKeyUp should fire for Fn release")
             #expect(result == nil, "Event should be consumed")
         }
 
+        @Test @MainActor func rightOptionPress_triggersKeyDown() {
+            let manager = HotkeyManager()
+            manager.configure(keyCode: Constants.rightOptionKeyCode, modifiers: [])
+            guard let event = makeFlagsChangedEvent(
+                keyCode: Constants.rightOptionKeyCode,
+                flags: flags(.maskAlternate, deviceMask: rightOptionDeviceMask)
+            ) else {
+                Issue.record("CGEvent creation failed")
+                return
+            }
+
+            var fired = false
+            manager.onKeyDown = { fired = true }
+
+            let result = manager.handleModifierKeyEvent(type: .flagsChanged, event: event)
+            #expect(fired, "onKeyDown should fire for Right Option press")
+            #expect(result == nil, "Event should be consumed")
+        }
+
+        @Test @MainActor func rightCommandPressAndRelease_triggerCallbacks() {
+            let manager = HotkeyManager()
+            manager.configure(keyCode: Constants.rightCommandKeyCode, modifiers: [])
+            guard let press = makeFlagsChangedEvent(
+                    keyCode: Constants.rightCommandKeyCode,
+                    flags: flags(.maskCommand, deviceMask: rightCommandDeviceMask)
+                  ),
+                  let release = makeFlagsChangedEvent(keyCode: Constants.rightCommandKeyCode, flags: []) else {
+                Issue.record("CGEvent creation failed")
+                return
+            }
+
+            var downFired = false
+            var upFired = false
+            manager.onKeyDown = { downFired = true }
+            manager.onKeyUp = { upFired = true }
+
+            _ = manager.handleModifierKeyEvent(type: .flagsChanged, event: press)
+            let result = manager.handleModifierKeyEvent(type: .flagsChanged, event: release)
+            #expect(downFired, "onKeyDown should fire for Right Command press")
+            #expect(upFired, "onKeyUp should fire for Right Command release")
+            #expect(result == nil, "Release event should be consumed")
+        }
+
+        @Test @MainActor func rightOptionReleaseFiresWhenLeftOptionStillHeld() {
+            let manager = HotkeyManager()
+            manager.configure(keyCode: Constants.rightOptionKeyCode, modifiers: [])
+            guard let press = makeFlagsChangedEvent(
+                    keyCode: Constants.rightOptionKeyCode,
+                    flags: flags(.maskAlternate, deviceMask: rightOptionDeviceMask)
+                  ),
+                  let release = makeFlagsChangedEvent(
+                    keyCode: Constants.rightOptionKeyCode,
+                    flags: .maskAlternate
+                  ) else {
+                Issue.record("CGEvent creation failed")
+                return
+            }
+
+            var upFired = false
+            manager.onKeyDown = {}
+            manager.onKeyUp = { upFired = true }
+
+            _ = manager.handleModifierKeyEvent(type: .flagsChanged, event: press)
+            let result = manager.handleModifierKeyEvent(type: .flagsChanged, event: release)
+            #expect(upFired, "Right Option release should fire even if another Option key remains held")
+            #expect(result == nil, "Right Option release should be consumed")
+        }
+
         @Test @MainActor func wrongKeyCode_passesThrough() {
             let manager = HotkeyManager()
-            manager.configure(keyCode: 63, modifiers: [])
+            manager.configure(keyCode: Constants.fnKeyCode, modifiers: [])
             guard let event = makeFlagsChangedEvent(keyCode: 55, flags: .maskCommand) else {
                 Issue.record("CGEvent creation failed")
                 return
@@ -171,15 +245,15 @@ struct HotkeyManagerTests {
             var fired = false
             manager.onKeyDown = { fired = true }
 
-            let result = manager.handleFnEvent(type: .flagsChanged, event: event)
+            let result = manager.handleModifierKeyEvent(type: .flagsChanged, event: event)
             #expect(!fired, "onKeyDown should NOT fire for wrong key")
             #expect(result != nil, "Event should pass through")
         }
 
         @Test @MainActor func tapDisabledByTimeout_passesThrough() {
             let manager = HotkeyManager()
-            manager.configure(keyCode: 63, modifiers: [])
-            guard let event = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
+            manager.configure(keyCode: Constants.fnKeyCode, modifiers: [])
+            guard let event = makeFlagsChangedEvent(keyCode: Constants.fnKeyCode, flags: .maskSecondaryFn) else {
                 Issue.record("CGEvent creation failed")
                 return
             }
@@ -187,16 +261,16 @@ struct HotkeyManagerTests {
             var fired = false
             manager.onKeyDown = { fired = true }
 
-            let result = manager.handleFnEvent(type: .tapDisabledByTimeout, event: event)
+            let result = manager.handleModifierKeyEvent(type: .tapDisabledByTimeout, event: event)
             #expect(!fired, "onKeyDown should NOT fire for tap disabled event")
             #expect(result != nil, "Event should pass through")
         }
 
         @Test @MainActor func fnDoubleTap_noDoubleKeyDown() {
             let manager = HotkeyManager()
-            manager.configure(keyCode: 63, modifiers: [])
-            guard let press1 = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn),
-                  let press2 = makeFlagsChangedEvent(keyCode: 63, flags: .maskSecondaryFn) else {
+            manager.configure(keyCode: Constants.fnKeyCode, modifiers: [])
+            guard let press1 = makeFlagsChangedEvent(keyCode: Constants.fnKeyCode, flags: .maskSecondaryFn),
+                  let press2 = makeFlagsChangedEvent(keyCode: Constants.fnKeyCode, flags: .maskSecondaryFn) else {
                 Issue.record("CGEvent creation failed")
                 return
             }
@@ -204,8 +278,8 @@ struct HotkeyManagerTests {
             var count = 0
             manager.onKeyDown = { count += 1 }
 
-            _ = manager.handleFnEvent(type: .flagsChanged, event: press1)
-            _ = manager.handleFnEvent(type: .flagsChanged, event: press2)
+            _ = manager.handleModifierKeyEvent(type: .flagsChanged, event: press1)
+            _ = manager.handleModifierKeyEvent(type: .flagsChanged, event: press2)
             #expect(count == 1, "onKeyDown should fire only once without release in between")
         }
     }

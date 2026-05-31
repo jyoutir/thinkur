@@ -67,10 +67,24 @@ final class AppCoordinator {
     }
 
     func updateHotkey() {
+        configureHotkeyManager(settings.effectiveHotkeyBinding)
+    }
+
+    func selectHotkeyShortcutOption(_ option: HotkeyShortcutOption) {
+        settings.selectHotkeyShortcutOption(option)
+        updateHotkey()
+    }
+
+    func applyCustomHotkey(_ binding: HotkeyBinding) {
+        settings.applyCustomHotkey(binding)
+        updateHotkey()
+    }
+
+    private func configureHotkeyManager(_ binding: HotkeyBinding) {
         services.hotkeyManager.stop()
         services.hotkeyManager.configure(
-            keyCode: settings.hotkeyCode,
-            modifiers: CGEventFlags(rawValue: UInt64(settings.hotkeyModifiers))
+            keyCode: binding.keyCode,
+            modifiers: CGEventFlags(rawValue: UInt64(binding.modifiers))
         )
         _ = services.hotkeyManager.start()
     }

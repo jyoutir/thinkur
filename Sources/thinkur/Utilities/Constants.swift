@@ -4,7 +4,11 @@ import Foundation
 enum Constants {
     static let sampleRate: Double = 16_000
     static let tabKeyCode: CGKeyCode = 48
+    static let escapeKeyCode: CGKeyCode = 53
     static let vKeyCode: CGKeyCode = 9
+    static let rightCommandKeyCode: CGKeyCode = 54
+    static let rightOptionKeyCode: CGKeyCode = 61
+    static let fnKeyCode: CGKeyCode = 63
     static let clipboardRestoreDelay: TimeInterval = 0.15
     static let pasteDelay: TimeInterval = 0.05
 

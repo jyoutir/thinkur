@@ -11,6 +11,7 @@ struct RecordingViewModelTests {
         transcription: MockTranscribing,
         textInserter: MockTextInserting,
         hotkey: MockHotkeyListening,
+        settings: SettingsManager,
         state: SharedAppState,
         vm: RecordingViewModel
     ) {
@@ -62,7 +63,7 @@ struct RecordingViewModelTests {
             sharedState: sharedState
         )
 
-        return (audio, transcription, textInserter, hotkey, sharedState, vm)
+        return (audio, transcription, textInserter, hotkey, settings, sharedState, vm)
     }
 
     @Test @MainActor func initialStateIsIdle() {
@@ -75,6 +76,14 @@ struct RecordingViewModelTests {
         deps.vm.setupHotkey()
         #expect(deps.hotkey.isRunning)
         #expect(deps.hotkey.onKeyDown != nil)
+    }
+
+    @Test @MainActor func setupHotkeyUsesSelectedPreset() {
+        let deps = makeDeps()
+        deps.settings.selectHotkeyShortcutOption(.rightCommand)
+        deps.vm.setupHotkey()
+        #expect(deps.hotkey.configuredKeyCode == Constants.rightCommandKeyCode)
+        #expect(deps.hotkey.configuredModifiers?.isEmpty == true)
     }
 
     @Test @MainActor func toggleFromIdleToListening() async {
