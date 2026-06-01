@@ -9,7 +9,7 @@ options:
 packages:
   FluidAudio:
     url: https://github.com/FluidInference/FluidAudio.git
-    from: "0.12.1"
+    from: "0.14.7"
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle.git
     from: "2.8.0"
