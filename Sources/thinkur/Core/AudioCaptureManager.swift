@@ -5,10 +5,10 @@ import os
 import Synchronization
 
 final class AudioCaptureManager: AudioCapturing {
-    private let audioEngine = AVAudioEngine()
+    private var audioEngine: AVAudioEngine?
+    private var tappedInputNode: AVAudioInputNode?
     private var audioBuffer: [Float] = []
     private let bufferQueue = DispatchQueue(label: "com.thinkur.audioBuffer")
-    private var converter: AVAudioConverter?
     private let targetFormat: AVAudioFormat
 
     private(set) var isCapturing = false
@@ -29,14 +29,7 @@ final class AudioCaptureManager: AudioCapturing {
     }
 
     deinit {
-        if let observer = configChangeObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
-        if isCapturing {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            audioEngine.stop()
-            audioEngine.reset()
-        }
+        stopAudioEngine()
     }
 
     func startCapture() throws {
@@ -49,64 +42,79 @@ final class AudioCaptureManager: AudioCapturing {
             throw AudioCaptureError.microphonePermissionDenied
         }
 
-        let inputNode = audioEngine.inputNode
-        let inputFormat = inputNode.outputFormat(forBus: 0)
-
-        guard inputFormat.sampleRate > 0 else {
-            Logger.audio.error("Invalid input format: sample rate is 0")
-            throw AudioCaptureError.invalidInputFormat
-        }
-
-        guard let conv = AVAudioConverter(from: inputFormat, to: targetFormat) else {
-            Logger.audio.error("Failed to create audio converter from \(inputFormat) to \(self.targetFormat)")
-            throw AudioCaptureError.converterCreationFailed
-        }
-        converter = conv
-
         bufferQueue.sync {
             audioBuffer.removeAll(keepingCapacity: true)
             audioBuffer.reserveCapacity(Int(Constants.sampleRate) * 30)
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
-            self?.processInputBuffer(buffer)
-        }
-
-        audioEngine.prepare()
         do {
-            try audioEngine.start()
+            try startAudioEngine()
         } catch {
-            inputNode.removeTap(onBus: 0)
-            converter = nil
+            stopAudioEngine()
             throw error
         }
-        isCapturing = true
+    }
 
-        // Handle audio device changes (headphones plugged/unplugged, device switch)
+    private func startAudioEngine() throws {
+        let engine = AVAudioEngine()
+        audioEngine = engine
+
+        // Observe before touching the input node or starting the engine: opening
+        // a Bluetooth microphone can itself change the hardware configuration.
         configChangeObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange,
-            object: audioEngine,
-            queue: .main
-        ) { [weak self] _ in
-            self?.handleConfigurationChange()
+            object: engine,
+            queue: nil
+        ) { [weak self, weak engine] _ in
+            // Return to Core Audio immediately; rebuild outside its notification.
+            Task { @MainActor [weak self, weak engine] in
+                guard let self, let engine, self.audioEngine === engine else { return }
+                self.handleConfigurationChange()
+            }
         }
+
+        let inputNode = engine.inputNode
+        let inputFormat = inputNode.outputFormat(forBus: 0)
+        guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
+            Logger.audio.error("Invalid microphone input format: \(inputFormat)")
+            throw AudioCaptureError.invalidInputFormat
+        }
+
+        guard let converter = AVAudioConverter(from: inputFormat, to: targetFormat) else {
+            Logger.audio.error("Failed to create audio converter from \(inputFormat) to \(self.targetFormat)")
+            throw AudioCaptureError.converterCreationFailed
+        }
+
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
+            self?.processInputBuffer(buffer, converter: converter)
+        }
+        tappedInputNode = inputNode
+
+        engine.prepare()
+        try engine.start()
+        isCapturing = true
 
         Logger.audio.info("Audio capture started at \(inputFormat.sampleRate)Hz, converting to \(Constants.sampleRate)Hz")
     }
 
-    func stopCapture() -> [Float] {
-        if isCapturing {
-            if let observer = configChangeObserver {
-                NotificationCenter.default.removeObserver(observer)
-                configChangeObserver = nil
-            }
-            audioEngine.inputNode.removeTap(onBus: 0)
-            audioEngine.stop()
-            audioEngine.reset()   // Release audio hardware (audio units + aggregate device)
-            converter = nil       // Drop stale converter (will be recreated on next start)
-            isCapturing = false
-            _audioLevel.withLock { $0 = 0 }
+    /// Release resources even when startup or route recovery already failed.
+    private func stopAudioEngine() {
+        if let observer = configChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
+            configChangeObserver = nil
         }
+        let engine = audioEngine
+        audioEngine = nil // Invalidate notifications already queued for this engine.
+        engine?.stop()
+        tappedInputNode?.removeTap(onBus: 0)
+        tappedInputNode = nil
+        engine?.reset()
+        isCapturing = false
+        _audioLevel.withLock { $0 = 0 }
+    }
+
+    func stopCapture() -> [Float] {
+        stopAudioEngine()
 
         // Always drain — preserves partial audio after config change failures
         let samples = bufferQueue.sync {
@@ -120,8 +128,7 @@ final class AudioCaptureManager: AudioCapturing {
         return samples
     }
 
-    private func processInputBuffer(_ buffer: AVAudioPCMBuffer) {
-        guard let converter else { return }
+    private func processInputBuffer(_ buffer: AVAudioPCMBuffer, converter: AVAudioConverter) {
 
         let ratio = Constants.sampleRate / buffer.format.sampleRate
         let outputFrameCount = AVAudioFrameCount(Double(buffer.frameLength) * ratio)
@@ -169,36 +176,14 @@ final class AudioCaptureManager: AudioCapturing {
         guard isCapturing else { return }
         Logger.audio.info("Audio configuration changed — rebuilding audio pipeline")
 
-        // Remove stale tap from old configuration
-        audioEngine.inputNode.removeTap(onBus: 0)
-
-        // Re-read format from new device
-        let inputNode = audioEngine.inputNode
-        let inputFormat = inputNode.outputFormat(forBus: 0)
-
-        guard inputFormat.sampleRate > 0,
-              let conv = AVAudioConverter(from: inputFormat, to: targetFormat) else {
-            Logger.audio.error("Configuration change: invalid format or converter — stopping capture")
-            isCapturing = false
-            _audioLevel.withLock { $0 = 0 }
-            return
-        }
-        converter = conv
-
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
-            self?.processInputBuffer(buffer)
-        }
-
-        audioEngine.prepare()
+        // Keep accumulated samples, but discard the old hardware graph and its
+        // observer. Queued notifications from that graph cannot affect the new one.
+        stopAudioEngine()
         do {
-            try audioEngine.start()
-            Logger.audio.info("Audio pipeline rebuilt at \(inputFormat.sampleRate)Hz after config change")
+            try startAudioEngine()
         } catch {
             Logger.audio.error("Failed to restart engine after config change: \(error)")
-            inputNode.removeTap(onBus: 0)
-            converter = nil
-            isCapturing = false
-            _audioLevel.withLock { $0 = 0 }
+            stopAudioEngine()
         }
     }
 }
