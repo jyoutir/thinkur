@@ -59,13 +59,7 @@ final class ParakeetTranscriptionEngine: Transcribing {
 
             progressTask.cancel()
             loadingMessage = "Preparing voice engine\u{2026}"
-            // Long recordings are split into independent ASR chunks. Keep the
-            // worker count at one to avoid loading several Core ML inference
-            // copies concurrently on memory-constrained Macs.
-            let manager = AsrManager(
-                config: ASRConfig(parallelChunkConcurrency: 1),
-                models: models
-            )
+            let manager = AsrManager(models: models)
 
             asrManager = manager
             currentVersion = version

@@ -85,7 +85,23 @@ struct SmartFormattingProcessor: TextProcessor {
                 }
             }
 
-            // 2. Check for ordinal words (standalone)
+            // 2. Check for ordinal words
+            // 2a. Compound ordinal: "twenty third" → "23rd", "thirty fourth" → "34th", "twenty first" → "21st"
+            if let tensValue = SmartFormattingRules.tens[lower] ?? (SmartFormattingRules.ordinalTens[lower].flatMap { Int($0.dropLast(2)) }),
+               i + 1 < words.count,
+               let onesOrdinal = SmartFormattingRules.ordinalOnes[words[i + 1].lowercased()] {
+                let onesValue = Int(onesOrdinal.filter(\.isNumber)) ?? 0
+                let total = tensValue + onesValue
+                let suffix = ordinalSuffix(for: total)
+                let compound = "\(total)\(suffix)"
+                if !shouldKeepOrdinal(words[i + 1].lowercased(), words: words, index: i + 1) {
+                    emit("\(words[i]) \(words[i + 1])", compound, rule: "ordinal", confidence: 0.85)
+                    i += 2
+                    continue
+                }
+            }
+
+            // 2b. Standalone ordinals
             if let ordinal = SmartFormattingRules.ordinalOnes[lower] {
                 if !shouldKeepOrdinal(lower, words: words, index: i) {
                     emit(words[i], ordinal, rule: "ordinal", confidence: 0.8)
@@ -95,17 +111,6 @@ struct SmartFormattingProcessor: TextProcessor {
             }
             if let ordinal = SmartFormattingRules.ordinalTens[lower] {
                 if !shouldKeepOrdinal(lower, words: words, index: i) {
-                    // Check for compound ordinal: "twenty third" → "23rd"
-                    if i + 1 < words.count,
-                       let onesOrdinal = SmartFormattingRules.ordinalOnes[words[i + 1].lowercased()] {
-                        let tensValue = Int(ordinal.dropLast(2)) ?? 0
-                        let onesValue = Int(onesOrdinal.filter(\.isNumber)) ?? 0
-                        let suffix = ordinalSuffix(for: onesValue)
-                        let compound = "\(tensValue + onesValue)\(suffix)"
-                        emit("\(words[i]) \(words[i + 1])", compound, rule: "ordinal", confidence: 0.85)
-                        i += 2
-                        continue
-                    }
                     emit(words[i], ordinal, rule: "ordinal", confidence: 0.8)
                     i += 1
                     continue
@@ -266,12 +271,29 @@ struct SmartFormattingProcessor: TextProcessor {
                     }
                 }
 
+                // 3e0. Compound ordinal following multi-word number: "one hundred twenty third" → "123rd"
+                if let onesOrdinal = SmartFormattingRules.ordinalOnes[afterWord],
+                   let lastWord = numberWords.last,
+                   SmartFormattingRules.tens[lastWord] != nil {
+                    let onesValue = Int(onesOrdinal.filter(\.isNumber)) ?? 0
+                    let total = parseNumber(numberWords) + onesValue
+                    let suffix = ordinalSuffix(for: total)
+                    emit(words[i...endIndex].joined(separator: " "), "\(total)\(suffix)", rule: "ordinal", confidence: 0.85)
+                    i = endIndex + 1
+                    continue
+                }
+
                 // 3e. Fraction: "one half" / "three quarters" → "1/2" / "3/4"
                 if let denominator = SmartFormattingRules.fractionWords[afterWord] {
                     let numerator = parseNumber(numberWords)
-                    emit(words[i...endIndex].joined(separator: " "), "\(numerator)/\(denominator)", rule: "fraction", confidence: 0.85)
-                    i = endIndex + 1
-                    continue
+                    // Singular fraction denominators (e.g. "third", "fourth") only form fractions with numerator == 1.
+                    // For numerators > 1, English fractions use plural forms ("thirds", "fourths").
+                    let isSingularDenominator = SmartFormattingRules.ordinalOnes[afterWord] != nil
+                    if !(numerator > 1 && isSingularDenominator) {
+                        emit(words[i...endIndex].joined(separator: " "), "\(numerator)/\(denominator)", rule: "fraction", confidence: 0.85)
+                        i = endIndex + 1
+                        continue
+                    }
                 }
 
                 // 3f. Time: "N thirty pm" / "N forty five am" / "N pm" / "N am"

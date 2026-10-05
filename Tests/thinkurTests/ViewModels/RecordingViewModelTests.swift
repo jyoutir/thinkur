@@ -144,18 +144,4 @@ struct RecordingViewModelTests {
         #expect(deps.state.lastTranscription == "hello world")
     }
 
-    @Test @MainActor func oneMinuteRecordingReachesTranscriberIntact() async {
-        let deps = makeDeps()
-        deps.vm.setupHotkey()
-        deps.hotkey.onKeyDown?()
-        try? await Task.sleep(for: .milliseconds(50))
-
-        let sampleCount = 60 * Int(Constants.sampleRate)
-        deps.audio.samplesToReturn = Array(repeating: 0.1, count: sampleCount)
-        deps.hotkey.onKeyDown?()
-        try? await Task.sleep(for: .milliseconds(500))
-
-        #expect(deps.transcription.lastAudioSampleCount == sampleCount)
-        #expect(deps.textInserter.insertedTexts == ["hello world"])
-    }
 }

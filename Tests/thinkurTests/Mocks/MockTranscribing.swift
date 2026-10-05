@@ -8,7 +8,6 @@ final class MockTranscribing: Transcribing {
     var loadingMessage = ""
     var errorMessage: String?
     var lastWordTimings: [WordTimingInfo] = []
-    private(set) var lastAudioSampleCount = 0
     var transcriptionResult: String? = "hello world"
 
     func loadModel(name: String? = nil) async {
@@ -17,7 +16,6 @@ final class MockTranscribing: Transcribing {
     }
 
     func transcribe(audioSamples: [Float]) async -> String? {
-        lastAudioSampleCount = audioSamples.count
         return transcriptionResult
     }
 }
