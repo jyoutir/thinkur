@@ -34,6 +34,8 @@ struct RecordingViewModelTests {
         let suiteName = "com.thinkur.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         let settings = SettingsManager(defaults: defaults)
+        settings.soundEffects = false
+        settings.dimMusicWhileRecording = false
 
         let postProcessor = TextPostProcessor(processors: [])
 
