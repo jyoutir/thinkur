@@ -48,6 +48,43 @@ struct HomeViewModelTests {
         #expect(yesterdayGroup?.records.count == 1)
     }
 
+    @Test @MainActor func navigatingCalendarDoesNotHideRecentActivity() async {
+        let (_, vm) = makeViewModel(records: [
+            makeRecord(text: "today", daysAgo: 0),
+        ])
+        vm.displayedMonth = Calendar.current.date(byAdding: .month, value: -1, to: .now)!
+
+        await vm.loadData()
+
+        #expect(vm.groupedTranscriptions.count == 1)
+        #expect(vm.groupedTranscriptions.first?.title == "Today")
+    }
+
+    @Test @MainActor func monthRolloverKeepsNewRecordsAndExplicitDateSelection() async {
+        let calendar = Calendar.current
+        let september = calendar.date(from: DateComponents(year: 2026, month: 9, day: 30, hour: 12))!
+        let october = calendar.date(from: DateComponents(year: 2026, month: 10, day: 1, hour: 12))!
+        let oldRecord = TranscriptionRecord(
+            rawText: "September", processedText: "September", duration: 1,
+            timestamp: september, appBundleID: "com.test", appName: "Test"
+        )
+        let newRecord = TranscriptionRecord(
+            rawText: "October", processedText: "October", duration: 1,
+            timestamp: october, appBundleID: "com.test", appName: "Test"
+        )
+        let (mock, vm) = makeViewModel(records: [oldRecord])
+        vm.displayedMonth = september
+        await vm.loadData()
+        mock.transcriptionsToReturn = [newRecord, oldRecord]
+        await vm.loadData()
+        #expect(vm.groupedTranscriptions.flatMap(\.records).map(\.rawText) == ["October", "September"])
+
+        vm.selectDate(september)
+        #expect(vm.groupedTranscriptions.flatMap(\.records).map(\.rawText) == ["September"])
+        vm.clearFilter()
+        #expect(vm.groupedTranscriptions.flatMap(\.records).map(\.rawText) == ["October", "September"])
+    }
+
     @Test @MainActor func loadDataSetsActiveDateStrings() async {
         let activeDates: Set<String> = ["2026-02-15", "2026-02-16"]
         let (_, vm) = makeViewModel(activeDates: activeDates)

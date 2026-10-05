@@ -8,23 +8,16 @@ struct ListDetectionProcessor: TextProcessor {
         // Don't format lists in code context
         guard context.appStyle != .code else { return ProcessorResult(text: text) }
 
-        let markers = ListMarkerMatcher.findMarkers(in: text)
+        // Inferential number/ordinal sequences are ambiguous in ordinary dictation.
+        // Only explicit list cues (numbered or bullet) should turn spoken text into a formatted list.
+        // Filter to explicit markers before count check and splitting so ordinals or numbers
+        // in item content (e.g. "bullet point call the third party") do not reject the list or split items.
+        let allMarkers = ListMarkerMatcher.findMarkers(in: text)
+        let markers = allMarkers.filter { $0.category == "numbered" || $0.category == "bullet" }
         guard markers.count >= ListDetectionRules.minItemsForList else {
             return ProcessorResult(text: text)
         }
 
-        // Check for narrative ordinals (disambiguation)
-        if markers.allSatisfy({ $0.category == "ordinal" }) {
-            if ListMarkerMatcher.isNarrativeOrdinal(in: text) {
-                return ProcessorResult(text: text)
-            }
-        }
-
-        // Bare number markers already pass sequential validation in the matcher
-        // No additional disambiguation needed here
-
-        // Determine list type from markers
-        let category = markers.first?.category ?? "bullet"
         let isFormalOrStandard = context.appStyle == .formal || context.appStyle == .standard
         var corrections: [CorrectionEntry] = []
 
@@ -57,11 +50,16 @@ struct ListDetectionProcessor: TextProcessor {
             result.append(preamble)
         }
 
-        for (i, item) in items.enumerated() {
+        let baseNumber = markers.first(where: { $0.category == "numbered" })?.itemNumber ?? 1
+        var numberedCount = 0
+
+        for item in items {
             let prefix: String
-            switch category {
-            case "numbered", "ordinal", "bare_number":
-                prefix = "\(i + 1). "
+            switch item.marker.category {
+            case "numbered":
+                let num = item.marker.itemNumber ?? (baseNumber + numberedCount)
+                numberedCount += 1
+                prefix = "\(num). "
             default:
                 prefix = ListDetectionRules.defaultBulletCharacter
             }
@@ -82,7 +80,7 @@ struct ListDetectionProcessor: TextProcessor {
 
             corrections.append(CorrectionEntry(
                 processorName: name,
-                ruleName: "list_\(category)",
+                ruleName: "list_\(item.marker.category)",
                 originalFragment: item.marker.markerText,
                 replacement: prefix,
                 confidence: 0.85

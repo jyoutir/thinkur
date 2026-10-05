@@ -56,6 +56,46 @@ struct PostProcessingIntegrationTests {
         #expect(!result.isEmpty)
     }
 
+    // MARK: - Numeric and List Pipeline Interactions
+
+    @Test func pipelinePreservesSpokenNumberRangeAsText() {
+        let input = "Please review chapters one through four carefully"
+        let result = pipeline.process(input, context: ctx()).text
+        #expect(result.contains("1 through 4"))
+        #expect(!result.contains("\n"))
+    }
+
+    @Test func pipelinePreservesSpokenOrdinalsInNarrative() {
+        let input = "We could meet on either the third or fourth of next month"
+        let result = pipeline.process(input, context: ctx()).text
+        #expect(!result.contains("\n"))
+        #expect(!result.contains("1."))
+        #expect(!result.contains("2."))
+    }
+
+    @Test func pipelineFormatsBulletListWithOrdinalInContent() {
+        let input = "bullet point call the third party bullet point send the invoice"
+        let result = pipeline.process(input, context: ctx()).text
+        #expect(result.contains("• Call the third party"))
+        #expect(result.contains("• Send the invoice"))
+    }
+
+    @Test func pipelinePreservesExplicitNumberedCuesStartingAtNonOne() {
+        let input = "step 3 install dependencies step 4 run tests"
+        let result = pipeline.process(input, context: ctx()).text
+        #expect(result.contains("3. Install dependencies"))
+        #expect(result.contains("4. Run tests"))
+        #expect(!result.contains("1."))
+        #expect(!result.contains("2."))
+    }
+
+    @Test func pipelineFormatsCompoundOrdinalsCorrectly() {
+        let input = "He finished twenty third in the marathon"
+        let result = pipeline.process(input, context: ctx()).text
+        #expect(result.contains("23rd"))
+        #expect(!result.contains("20/3"))
+    }
+
     // MARK: - Disabled processors respected
 
     @Test func disabledProcessorsSkipped() {

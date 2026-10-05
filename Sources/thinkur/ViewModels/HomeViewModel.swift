@@ -168,11 +168,6 @@ final class HomeViewModel {
         return startStr
     }
 
-    func monthChanged() {
-        if rangeStart == nil && rangeEnd == nil {
-            rebuildGroups()
-        }
-    }
 
     private func rebuildGroups() {
         let calendar = Calendar.current
@@ -187,14 +182,9 @@ final class HomeViewModel {
                 records = allRecords.filter { calendar.isDate($0.timestamp, inSameDayAs: start) }
             }
         } else {
-            // No selection — filter to displayed month
-            let components = calendar.dateComponents([.year, .month], from: displayedMonth)
-            guard let monthStart = calendar.date(from: components),
-                  let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else {
-                records = allRecords
-                return
-            }
-            records = allRecords.filter { $0.timestamp >= monthStart && $0.timestamp < monthEnd }
+            // Calendar navigation only changes the calendar; recent activity remains
+            // visible until the user explicitly selects a date or date range.
+            records = allRecords
         }
 
         let grouped = Dictionary(grouping: records) { record in

@@ -152,11 +152,19 @@ struct SmartFormattingProcessorTests {
     }
 
     @Test func ordinalCompound() {
-        // "twenty" is not in ordinalTens (that's "twentieth"), so this goes
-        // through number collection: ["twenty"] with afterWord "third" matching
-        // fractionWords, yielding a fraction.
         let result = processor.process("twenty third", context: ctx)
-        // twenty → 20, third → fraction denominator 3 → "20/3"
+        #expect(result.text == "23rd")
+    }
+
+    @Test func ordinalCompoundVariations() {
+        #expect(processor.process("twenty first", context: ctx).text == "21st")
+        #expect(processor.process("twenty second", context: ctx).text == "22nd")
+        #expect(processor.process("thirty fourth", context: ctx).text == "34th")
+        #expect(processor.process("one hundred twenty third", context: ctx).text == "123rd")
+    }
+
+    @Test func fractionWithPluralDenominator() {
+        let result = processor.process("twenty thirds", context: ctx)
         #expect(result.text == "20/3")
     }
 

@@ -273,44 +273,25 @@ final class RecordingCoordinator {
         updateState(.idle)
     }
 
-    /// Trim leading/trailing silence using adaptive energy detection.
-    /// Uses vDSP for vectorized RMS per frame — ~10x faster than scalar loop on 30s audio.
-    /// `nonisolated static` so it can run off the main actor via Task.detached.
-    private nonisolated static func trimSilence(from samples: [Float]) -> [Float] {
+    /// Trim digital silence (all-zero leading and trailing samples) from audio buffers.
+    /// Real microphone audio and conversational speech are preserved in their entirety;
+    /// amplitude-based thresholding is deliberately avoided so quiet speech, whispers,
+    /// and speech around loud transients can never be discarded.
+    /// `nonisolated static` so it can run off the main actor via Task.detached and be tested directly.
+    nonisolated static func trimSilence(from samples: [Float]) -> [Float] {
         // Skip trimming for short recordings — every sample matters
         let totalDuration = Double(samples.count) / Constants.sampleRate
         guard totalDuration >= 2.0 else { return samples }
 
-        let frameSamples = Int(0.1 * Constants.sampleRate) // 100ms = 1600 samples
-        let frameCount = (samples.count + frameSamples - 1) / frameSamples
-        guard frameCount >= 3 else { return samples }
-
-        // Compute RMS energy per frame using Accelerate (vectorized)
-        var energies = [Float](repeating: 0, count: frameCount)
-        samples.withUnsafeBufferPointer { ptr in
-            for i in 0..<frameCount {
-                let start = i * frameSamples
-                let count = min(frameSamples, samples.count - start)
-                var rms: Float = 0
-                vDSP_rmsqv(ptr.baseAddress! + start, 1, &rms, vDSP_Length(count))
-                energies[i] = rms
-            }
-        }
-
-        // Adaptive threshold: 10% of peak energy — works with any mic gain
-        var peakEnergy: Float = 0
-        vDSP_maxv(energies, 1, &peakEnergy, vDSP_Length(frameCount))
-        guard peakEnergy > 1e-6 else { return samples }
-        let threshold = peakEnergy * 0.1
-
-        guard let firstActive = energies.firstIndex(where: { $0 > threshold }),
-              let lastActive = energies.lastIndex(where: { $0 > threshold }) else {
+        // Find first and last non-zero samples (digital silence trimming)
+        guard let firstActive = samples.firstIndex(where: { $0 != 0 }),
+              let lastActive = samples.lastIndex(where: { $0 != 0 }) else {
             return samples
         }
 
         let paddingSamples = Int(0.15 * Constants.sampleRate) // 150ms padding
-        let startSample = max(0, firstActive * frameSamples - paddingSamples)
-        let endSample = min(samples.count, (lastActive + 1) * frameSamples + paddingSamples)
+        let startSample = max(0, firstActive - paddingSamples)
+        let endSample = min(samples.count, lastActive + 1 + paddingSamples)
 
         // Only trim if we'd save at least 200ms
         guard samples.count - (endSample - startSample) > Int(0.2 * Constants.sampleRate) else {
@@ -320,7 +301,7 @@ final class RecordingCoordinator {
         let trimmed = Array(samples[startSample..<endSample])
         let trimmedDuration = Double(trimmed.count) / Constants.sampleRate
         let originalDuration = Double(samples.count) / Constants.sampleRate
-        Logger.app.info("Trimmed silence: \(String(format: "%.1f", originalDuration))s → \(String(format: "%.1f", trimmedDuration))s")
+        Logger.app.info("Trimmed digital silence: \(String(format: "%.1f", originalDuration))s → \(String(format: "%.1f", trimmedDuration))s")
 
         return trimmed
     }

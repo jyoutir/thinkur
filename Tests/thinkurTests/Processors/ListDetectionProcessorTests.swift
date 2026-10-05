@@ -29,6 +29,16 @@ struct ListDetectionProcessorTests {
         #expect(result == "number one apples")
     }
 
+    @Test func bareNumberSequenceRemainsText() {
+        let text = "1 apples 2 bananas 3 pears"
+        #expect(processor.process(text, context: ctx).text == text)
+    }
+
+    @Test func ordinalSequenceRemainsText() {
+        let text = "third apples fourth bananas"
+        #expect(processor.process(text, context: ctx).text == text)
+    }
+
     // MARK: - Numbered list detection
 
     @Test func numberedList() {
@@ -38,6 +48,58 @@ struct ListDetectionProcessorTests {
         #expect(result.contains("2."))
         #expect(result.lowercased().contains("apples"))
         #expect(result.lowercased().contains("bananas"))
+    }
+    @Test func explicitNumberedListPreservesNonOneStartingValues() {
+        let text = "step 3 apples step 4 bananas"
+        let result = processor.process(text, context: ctx).text
+        #expect(result.contains("3. Apples"))
+        #expect(result.contains("4. Bananas"))
+        #expect(!result.contains("1."))
+        #expect(!result.contains("2."))
+    }
+
+    @Test func numberedListPreservesHigherSequentialStartingNumbers() {
+        let text = "number 5 apples number 6 bananas"
+        let result = processor.process(text, context: ctx).text
+        #expect(result.contains("5. Apples"))
+        #expect(result.contains("6. Bananas"))
+    }
+
+    @Test func bulletListWithOrdinalInContentPreserved() {
+        let text = "bullet point call the third party bullet point send the invoice"
+        let result = processor.process(text, context: ctx).text
+        #expect(result.contains("• Call the third party"))
+        #expect(result.contains("• Send the invoice"))
+    }
+
+    @Test func numberedListWithOrdinalInContentPreserved() {
+        let text = "step 1 call the third party step 2 send the invoice"
+        let result = processor.process(text, context: ctx).text
+        #expect(result.contains("1. Call the third party"))
+        #expect(result.contains("2. Send the invoice"))
+    }
+
+    @Test func mixedMarkersPreserveIndividualCategories() {
+        let text = "step 1 apples bullet point bananas"
+        let result = processor.process(text, context: ctx)
+        #expect(result.text.contains("1. Apples"))
+        #expect(result.text.contains("• Bananas"))
+        #expect(result.corrections.contains { $0.ruleName == "list_numbered" })
+        #expect(result.corrections.contains { $0.ruleName == "list_bullet" })
+    }
+
+    @Test func mixedMarkersBulletThenNumberedPreserved() {
+        let text = "bullet point apples step 2 bananas"
+        let result = processor.process(text, context: ctx)
+        #expect(result.text.contains("• Apples"))
+        #expect(result.text.contains("2. Bananas"))
+    }
+
+    @Test func spokenNumberSpansPreservedAsText() {
+        let text = "one through four"
+        #expect(processor.process(text, context: ctx).text == text)
+        let ordinals = "third or fourth"
+        #expect(processor.process(ordinals, context: ctx).text == ordinals)
     }
 
     // MARK: - Bullet list detection
