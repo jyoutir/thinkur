@@ -2,6 +2,8 @@
 
 - Fixed dictation audio cleanup after failed microphone/device changes so recording can be started again.
 - Handle audio configuration changes during startup and ignore stale notifications from previous recording sessions.
+- Use one Parakeet inference worker to reduce peak memory during long dictations.
+- Keep recent transcription history visible when browsing another calendar month.
 
 ## What's New
 

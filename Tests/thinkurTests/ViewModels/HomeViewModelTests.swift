@@ -48,6 +48,18 @@ struct HomeViewModelTests {
         #expect(yesterdayGroup?.records.count == 1)
     }
 
+    @Test @MainActor func navigatingCalendarDoesNotHideRecentActivity() async {
+        let (_, vm) = makeViewModel(records: [
+            makeRecord(text: "today", daysAgo: 0),
+        ])
+        vm.displayedMonth = Calendar.current.date(byAdding: .month, value: -1, to: .now)!
+
+        await vm.loadData()
+
+        #expect(vm.groupedTranscriptions.count == 1)
+        #expect(vm.groupedTranscriptions.first?.title == "Today")
+    }
+
     @Test @MainActor func loadDataSetsActiveDateStrings() async {
         let activeDates: Set<String> = ["2026-02-15", "2026-02-16"]
         let (_, vm) = makeViewModel(activeDates: activeDates)

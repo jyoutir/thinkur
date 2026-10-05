@@ -29,6 +29,16 @@ struct ListDetectionProcessorTests {
         #expect(result == "number one apples")
     }
 
+    @Test func bareNumberSequenceRemainsText() {
+        let text = "1 apples 2 bananas 3 pears"
+        #expect(processor.process(text, context: ctx).text == text)
+    }
+
+    @Test func ordinalSequenceRemainsText() {
+        let text = "third apples fourth bananas"
+        #expect(processor.process(text, context: ctx).text == text)
+    }
+
     // MARK: - Numbered list detection
 
     @Test func numberedList() {

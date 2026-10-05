@@ -94,9 +94,6 @@ struct HomeView: View {
                         accentColor: settings.accentUITint
                     )
                     .frame(maxWidth: 240)
-                    .onChange(of: viewModel.displayedMonth) {
-                        viewModel.monthChanged()
-                    }
                 }
 
                 // Grouped transcriptions

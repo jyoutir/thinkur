@@ -12,16 +12,11 @@ struct ListDetectionProcessor: TextProcessor {
         guard markers.count >= ListDetectionRules.minItemsForList else {
             return ProcessorResult(text: text)
         }
-
-        // Check for narrative ordinals (disambiguation)
-        if markers.allSatisfy({ $0.category == "ordinal" }) {
-            if ListMarkerMatcher.isNarrativeOrdinal(in: text) {
-                return ProcessorResult(text: text)
-            }
+        // Inferential number/ordinal sequences are ambiguous in ordinary dictation.
+        // Only explicit list cues should turn spoken text into a formatted list.
+        guard markers.allSatisfy({ $0.category == "numbered" || $0.category == "bullet" }) else {
+            return ProcessorResult(text: text)
         }
-
-        // Bare number markers already pass sequential validation in the matcher
-        // No additional disambiguation needed here
 
         // Determine list type from markers
         let category = markers.first?.category ?? "bullet"
